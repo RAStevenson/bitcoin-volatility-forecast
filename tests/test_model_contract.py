@@ -3,7 +3,9 @@ import pandas as pd
 import pytest
 
 import fbench.models.har  # noqa: F401  (registers)
+import fbench.models.prophet_model  # noqa: F401
 import fbench.models.persistence  # noqa: F401
+import fbench.models.sarima  # noqa: F401
 from fbench.config import HORIZON, QCOLS
 from fbench.features import build_features
 from fbench.models.base import REGISTRY
