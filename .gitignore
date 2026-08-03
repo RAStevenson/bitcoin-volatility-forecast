@@ -1,5 +1,7 @@
 /data/
 mlruns/
+mlflow.db
+mlartifacts/
 results/*.parquet
 __pycache__/
 *.pyc
