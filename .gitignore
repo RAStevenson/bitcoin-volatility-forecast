@@ -1,0 +1,7 @@
+data/
+mlruns/
+results/*.parquet
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
