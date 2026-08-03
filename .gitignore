@@ -1,4 +1,4 @@
-data/
+/data/
 mlruns/
 results/*.parquet
 __pycache__/
