@@ -1,0 +1,10 @@
+[project]
+name = "volatility-forecast-harness"
+version = "1.0.0"
+description = "Benchmarking harness for quantile volatility forecasts: five model families against honest baselines under rolling-origin evaluation, with a daily self-scoring live loop"
+authors = [{ name = "Robert Andrew Stevenson" }]
+requires-python = ">=3.11"
+license = { text = "MIT" }
+
+# Install is optional by design: entry scripts in scripts/ bootstrap
+# src/ onto sys.path, so a fresh clone runs with no install step.
