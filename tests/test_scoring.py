@@ -11,6 +11,22 @@ def test_pinball_hand_values():
     assert abs(pinball([0.0], [1.0], 0.05) - 0.95) < 1e-12
 
 
+def test_nan_forecast_rows_are_excluded_not_poisonous():
+    df = pd.DataFrame({
+        "origin": pd.Timestamp("2026-01-01", tz="UTC"),
+        "target_time": pd.date_range("2026-01-01 01:00", periods=4,
+                                     freq="h", tz="UTC"),
+        "horizon": [1, 1, 2, 2], "model": "m",
+        "q05": [0.9, None, 0.9, None], "q25": 0.95,
+        "q50": [1.0, None, 1.0, None], "q75": 1.05,
+        "q95": [1.1, None, 1.1, None],
+        "y_true": 1.0,
+    })
+    s = score(df)
+    assert (s["n"] == 1).all()          # NaN rows dropped, visible in n
+    assert s["pinball_mean"].notna().all()
+
+
 def test_score_perfect_forecast():
     df = pd.DataFrame({
         "origin": pd.Timestamp("2026-01-01", tz="UTC"),

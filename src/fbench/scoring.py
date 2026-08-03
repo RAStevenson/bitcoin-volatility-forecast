@@ -10,8 +10,11 @@ def pinball(y, q, alpha):
 
 
 def score(results):
+    # Drop rows whose forecast itself is NaN (a degenerate fit) as well as
+    # rows with no outcome yet; the per-group n makes the exclusion visible
+    # rather than letting one bad fit erase a model's whole scorecard.
     rows = []
-    for (model, h), g in results.dropna(subset=["y_true"]).groupby(
+    for (model, h), g in results.dropna(subset=["y_true"] + QCOLS).groupby(
             ["model", "horizon"]):
         y = g["y_true"].to_numpy()
         pb = np.mean([pinball(y, g[c].to_numpy(), a)
