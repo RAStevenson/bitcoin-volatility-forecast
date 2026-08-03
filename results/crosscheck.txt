@@ -1,0 +1,4 @@
+hours compared: 26363
+median abs pct diff: 0.00906%
+p99 abs pct diff: 0.06596%
+hours over 0.5% divergence: 1
