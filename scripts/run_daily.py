@@ -51,9 +51,9 @@ step("live report", daily.write_live_report)
 
 def _commit_push():
     day = pd.Timestamp.now(tz="UTC").date()
-    subprocess.run(["git", "add", "results/forecasts.csv",
-                    "results/evaluation.csv", "results/LIVE.md"],
-                   cwd=ROOT, check=True)
+    tracked = [p for p in ("results/forecasts.csv", "results/evaluation.csv",
+                           "results/LIVE.md") if (ROOT / p).exists()]
+    subprocess.run(["git", "add", *tracked], cwd=ROOT, check=True)
     diff = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=ROOT)
     if diff.returncode == 0:
         print("  nothing new to commit (already ran today)")

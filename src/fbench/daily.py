@@ -40,7 +40,8 @@ def log_forecasts(feats, origin):
                      horizon=range(1, HORIZON + 1))
         added.append(q.rename_axis("target_time").reset_index())
     if added:
-        out = pd.concat([existing, *added], ignore_index=True)[LOG_COLS]
+        frames = ([existing] if len(existing) else []) + added
+        out = pd.concat(frames, ignore_index=True)[LOG_COLS]
         RESULTS_DIR.mkdir(exist_ok=True)
         out.to_csv(FORECAST_LOG, index=False)
     return sum(len(a) for a in added)
