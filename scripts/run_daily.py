@@ -8,6 +8,8 @@ import pandas as pd
 # Import all model modules so the registry is complete for the daily fits.
 import fbench.models.gbm  # noqa: F401
 import fbench.models.har  # noqa: F401
+import fbench.models.nhits  # noqa: F401  (passed the pre-registered
+#   inclusion criterion on the 2026-08-05 full tournament)
 import fbench.models.persistence  # noqa: F401
 import fbench.models.prophet_model  # noqa: F401
 import fbench.models.sarima  # noqa: F401

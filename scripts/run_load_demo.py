@@ -47,7 +47,8 @@ for name in names:
 res = pd.concat(rows, ignore_index=True)
 
 RESULTS_DIR.mkdir(exist_ok=True)
-out = RESULTS_DIR / "backtest_load_DE.parquet"
+# Named load_* so run_report's backtest_* glob never picks it up.
+out = RESULTS_DIR / "load_backtest_DE.parquet"
 res.to_parquet(out, index=False)
 out.with_suffix(".json").write_text(json.dumps(
     {"stride": args.stride, "test_days": args.test_days,

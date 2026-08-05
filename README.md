@@ -36,6 +36,13 @@ rebuilds it from the exchanges.
 | SARIMAX (1,0,1)(1,0,1,24) | classical seasonal time series |
 | Prophet | Fourier daily/weekly seasonality |
 | XGBoost | gradient boosting, native quantile objective |
+| N-HiTS | deep learning (pytorch-forecasting), native quantile loss |
+
+A second dataset, German hourly load (OPSD/ENTSO-E, CC-BY 4.0), runs
+through the identical engine as a generality demo:
+[results/LOAD_REPORT.md](results/LOAD_REPORT.md). The model ranking
+inverts against the volatility tournament, which is the point: model
+family choice depends on series structure, and the harness measures it.
 
 ## Setup and run
 
