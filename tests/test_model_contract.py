@@ -3,6 +3,7 @@ import pandas as pd
 import pytest
 
 import fbench.models.gbm  # noqa: F401  (registers)
+import fbench.models.nhits  # noqa: F401
 import fbench.models.har  # noqa: F401
 import fbench.models.prophet_model  # noqa: F401
 import fbench.models.persistence  # noqa: F401

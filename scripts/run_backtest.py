@@ -16,7 +16,7 @@ from fbench.models.base import REGISTRY
 
 # Contender modules are imported as their plan tasks land; each import
 # registers its model class as a side effect.
-for mod in ("har", "sarima", "prophet_model", "gbm"):
+for mod in ("har", "sarima", "prophet_model", "gbm", "nhits"):
     try:
         __import__(f"fbench.models.{mod}")
     except ImportError:
