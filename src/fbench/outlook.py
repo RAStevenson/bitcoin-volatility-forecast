@@ -46,7 +46,10 @@ def build_outlook(hourly):
     fc_avg = float(med_path.mean())
     pct = float((daily_avg < fc_avg).mean() * 100)
     hi_thresh = float(year.quantile(0.90))
-    q_thresh = float(year.quantile(0.30))
+    # The quiet/normal boundary compares fc_avg to the distribution of
+    # rolling 24h averages, so the printed threshold must come from the
+    # same distribution or it is not the deciding line.
+    q_thresh = float(daily_avg.quantile(0.30))
 
     regime = ("quiet" if pct < 30 else
               "normal" if pct < 70 else
@@ -69,14 +72,15 @@ def build_outlook(hourly):
     lines = [
         f"# Volatility outlook - {day} (generated)",
         "",
-        f"**{regime.upper()} and {trend}.** Expected average volatility "
-        f"over the next 24 hours is about {fc_avg:.0%} annualized, which is "
+        f"**The next 24 hours look {regime} and {trend}.** Expected "
+        f"average volatility is about {fc_avg:.0%} annualized, which is "
         f"the {pct:.0f}th percentile of the past year.",
         "",
         f"- Hourly median forecast ranges {med_path.min():.0%} to "
         f"{med_path.max():.0%}.",
-        f"- About {exp_high_hours:.1f} of the next 24 hours are expected "
-        f"to run high, above {hi_thresh:.0%}, the year's 90th percentile"
+        f"- The next 24 hours are expected to include about "
+        f"{exp_high_hours:.1f} hours running high, above {hi_thresh:.0%}, "
+        f"the year's 90th percentile"
         + (f"; {likely_high} hours are more likely than not to qualify."
            if likely_high else "."),
         f"- Loudest hours expected around {', '.join(loud)} local "

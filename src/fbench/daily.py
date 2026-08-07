@@ -109,7 +109,8 @@ def write_live_report():
             f"{max(0, len(fc) - len(ev))}.",
             "",
             "Every row here was committed to git before its target hour "
-            "occurred; the commit history is the timestamp evidence.",
+            "completed, so before its outcome was observable; the commit "
+            "history is the timestamp evidence.",
             "",
             g.round(4).sort_values("pinball_mean").to_markdown(), "",
         ]
