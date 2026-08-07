@@ -14,3 +14,5 @@ Every row here was committed to git before its target hour occurred; the commit 
 | seasonal_persistence |         0.0882 | 0.2546 |  0.7083 |  1      |                 0.1325 |
 | persistence          |         0.1061 | 0.3339 |  0.5556 |  0.9861 |                 0      |
 
+Calibration check: inactive until 10 scored days (3 so far). Coverage columns are provisional; each day contributes ~24 dependent hourly rows, so the effective sample is the day count.
+

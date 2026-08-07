@@ -51,3 +51,27 @@ def test_live_report_written(logs_in_tmp):
     path = daily.write_live_report()
     text = path.read_text()
     assert "persistence" in text and "pinball" in text
+    # one scored day -> the calibration check must be gated, not verdicted
+    assert "Calibration check: inactive" in text
+
+
+def _per_model(cov90s):
+    return pd.DataFrame({"cov90": pd.Series(cov90s)})
+
+
+def test_calibration_gated_below_min_days():
+    lines = daily.calibration_lines(_per_model({"persistence": 1.0}), 3)
+    assert "inactive" in lines[0]
+    assert "3 so far" in lines[0]
+
+
+def test_calibration_in_band_with_enough_days():
+    lines = daily.calibration_lines(_per_model({"persistence": 0.90}), 12)
+    assert "all models inside" in lines[0]
+
+
+def test_calibration_flags_out_of_band_models():
+    lines = daily.calibration_lines(
+        _per_model({"a": 0.99, "b": 0.90, "c": 0.79}), 12)
+    assert "a 0.9900" in lines[0] and "c 0.7900" in lines[0]
+    assert "b 0." not in lines[0]

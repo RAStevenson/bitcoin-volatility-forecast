@@ -1,6 +1,7 @@
 import pandas as pd
 
-from fbench.config import HORIZON, QCOLS, RESULTS_DIR
+from fbench.config import (COV90_BAND, HORIZON, MIN_CALIBRATION_DAYS,
+                           QCOLS, RESULTS_DIR)
 from fbench.models.base import REGISTRY
 from fbench.scoring import add_skill, score
 
@@ -67,6 +68,27 @@ def score_due(hourly):
     return len(resolved)
 
 
+def calibration_lines(per_model, days):
+    """Sample-gated cov90 verdict for the live report. Below the day
+    minimum the pooled coverage rate is dominated by within-day
+    dependence (3 clean quiet days once produced cov90 = 1.0 from
+    models the year-long backtest shows are calibrated), so the check
+    stays inactive rather than crying wolf."""
+    lo, hi = COV90_BAND
+    if days < MIN_CALIBRATION_DAYS:
+        return [f"Calibration check: inactive until {MIN_CALIBRATION_DAYS} "
+                f"scored days ({days} so far). Coverage columns are "
+                "provisional; each day contributes ~24 dependent hourly "
+                "rows, so the effective sample is the day count.", ""]
+    flagged = per_model[(per_model["cov90"] < lo) | (per_model["cov90"] > hi)]
+    if flagged.empty:
+        return [f"Calibration check: all models inside the cov90 band "
+                f"[{lo:.2f}, {hi:.2f}] over {days} scored days.", ""]
+    parts = "; ".join(f"{m} {v:.4f}" for m, v in flagged["cov90"].items())
+    return [f"Calibration check: cov90 outside [{lo:.2f}, {hi:.2f}] over "
+            f"{days} scored days: {parts}.", ""]
+
+
 def write_live_report():
     ev = _load(EVAL_LOG, LOG_COLS + ["y_true"])
     fc = _load(FORECAST_LOG, LOG_COLS)
@@ -89,6 +111,7 @@ def write_live_report():
             "",
             g.round(4).sort_values("pinball_mean").to_markdown(), "",
         ]
+        lines += calibration_lines(g, days)
     path = RESULTS_DIR / "LIVE.md"
     path.write_text("\n".join(lines) + "\n")
     return path

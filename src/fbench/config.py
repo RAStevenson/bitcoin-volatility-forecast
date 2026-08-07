@@ -21,3 +21,9 @@ ORIGIN_STRIDE_DAYS = 2         # ~183 origins over TEST_DAYS
 
 MIN_MINUTES_PER_HOUR = 45      # fewer 1-min returns -> hour is NaN
 ANNUALIZER = (365 * 24) ** 0.5 # hourly variance -> annualized vol units
+
+# Live calibration check. Hourly rows within a day are strongly
+# dependent, so the effective sample is roughly the number of scored
+# days, not the row count; no verdict is issued below the minimum.
+MIN_CALIBRATION_DAYS = 10
+COV90_BAND = (0.80, 0.98)
