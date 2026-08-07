@@ -70,13 +70,13 @@ def build_outlook(hourly):
         f"# Volatility outlook - {day} (generated)",
         "",
         f"**{regime.upper()} and {trend}.** Expected average volatility "
-        f"over the next 24 hours: about {fc_avg:.0%} annualized, which is "
+        f"over the next 24 hours is about {fc_avg:.0%} annualized, which is "
         f"the {pct:.0f}th percentile of the past year.",
         "",
         f"- Hourly median forecast ranges {med_path.min():.0%} to "
         f"{med_path.max():.0%}.",
-        f"- High-volatility hours (above {hi_thresh:.0%}, the year's 90th "
-        f"percentile): about {exp_high_hours:.1f} of the next 24 expected"
+        f"- About {exp_high_hours:.1f} of the next 24 hours are expected "
+        f"to run high, above {hi_thresh:.0%}, the year's 90th percentile"
         + (f"; {likely_high} hours are more likely than not to qualify."
            if likely_high else "."),
         f"- Loudest hours expected around {', '.join(loud)} local "
@@ -84,7 +84,7 @@ def build_outlook(hourly):
         f"- Yesterday's realized average was {last24:.0%}; the quiet "
         f"threshold is {q_thresh:.0%}.",
         "",
-        f"Forecast model: {model} ({model_why}). This is a volatility "
+        f"The forecast model is {model} ({model_why}). This is a volatility "
         f"outlook only; it says nothing about price direction.",
         "",
     ]

@@ -2,24 +2,28 @@
 
 A benchmarking harness for volatility forecasts. Five model families
 produce next-24-hour quantile forecasts of hourly realized volatility for
-BTC-USD, evaluated under rolling-origin temporal validation with pinball
-loss and calibration coverage scored separately. Every model must beat two
-honest baselines (persistence and HAR) or the report says so.
+BTC-USD, a predicted low/median/high band rather than a single number.
+Evaluation is rolling-origin temporal validation, where the forecast origin
+steps forward through time and each forecast sees only data before it, with
+quantile accuracy (pinball loss) and calibration (how often the truth lands
+inside the band) scored separately. Every model must beat two honest
+baselines, persistence and the HAR regression standard in volatility work,
+or the report says so.
 
 The current tournament results, figures, and dataset summary are in
 [results/REPORT.md](results/REPORT.md) (generated, never hand-edited).
 
 ## Why
 
-My private trading research system has a standing rule: no forecast ships
-until it beats a classical baseline out of sample. This repo is that
+My private trading research system has a standing rule that no forecast
+ships until it beats a classical baseline out of sample. This repo is that
 discipline as a standalone, reusable harness on public data. The harness is
-series-agnostic: models implement a small adapter (train window in, quantile
-forecasts out) and anything with a timestamp index plugs in.
+series-agnostic. Models implement a small adapter (train window in, quantile
+forecasts out), and anything with a timestamp index plugs in.
 
 ## Data
 
-Public, keyless exchange APIs. Coinbase Exchange 1-minute candles are the
+The data comes from public, keyless exchange APIs. Coinbase Exchange 1-minute candles are the
 primary source (3 years, ~1.58M rows); Bitstamp hourly closes cross-check
 them (26,363 hours compared, median divergence 0.009%). Hourly realized
 volatility is computed from 1-minute log returns, annualized, with hours
@@ -41,7 +45,7 @@ rebuilds it from the exchanges.
 A second dataset, German hourly load (OPSD/ENTSO-E, CC-BY 4.0), runs
 through the identical engine as a generality demo:
 [results/LOAD_REPORT.md](results/LOAD_REPORT.md). The model ranking
-inverts against the volatility tournament, which is the point: model
+inverts against the volatility tournament, which is the point. Model
 family choice depends on series structure, and the harness measures it.
 
 ## Setup and run
@@ -59,10 +63,10 @@ python scripts/run_report.py       # score, log to MLflow, write REPORT.md
 ```
 
 `run_backtest.py` takes `--models`, `--stride`, and `--test-days` to run
-subsets quickly. Experiment tracking is local MLflow (sqlite backend);
-`mlflow ui --backend-store-uri sqlite:///mlflow.db` to browse runs.
+subsets quickly. Experiment tracking is local MLflow (sqlite backend). Run
+`mlflow ui --backend-store-uri sqlite:///mlflow.db` to browse the runs.
 
-Prophet on Windows: the pip wheel worked as-is here (cmdstanpy backend,
+On Windows, Prophet's pip wheel worked as-is here (cmdstanpy backend,
 no manual install). If a first fit fails with a cmdstan error, run
 `python -m cmdstanpy.install_cmdstan` once and retry.
 

@@ -76,17 +76,19 @@ def calibration_lines(per_model, days):
     stays inactive rather than crying wolf."""
     lo, hi = COV90_BAND
     if days < MIN_CALIBRATION_DAYS:
-        return [f"Calibration check: inactive until {MIN_CALIBRATION_DAYS} "
-                f"scored days ({days} so far). Coverage columns are "
-                "provisional; each day contributes ~24 dependent hourly "
-                "rows, so the effective sample is the day count.", ""]
+        return [f"The calibration check stays inactive until "
+                f"{MIN_CALIBRATION_DAYS} scored days ({days} so far). "
+                "Coverage columns are provisional; each day contributes "
+                "~24 dependent hourly rows, so the effective sample is "
+                "the day count.", ""]
     flagged = per_model[(per_model["cov90"] < lo) | (per_model["cov90"] > hi)]
     if flagged.empty:
-        return [f"Calibration check: all models inside the cov90 band "
-                f"[{lo:.2f}, {hi:.2f}] over {days} scored days.", ""]
+        return [f"The calibration check passes, with all models inside "
+                f"the cov90 band [{lo:.2f}, {hi:.2f}] over {days} scored "
+                "days.", ""]
     parts = "; ".join(f"{m} {v:.4f}" for m, v in flagged["cov90"].items())
-    return [f"Calibration check: cov90 outside [{lo:.2f}, {hi:.2f}] over "
-            f"{days} scored days: {parts}.", ""]
+    return [f"The calibration check flags cov90 outside [{lo:.2f}, "
+            f"{hi:.2f}] over {days} scored days: {parts}.", ""]
 
 
 def write_live_report():

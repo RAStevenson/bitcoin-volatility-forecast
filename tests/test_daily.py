@@ -52,7 +52,7 @@ def test_live_report_written(logs_in_tmp):
     text = path.read_text()
     assert "persistence" in text and "pinball" in text
     # one scored day -> the calibration check must be gated, not verdicted
-    assert "Calibration check: inactive" in text
+    assert "calibration check stays inactive" in text
 
 
 def _per_model(cov90s):
