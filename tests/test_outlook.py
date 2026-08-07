@@ -35,5 +35,7 @@ def test_outlook_written_with_regime_words(tmp_path, monkeypatch):
     path = outlook.write_outlook(h)
     text = path.read_text()
     assert "Volatility outlook" in text
-    assert any(w in text for w in ("QUIET", "NORMAL", "ELEVATED", "HIGH"))
+    assert any(
+        f"look {w}" in text for w in ("quiet", "normal", "elevated", "high")
+    )
     assert "price direction" in text
