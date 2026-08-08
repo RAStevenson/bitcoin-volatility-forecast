@@ -1,5 +1,7 @@
-import sys, pathlib
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import argparse
 import json
@@ -17,7 +19,7 @@ parser.add_argument("--results", default=None,
 args = parser.parse_args()
 
 if args.results:
-    results_path = pathlib.Path(args.results)
+    results_path = Path(args.results)
 else:
     candidates = sorted(RESULTS_DIR.glob("backtest_*.parquet"))
     if not candidates:
