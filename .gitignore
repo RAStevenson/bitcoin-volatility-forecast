@@ -1,4 +1,6 @@
 /data/
+CLAUDE.md
+.claude/
 mlruns/
 mlflow.db
 mlartifacts/

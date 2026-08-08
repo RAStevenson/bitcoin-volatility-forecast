@@ -29,8 +29,9 @@ forecasts out), and anything with a timestamp index plugs in.
 ## Data
 
 The data comes from public, keyless exchange APIs. Coinbase Exchange 1-minute candles are the
-primary source (3 years, ~1.58M rows); Bitstamp hourly closes cross-check
-them (26,363 hours compared, median divergence 0.009%). Hourly realized
+primary source, three years of them and growing daily; Bitstamp hourly
+closes cross-check them (26,363 hours compared, median divergence 0.009%,
+measured 2026-08-03, recorded in results/crosscheck.txt). Hourly realized
 volatility is computed from 1-minute log returns, annualized, with hours
 missing more than a quarter of their minutes marked NaN rather than treated
 as quiet. Raw data is not committed; the backfill resumes from its last
@@ -64,12 +65,15 @@ pip install -r requirements.txt
 python scripts/run_backfill.py     # fetch 1-min candles (resumable)
 python scripts/run_crosscheck.py   # verify against Bitstamp
 python scripts/run_build_rv.py     # build the hourly realized-vol series
-python scripts/run_backtest.py     # rolling-origin tournament
-python scripts/run_report.py       # score, log to MLflow, write REPORT.md
+python scripts/run_vol_backtest.py # rolling-origin tournament; scores it,
+                                   #   logs to MLflow, writes REPORT.md
+python scripts/run_vol_report.py   # re-score an existing backtest parquet
+                                   #   without refitting
 ```
 
-`run_backtest.py` takes `--models`, `--stride`, and `--test-days` to run
-subsets quickly. Experiment tracking is local MLflow (sqlite backend). Run
+`run_vol_backtest.py` takes `--models`, `--stride`, and `--test-days` to run
+subsets quickly, and `--no-report` to stop after writing the backtest
+parquet. Experiment tracking is local MLflow (sqlite backend). Run
 `mlflow ui --backend-store-uri sqlite:///mlflow.db` to browse the runs.
 
 On Windows, Prophet's pip wheel worked as-is here (cmdstanpy backend,
