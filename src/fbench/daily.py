@@ -102,6 +102,8 @@ def write_live_report():
         s = add_skill(score(ev))
         g = s.groupby("model")[["pinball_mean", "mae", "cov50", "cov90",
                                 "skill_vs_persistence"]].mean()
+        g.insert(0, "days", ev.groupby("model")["origin"]
+                 .apply(lambda o: o.dt.date.nunique()))
         days = ev["origin"].dt.date.nunique()
         lines += [
             f"Forecast days scored: {days}. Resolved rows: {len(ev)}. "
@@ -114,6 +116,11 @@ def write_live_report():
             "",
             g.round(4).sort_values("pinball_mean").to_markdown(), "",
         ]
+        if g["days"].nunique() > 1:
+            lines += ["The days column is each model's own count of scored "
+                      "days. Models that joined the loop later are averaged "
+                      "over fewer days, so the rows above are not "
+                      "sample-matched.", ""]
         lines += calibration_lines(g, days)
     path = RESULTS_DIR / "LIVE.md"
     path.write_text("\n".join(lines) + "\n")

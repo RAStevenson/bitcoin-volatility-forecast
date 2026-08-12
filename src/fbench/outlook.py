@@ -19,6 +19,10 @@ def prob_above(vol_quantiles, threshold):
 
 
 def _headline_model():
+    # Three origins is a deliberately lower bar than the 10-day
+    # calibration gate: picking which model narrates the outlook only
+    # needs a best guess, while the calibration line is a published
+    # verdict, so that one waits for the larger sample.
     ev = _load(EVAL_LOG, ["origin", "target_time", "horizon", "model",
                           *QCOLS, "y_true"])
     if ev["origin"].nunique() >= 3:
@@ -62,6 +66,23 @@ def build_outlook(hourly):
     p_high = [prob_above(vol[i], hi_thresh) for i in range(len(vol))]
     exp_high_hours = float(np.sum(p_high))
     likely_high = int(np.sum(np.array(p_high) > 0.5))
+    # prob_above clamps at 0.02 beyond the fitted quantiles, so when every
+    # hour sits at the clamp the sum is a floor (24 x 0.02), not a
+    # forecast, and printing it as one would dress a constant as
+    # information.
+    all_at_floor = all(p <= 0.02 + 1e-9 for p in p_high)
+    if all_at_floor:
+        high_line = (f"- No hour shows a meaningful chance of running "
+                     f"high, above {hi_thresh:.0%}, higher than 90% of "
+                     f"individual hours in the past year; every forecast "
+                     f"band sits well below that line.")
+    else:
+        high_line = (f"- The next 24 hours are expected to include about "
+                     f"{exp_high_hours:.1f} hours running high, above "
+                     f"{hi_thresh:.0%}, higher than 90% of individual "
+                     f"hours in the past year"
+                     + (f"; {likely_high} hours are more likely than not "
+                        f"to qualify." if likely_high else "."))
 
     local = today["target_time"].dt.tz_convert(LOCAL_TZ)
     order = np.argsort(med_path)
@@ -72,19 +93,16 @@ def build_outlook(hourly):
     lines = [
         f"# Volatility outlook - {day} (generated)",
         "",
-        f"**The next 24 hours look {regime} and {trend}.** Expected "
-        f"average volatility is about {fc_avg:.0%} annualized, which is "
-        f"the {pct:.0f}th percentile of the past year.",
+        f"**The next 24 hours look {regime} and {trend}.** The median "
+        f"forecast averages about {fc_avg:.0%} annualized volatility, "
+        f"which is the {pct:.0f}th percentile of the past year's rolling "
+        f"24-hour averages.",
         "",
         f"- Hourly median forecast ranges {med_path.min():.0%} to "
         f"{med_path.max():.0%}.",
-        f"- The next 24 hours are expected to include about "
-        f"{exp_high_hours:.1f} hours running high, above {hi_thresh:.0%}, "
-        f"the year's 90th percentile"
-        + (f"; {likely_high} hours are more likely than not to qualify."
-           if likely_high else "."),
-        f"- Loudest hours expected around {', '.join(loud)} local "
-        f"({LOCAL_TZ}); calmest around {', '.join(calm)}.",
+        high_line,
+        f"- The loudest hours are expected around {', '.join(loud)} local "
+        f"({LOCAL_TZ}); the calmest around {', '.join(calm)}.",
         f"- Yesterday's realized average was {last24:.0%}; the quiet "
         f"threshold is {q_thresh:.0%}.",
         "",

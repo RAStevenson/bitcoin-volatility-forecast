@@ -55,7 +55,11 @@ res.to_parquet(out, index=False)
 out.with_suffix(".json").write_text(json.dumps(
     {"stride": args.stride, "test_days": args.test_days,
      "series": "DE_load_actual_entsoe_transparency",
-     "origins": len(origins)}))
+     "origins": len(origins),
+     "dataset_hours": len(hourly),
+     "dataset_span_start": str(hourly.index.min()),
+     "dataset_span_end": str(hourly.index.max()),
+     "dataset_nan_hours": int(hourly["rv"].isna().sum())}))
 
 scores = add_skill(score(res))
 path = write_report(

@@ -30,8 +30,13 @@ results = pd.read_parquet(results_path)
 hourly = pd.read_parquet(DATA_DIR / "hourly_rv.parquet")
 scores = add_skill(score(results))
 
-report_path = write_report(scores, hourly, results_path)
 run_config = json.loads(results_path.with_suffix(".json").read_text())
+stat_keys = ("dataset_hours", "dataset_span_start", "dataset_span_end",
+             "dataset_nan_hours")
+dataset_stats = ({k: run_config[k] for k in stat_keys}
+                 if all(k in run_config for k in stat_keys) else None)
+report_path = write_report(scores, hourly, results_path,
+                           dataset_stats=dataset_stats)
 run_config.pop("models", None)  # param values must be scalars
 log_tournament(scores, results_path, run_config)
 print(f"report -> {report_path}")
