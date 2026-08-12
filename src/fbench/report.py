@@ -1,6 +1,7 @@
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import numpy as np
 
 from fbench.config import RESULTS_DIR
 
@@ -86,6 +87,23 @@ def write_report(scores, hourly, results_path, out_name="REPORT.md",
     lines += [
         f"![hourly profile]({fig_prefix}_hourly_profile.png)", "",
         f"![pinball by horizon]({fig_prefix}_pinball_by_horizon.png)", "",
+    ]
+    # Origins are floored to 00:00 UTC by make_origins, so horizon h always
+    # scores the same clock hour and the two figures above are confounded
+    # by construction. Computed at render time because the correlation is
+    # specific to this run's scores and data.
+    by_h = scores.groupby("horizon")["pinball_mean"].mean()
+    prof = hourly.groupby(hourly.index.hour)["rv"].median()
+    hour_r = float(np.corrcoef(
+        by_h.to_numpy(),
+        prof.reindex([h % 24 for h in by_h.index]).to_numpy())[0, 1])
+    lines += [
+        f"Backtest origins all sit at 00:00 UTC, so a given horizon always "
+        f"lands on the same UTC clock hour, and the pinball-by-horizon "
+        f"curve inherits the hour-of-day profile above (correlation "
+        f"{hour_r:.2f} between the two curves on this run). A bump at one "
+        f"horizon is largely that clock hour showing through, not a "
+        f"property of forecasting that far ahead.", "",
     ]
     _fig_hourly_profile(hourly, fig_prefix, value_label)
     _fig_pinball(scores, fig_prefix)
