@@ -54,7 +54,13 @@ stamp = pd.Timestamp.now(tz="UTC").strftime("%Y%m%d")
 out = RESULTS_DIR / f"backtest_{stamp}.parquet"
 res.to_parquet(out, index=False)
 run_config = {"stride": args.stride, "test_days": args.test_days,
-              "horizon": HORIZON, "models": names, "origins": len(origins)}
+              "horizon": HORIZON, "models": names, "origins": len(origins),
+              # Dataset snapshot, so a later re-report describes the data
+              # this backtest saw rather than the grown hourly file.
+              "dataset_hours": len(hourly),
+              "dataset_span_start": str(hourly.index.min()),
+              "dataset_span_end": str(hourly.index.max()),
+              "dataset_nan_hours": int(hourly["rv"].isna().sum())}
 out.with_suffix(".json").write_text(json.dumps(run_config))
 print(f"rows={len(res)} -> {out.name}  total {time.perf_counter()-t_all:.0f}s")
 

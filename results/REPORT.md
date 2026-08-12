@@ -1,6 +1,6 @@
 # Tournament report (generated)
 
-Results file: backtest_20260805.parquet. All metrics on the log scale of the target. Coverage targets: cov50 -> 0.50, cov90 -> 0.90.
+Results file: backtest_20260805.parquet. All metrics are on the log scale of the target. Coverage targets: cov50 -> 0.50, cov90 -> 0.90. skill_vs_persistence is the mean of per-horizon skill scores, so a model can rank differently on skill than on pinball_mean; horizons where persistence does worst weigh most.
 
 ## Dataset
 - hours: 26412, span 2023-08-01 00:00:00+00:00 to 2026-08-05 11:00:00+00:00
@@ -44,6 +44,10 @@ Results file: backtest_20260805.parquet. All metrics on the log scale of the tar
 | sarima               |         0.1187 | 0.3637 | 0.4903 |  0.5879 |  0.9011 | 182 |                 0.1085 |
 | persistence          |         0.1332 | 0.4139 | 0.5497 |  0.5246 |  0.9126 | 183 |                 0      |
 | seasonal_persistence |         0.1332 | 0.4139 | 0.5497 |  0.5246 |  0.9126 | 183 |                 0      |
+
+The identical persistence and seasonal_persistence rows at horizon 24 are by construction: there the seasonal lag is the same last observed hour, and both bands draw on the same 24-hour change distribution.
+
+Where a model's n falls short of the maximum, rows whose forecast came back NaN (a degenerate fit) were dropped before scoring, so per-model samples differ slightly there.
 
 ![hourly profile](fig_hourly_profile.png)
 

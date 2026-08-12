@@ -8,8 +8,8 @@ Evaluation is rolling-origin temporal validation, where the forecast origin
 steps forward through time and each forecast sees only data before it, with
 quantile accuracy (pinball loss) and calibration (how often the truth lands
 inside the band) scored separately. Every model must beat two honest
-baselines, persistence and the HAR regression standard in volatility work,
-or the report says so.
+baselines, persistence and the HAR (heterogeneous autoregressive)
+regression standard in volatility work, or the report says so.
 
 In the pinned 2026-08-05 backtest, the best entrant (N-HiTS, the deep
 net) scored a mean pinball loss of 0.0959 against 0.1180 for the
@@ -23,8 +23,9 @@ hours. The current tournament results, figures, and dataset summary are in
 My private trading research system has a standing rule that no forecast
 ships until it beats a classical baseline out of sample. This repo is that
 discipline as a standalone, reusable harness on public data. The harness is
-series-agnostic. Models implement a small adapter (train window in, quantile
-forecasts out), and anything with a timestamp index plugs in.
+series-agnostic within its hourly frame. Models implement a small adapter
+(train window in, quantile forecasts out), and any hourly series with a
+timestamp index plugs in; the load demo below is the demonstration.
 
 ## Data
 
@@ -52,7 +53,7 @@ A second dataset, German hourly load (OPSD/ENTSO-E, CC-BY 4.0), runs
 through the identical engine as a generality demo:
 [results/LOAD_REPORT.md](results/LOAD_REPORT.md). The model ranking
 reorders sharply against the volatility tournament, with Prophet climbing
-from next-to-last to second, which is the point. Model family choice
+from third from last to second, which is the point. Model family choice
 depends on series structure, and the harness measures it.
 
 ## Setup and run
@@ -69,6 +70,10 @@ python scripts/run_vol_backtest.py # rolling-origin tournament; scores it,
                                    #   logs to MLflow, writes REPORT.md
 python scripts/run_vol_report.py   # re-score an existing backtest parquet
                                    #   without refitting
+python scripts/run_verify_timing.py  # audit the live log's evidence claim
+                                     #   against git history: exits 1 if any
+                                     #   forecast row was first committed
+                                     #   after its target hour completed
 ```
 
 `run_vol_backtest.py` takes `--models`, `--stride`, and `--test-days` to run
@@ -94,7 +99,7 @@ never shows a model data past its origin.
 
 ## Limitations and next steps
 
-The live log is young, four scored days as of 2026-08-07, so the LIVE.md
+The live log is young, seven scored days as of 2026-08-10, so the LIVE.md
 leaderboard will stay noisy until the sample grows, and its coverage
 columns are provisional because each day contributes about 24 dependent
 hourly rows. The load demo runs the classical models only, without N-HiTS,
