@@ -1,21 +1,21 @@
 # Live scoreboard (generated)
 
-Forecast days scored: 14. Resolved rows: 2616. Pending (logged, outcome not yet observed): 192.
+Forecast days scored: 15. Resolved rows: 2808. Pending (logged, outcome not yet observed): 192.
 
 Every row here was committed to git before its target hour completed, so before its outcome was observable; the commit history is the timestamp evidence.
 
 | model                |   days |   pinball_mean |    mae |   cov50 |   cov90 |   skill_vs_persistence |
 |:---------------------|-------:|---------------:|-------:|--------:|--------:|-----------------------:|
-| nhits                |     11 |         0.0968 | 0.2946 |  0.5606 |  0.8864 |                 0.2663 |
-| gbm                  |     14 |         0.1178 | 0.3613 |  0.381  |  0.7827 |                 0.1081 |
-| prophet              |     14 |         0.1195 | 0.3712 |  0.4643 |  0.8482 |                 0.0753 |
-| sarima               |     14 |         0.1335 | 0.413  |  0.5119 |  0.8304 |                -0.001  |
-| har_seasonal         |     14 |         0.1344 | 0.4139 |  0.4494 |  0.8095 |                -0.0135 |
-| persistence          |     14 |         0.1378 | 0.4312 |  0.5119 |  0.8929 |                 0      |
-| har                  |     14 |         0.1387 | 0.4274 |  0.4643 |  0.8214 |                -0.0317 |
-| seasonal_persistence |     14 |         0.1737 | 0.5177 |  0.4821 |  0.8125 |                -0.3173 |
+| nhits                |     12 |         0.0939 | 0.2857 |  0.566  |  0.8958 |                 0.2788 |
+| gbm                  |     15 |         0.1155 | 0.3541 |  0.3889 |  0.7861 |                 0.1174 |
+| prophet              |     15 |         0.1159 | 0.3594 |  0.4833 |  0.8583 |                 0.0943 |
+| sarima               |     15 |         0.1296 | 0.4002 |  0.5306 |  0.8417 |                 0.0182 |
+| har_seasonal         |     15 |         0.132  | 0.4077 |  0.4556 |  0.8194 |                -0.0048 |
+| persistence          |     15 |         0.1358 | 0.4276 |  0.5139 |  0.9    |                 0      |
+| har                  |     15 |         0.1371 | 0.4235 |  0.4778 |  0.8222 |                -0.031  |
+| seasonal_persistence |     15 |         0.1785 | 0.5304 |  0.475  |  0.8056 |                -0.3683 |
 
 The days column is each model's own count of scored days. Models that joined the loop later are averaged over fewer days, so the rows above are not sample-matched.
 
-The calibration check flags cov90 outside [0.80, 0.98] over 14 scored days: gbm 0.7827.
+The calibration check flags cov90 outside [0.80, 0.98] over 15 scored days: gbm 0.7861.
 
