@@ -53,12 +53,15 @@ print(f"  forecast rows logged: {logged} (origin {origin})")
 step("live report", daily.write_live_report)
 from fbench.outlook import write_outlook  # noqa: E402
 step("outlook", lambda: write_outlook(hourly))
+from fbench.review import write_review  # noqa: E402
+step("review", write_review)
 
 
 def _commit_push():
     day = pd.Timestamp.now(tz="UTC").date()
     tracked = [p for p in ("results/forecasts.csv", "results/evaluation.csv",
-                           "results/LIVE.md", "results/OUTLOOK.md")
+                           "results/LIVE.md", "results/OUTLOOK.md",
+                           "results/REVIEW.md")
                if (ROOT / p).exists()]
     subprocess.run(["git", "add", *tracked], cwd=ROOT, check=True)
     diff = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=ROOT)
