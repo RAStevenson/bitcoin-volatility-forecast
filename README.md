@@ -70,6 +70,10 @@ python scripts/run_vol_backtest.py # rolling-origin tournament; scores it,
                                    #   logs to MLflow, writes REPORT.md
 python scripts/run_vol_report.py   # re-score an existing backtest parquet
                                    #   without refitting
+python scripts/run_daily.py        # the live loop: score yesterday, log
+                                   #   today, write results/REVIEW.md
+                                   #   (yesterday's forecast vs realized),
+                                   #   LIVE.md and OUTLOOK.md, commit
 python scripts/run_verify_timing.py  # audit the live log's evidence claim
                                      #   against git history: exits 1 if any
                                      #   forecast row was first committed
