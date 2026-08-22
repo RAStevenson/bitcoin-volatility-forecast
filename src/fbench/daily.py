@@ -88,7 +88,12 @@ def calibration_lines(per_model, days):
                 "days.", ""]
     parts = "; ".join(f"{m} {v:.4f}" for m, v in flagged["cov90"].items())
     return [f"The calibration check flags cov90 outside [{lo:.2f}, "
-            f"{hi:.2f}] over {days} scored days: {parts}.", ""]
+            f"{hi:.2f}] over {days} scored days: {parts}. Bands are left as "
+            "each model produces them: a 2026-08-21 replay of an adaptive "
+            "conformal widening rule over the scored days restored coverage "
+            "on average but could not anticipate a first-day shock such as "
+            "2026-08-19, so it was measured and not adopted (see README, "
+            "Limitations).", ""]
 
 
 def write_live_report():
