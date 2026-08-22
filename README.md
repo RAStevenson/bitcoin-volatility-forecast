@@ -109,6 +109,14 @@ columns are provisional because each day contributes about 24 dependent
 hourly rows. The load demo runs the classical models only, without N-HiTS,
 so the cross-series comparison covers seven entrants rather than eight.
 The volatility tournament is a single asset, and nothing here shows the
-ranking holds on other coins or other markets. The next steps are letting
-the live log accumulate toward its 10-day calibration check and adding
-N-HiTS to the load demo.
+ranking holds on other coins or other markets. The calibration check first
+flagged five models below the 0.80 coverage floor on 2026-08-21, after a
+2026-08-19 forecast day whose realized volatility ran 3.67 times the
+median forecast. An adaptive conformal layer (a band-widening rule driven
+by recent coverage misses) was replayed over the 18 scored days and lifted
+every flagged model above the floor at no pinball cost, but it widened
+the 08-19 band by almost nothing, because the two days before it were
+clean and the rule reacts only to misses it has seen. It was not adopted;
+the bands stay as each model produces them, and the coverage column is
+the honest record of that. The remaining next step is adding N-HiTS to
+the load demo.
