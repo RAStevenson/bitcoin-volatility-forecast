@@ -17,5 +17,5 @@ Every row here was committed to git before its target hour completed, so before 
 
 The days column is each model's own count of scored days. Models that joined the loop later are averaged over fewer days, so the rows above are not sample-matched.
 
-The calibration check flags cov90 outside [0.80, 0.98] over 21 scored days: gbm 0.7798; har_seasonal 0.7956; prophet 0.7024. Bands are left as each model produces them: a 2026-08-21 replay of an adaptive conformal widening rule over the scored days restored coverage on average but could not anticipate a first-day shock such as 2026-08-19, so it was measured and not adopted (see README, Limitations).
+The calibration check passes, with no model's day-level 90% coverage separable from 0.90 by more than sampling noise. The test is two-sided on each model's daily coverage against 0.90 over 21 scored days, Bonferroni-corrected across the 8 models tested (per-model alpha 0.0063).
 

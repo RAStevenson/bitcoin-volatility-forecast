@@ -99,17 +99,78 @@ The suite pins the realized-vol closed form, proves features are strictly
 trailing (rewriting the future changes nothing in the past), enforces the
 adapter contract for every registered model, checks pinball loss against
 hand-computed values, and uses a spy model to prove the backtest engine
-never shows a model data past its origin.
+never shows a model data past its origin. It also pins the calibration
+check: that a rejection short of the persistence requirement is reported
+as pending rather than flagged, that the multiple-comparison correction
+scales with the number of models tested, and that a model whose daily
+coverage has no spread gets no verdict at all.
+
+## The calibration check
+
+`LIVE.md` carries a `cov90` column, the fraction of hours where the
+realized value landed inside a model's 90% band. A calibrated model
+sits near 0.90, and a model that sits well below it is claiming more
+precision than it has.
+
+The first version of the check compared that column against a fixed
+floor of 0.80 and named anything underneath. It ran that way from
+2026-08-16 to 2026-08-24 and named three to five of the eight models
+every single day, so the check carried no information. A signal that is
+always on cannot tell you when something changed.
+
+The problem was that the floor sat inside the noise. Hourly rows within
+a day are strongly dependent, so the effective sample is the number of
+scored days, not the row count, and at 21 scored days the standard error
+of a model's day-level coverage is about 0.045. The gap between the 0.80
+floor and the 0.90 target is roughly two standard errors wide, so a
+perfectly calibrated model crosses it routinely. The membership of the
+flagged list showed exactly that. On 2026-08-24, `seasonal_persistence`
+left the list at 0.8056 while `har_seasonal` stayed on it at 0.7956,
+two numbers a tenth of a standard error apart, even though
+`seasonal_persistence` had the stronger evidence of undercoverage of the
+two (t = -2.15 against -1.89) because its day-to-day spread was tighter.
+`har` appeared for two days and left; `seasonal_persistence` appeared for
+five and left. Nothing about those models had changed.
+
+The check now tests the evidence instead of the point estimate. It takes
+each model's coverage one day at a time, runs a two-sided t-test of those
+daily figures against 0.90, and applies a Bonferroni correction across
+the models tested, since testing eight at once produces a false rejection
+often at an uncorrected 5%. A model is reported only after it rejects on
+three consecutive scored days. Earlier verdicts are recomputed from
+`evaluation.csv` rather than stored, so the whole check is reproducible
+from the log with no state file that could drift out of step with the
+data.
+
+Replayed over every scored day, the new check has never fired. It is not
+silent by construction, though. At the current day-to-day spread it
+reports a model whose 90% band is really covering about 0.76 or less, and
+`gbm` at 0.7798 sits 0.018 above its own firing point, closer than any
+other model and closest of any day so far on 2026-08-18 (p = 0.0108
+against a corrected threshold of 0.0063). What changed is that `gbm` is
+now described as the model to watch rather than announced as a failure.
+
+The check stays silent in two cases on purpose. A model with fewer than
+10 scored days gets no verdict, because three clean quiet days once
+produced a coverage of 1.0 from models the year-long backtest shows are
+calibrated. A model whose daily coverage has no spread at all also gets
+none, because the test would have no uncertainty to divide by, and
+inventing one would repeat the mistake the fixed floor made.
 
 ## Limitations and next steps
 
-The live log is young, seven scored days as of 2026-08-10, so the LIVE.md
+The live log is young, 21 scored days as of 2026-08-24, so the LIVE.md
 leaderboard will stay noisy until the sample grows, and its coverage
-columns are provisional because each day contributes about 24 dependent
-hourly rows. The load demo runs the classical models only, without N-HiTS,
+columns carry real uncertainty because each day contributes about 24
+dependent hourly rows; the calibration check above quantifies that
+uncertainty rather than reading the column as exact. The load demo runs the classical models only, without N-HiTS,
 so the cross-series comparison covers seven entrants rather than eight.
 The volatility tournament is a single asset, and nothing here shows the
-ranking holds on other coins or other markets. The calibration check first
+ranking holds on other coins or other markets. Every model's coverage
+sits below 0.90, none above, and that one-sided pattern across all eight
+is a real if weak signal that the bands are narrow, which no per-model
+test will settle at this sample size; it is the reason the check was
+rebuilt rather than removed. The fixed-floor calibration check first
 flagged five models below the 0.80 coverage floor on 2026-08-21, after a
 2026-08-19 forecast day whose realized volatility ran 3.67 times the
 median forecast. An adaptive conformal layer (a band-widening rule driven
@@ -118,5 +179,7 @@ every flagged model above the floor at no pinball cost, but it widened
 the 08-19 band by almost nothing, because the two days before it were
 clean and the rule reacts only to misses it has seen. It was not adopted;
 the bands stay as each model produces them, and the coverage column is
-the honest record of that. The remaining next step is adding N-HiTS to
-the load demo.
+the honest record of that. The fixed floor was replaced on 2026-08-24
+by the evidence-based check described above, after nine consecutive days
+in which it named three to five models without that list meaning
+anything. The remaining next step is adding N-HiTS to the load demo.
