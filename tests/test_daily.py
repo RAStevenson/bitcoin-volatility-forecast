@@ -55,23 +55,89 @@ def test_live_report_written(logs_in_tmp):
     assert "calibration check stays inactive" in text
 
 
-def _per_model(cov90s):
-    return pd.DataFrame({"cov90": pd.Series(cov90s)})
+def _ev(cov_by_model, start="2026-01-01"):
+    """Synthetic evaluation log. cov_by_model maps a model to its list of
+    per-day coverage fractions; each day is 24 hourly rows and the first
+    round(24 * frac) of them are placed inside the band."""
+    rows = []
+    for model, fracs in cov_by_model.items():
+        for d, frac in enumerate(fracs):
+            origin = pd.Timestamp(start, tz="UTC") + pd.Timedelta(days=d)
+            inside = round(24 * frac)
+            for h in range(24):
+                rows.append({
+                    "origin": origin, "horizon": h + 1,
+                    "target_time": origin + pd.Timedelta(hours=h + 1),
+                    "model": model, "q05": 0.0, "q25": 0.0, "q50": 0.5,
+                    "q75": 1.0, "q95": 1.0,
+                    "y_true": 0.5 if h < inside else 5.0,
+                })
+    return pd.DataFrame(rows)
+
+
+def _lines(cov_by_model):
+    ev = _ev(cov_by_model)
+    return daily.calibration_lines(ev, ev["origin"].dt.date.nunique())
 
 
 def test_calibration_gated_below_min_days():
-    lines = daily.calibration_lines(_per_model({"persistence": 1.0}), 3)
+    lines = _lines({"a": [1.0] * 3})
     assert "inactive" in lines[0]
     assert "3 so far" in lines[0]
 
 
-def test_calibration_in_band_with_enough_days():
-    lines = daily.calibration_lines(_per_model({"persistence": 0.90}), 12)
-    assert "all models inside" in lines[0]
+def test_calibration_passes_when_coverage_is_at_target():
+    # jitter around 0.90 so the day-level spread is real but centred
+    cov = [0.875, 0.917, 0.875, 0.917, 0.958, 0.833, 0.917, 0.875,
+           0.958, 0.875, 0.917, 0.833, 0.875, 0.917]
+    lines = _lines({"a": cov})
+    assert "passes" in lines[0]
+    assert "Bonferroni-corrected" in lines[0]
 
 
-def test_calibration_flags_out_of_band_models():
-    lines = daily.calibration_lines(
-        _per_model({"a": 0.99, "b": 0.90, "c": 0.79}), 12)
-    assert "a 0.9900" in lines[0] and "c 0.7900" in lines[0]
-    assert "b 0." not in lines[0]
+def test_calibration_flags_a_persistently_miscalibrated_model():
+    # far enough below target that the corrected test rejects on each of
+    # the last three days, not just the latest one
+    lines = _lines({"a": [0.500, 0.542, 0.458, 0.500, 0.583, 0.458, 0.500,
+                          0.542, 0.500, 0.458, 0.542, 0.500, 0.583, 0.500]})
+    assert "flags" in lines[0]
+    assert "a cov90 0.5" in lines[0]
+
+
+def test_rejection_short_of_the_streak_is_not_reported():
+    """The regression this change exists for. This model rejects the
+    corrected test today and again on the window ending yesterday, but
+    not the day before that, so it is reported as pending rather than
+    flagged."""
+    cov = [0.875, 0.875, 0.917, 0.792, 0.750, 0.917,
+           0.917, 0.917, 0.833, 0.792, 0.792, 0.708]
+    ev = _ev({"a": cov})
+    assert daily.coverage_verdicts(ev)["a"]["reject"]
+    assert daily.rejection_streaks(ev) == {"a": 2}
+    lines = daily.calibration_lines(ev, ev["origin"].dt.date.nunique())
+    assert "passes" in lines[0]
+    assert "day 2 of 3" in lines[0]
+
+
+def test_no_verdict_when_daily_coverage_has_no_spread():
+    """Zero spread leaves the test no uncertainty to divide by, so the
+    model gets no verdict rather than an invented one."""
+    ev = _ev({"a": [1.0] * 14})
+    assert daily.coverage_verdicts(ev) == {}
+
+
+def test_correction_is_applied_across_models_tested():
+    cov = [0.917, 0.875, 0.917, 0.875, 0.958, 0.875, 0.917,
+           0.875, 0.917, 0.958, 0.875, 0.917, 0.875, 0.917]
+    one = daily.coverage_verdicts(_ev({"a": cov}))
+    four = daily.coverage_verdicts(
+        _ev({"a": cov, "b": cov, "c": cov, "d": cov}))
+    assert one["a"]["alpha"] == pytest.approx(0.05)
+    assert four["a"]["alpha"] == pytest.approx(0.05 / 4)
+
+
+def test_models_below_min_days_are_not_tested():
+    cov = [0.917, 0.875, 0.917, 0.875, 0.958, 0.875, 0.917,
+           0.875, 0.917, 0.958, 0.875, 0.917, 0.875, 0.917]
+    v = daily.coverage_verdicts(_ev({"a": cov, "young": cov[:5]}))
+    assert "a" in v and "young" not in v

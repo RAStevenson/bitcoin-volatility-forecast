@@ -26,4 +26,14 @@ ANNUALIZER = (365 * 24) ** 0.5 # hourly variance -> annualized vol units
 # dependent, so the effective sample is roughly the number of scored
 # days, not the row count; no verdict is issued below the minimum.
 MIN_CALIBRATION_DAYS = 10
-COV90_BAND = (0.80, 0.98)
+COV90_TARGET = 0.90
+# The check compares each model's day-level coverage against the target
+# with a two-sided t-test, Bonferroni-corrected across the models tested,
+# and reports a model only after it rejects on consecutive days. A fixed
+# floor was tried first and could not separate a miscalibrated model from
+# a noisy one: at ~20 scored days the standard error of day-level
+# coverage is about 0.045, so a floor at 0.80 sat inside the noise, fired
+# on 3 to 5 of 8 models every day for nine days, and swapped which models
+# it named as point estimates drifted a few thousandths.
+CALIBRATION_ALPHA = 0.05
+CALIBRATION_PERSISTENCE_DAYS = 3
