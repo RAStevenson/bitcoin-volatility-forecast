@@ -1,6 +1,6 @@
 # Generality demo: German hourly load (OPSD/ENTSO-E, CC-BY 4.0) (generated)
 
-Results file: backtest_load_DE.parquet. All metrics on the log scale of the target. Coverage targets: cov50 -> 0.50, cov90 -> 0.90.
+Results file: load_backtest_DE.parquet. All metrics are on the log scale of the target. Coverage targets: cov50 -> 0.50, cov90 -> 0.90. skill_vs_persistence is the mean of per-horizon skill scores, so a model can rank differently on skill than on pinball_mean; horizons where persistence does worst weigh most.
 
 ## Dataset
 - hours: 50400, span 2015-01-01 00:00:00+00:00 to 2020-09-30 23:00:00+00:00
@@ -42,6 +42,10 @@ Results file: backtest_load_DE.parquet. All metrics on the log scale of the targ
 | persistence          |         0.0184 | 0.051  | 0.0656 |  0.4783 |  1      |  92 |                 0      |
 | seasonal_persistence |         0.0184 | 0.051  | 0.0656 |  0.4783 |  1      |  92 |                 0      |
 
+The identical persistence and seasonal_persistence rows at horizon 24 are by construction: there the seasonal lag is the same last observed hour, and both bands draw on the same 24-hour change distribution.
+
 ![hourly profile](fig_load_hourly_profile.png)
 
 ![pinball by horizon](fig_load_pinball_by_horizon.png)
+
+Backtest origins all sit at 00:00 UTC, so a given horizon always lands on the same UTC clock hour, and the pinball-by-horizon curve inherits the hour-of-day profile above (correlation 0.92 between the two curves on this run). A bump at one horizon is largely that clock hour showing through, not a property of forecasting that far ahead.
