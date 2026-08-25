@@ -32,8 +32,9 @@ COV90_TARGET = 0.90
 # and reports a model only after it rejects on consecutive days. A fixed
 # floor was tried first and could not separate a miscalibrated model from
 # a noisy one: at ~20 scored days the standard error of day-level
-# coverage is about 0.045, so a floor at 0.80 sat inside the noise, fired
-# on 3 to 5 of 8 models every day for nine days, and swapped which models
-# it named as point estimates drifted a few thousandths.
+# coverage is about 0.045, so a floor at 0.80 sat inside the noise. Its
+# flag list stayed populated for nine straight days (one model the first
+# four, three to five from 2026-08-20) and swapped members as point
+# estimates drifted a few thousandths.
 CALIBRATION_ALPHA = 0.05
 CALIBRATION_PERSISTENCE_DAYS = 3
