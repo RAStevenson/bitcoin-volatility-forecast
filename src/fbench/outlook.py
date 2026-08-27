@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from fbench.config import QCOLS, QUANTILES, RESULTS_DIR
+from fbench.config import ANNUALIZER, QCOLS, QUANTILES, RESULTS_DIR
 from fbench.daily import EVAL_LOG, FORECAST_LOG, _load
 from fbench.scoring import score
 
@@ -31,7 +31,7 @@ def _headline_model():
     return FALLBACK_MODEL, "backtest winner; live sample still small"
 
 
-def build_outlook(hourly):
+def build_outlook(hourly, last_price=None):
     fc = _load(FORECAST_LOG, ["origin", "target_time", "horizon", "model",
                               *QCOLS])
     if fc.empty:
@@ -48,6 +48,10 @@ def build_outlook(hourly):
 
     med_path = vol[:, 2]
     fc_avg = float(med_path.mean())
+    # Human translation: annualized vol / sqrt(hours per year) is the
+    # typical single-hour move; sqrt(24) of those compound into a day.
+    hr_move = fc_avg / ANNUALIZER
+    day_move = hr_move * np.sqrt(24)
     pct = float((daily_avg < fc_avg).mean() * 100)
     hi_thresh = float(year.quantile(0.90))
     # The quiet/normal boundary compares fc_avg to the distribution of
@@ -71,18 +75,24 @@ def build_outlook(hourly):
     # forecast, and printing it as one would dress a constant as
     # information.
     all_at_floor = all(p <= 0.02 + 1e-9 for p in p_high)
+    hi_move = hi_thresh / ANNUALIZER
     if all_at_floor:
         high_line = (f"- No hour shows a meaningful chance of running "
-                     f"high, above {hi_thresh:.0%}, higher than 90% of "
+                     f"high, above {hi_thresh:.0%} annualized (an hourly "
+                     f"move over {hi_move:.2%}), higher than 90% of "
                      f"individual hours in the past year; every forecast "
                      f"band sits well below that line.")
     else:
+        max_p = float(max(p_high))
         high_line = (f"- The next 24 hours are expected to include about "
                      f"{exp_high_hours:.1f} hours running high, above "
-                     f"{hi_thresh:.0%}, higher than 90% of individual "
+                     f"{hi_thresh:.0%} annualized (an hourly move over "
+                     f"{hi_move:.2%}), higher than 90% of individual "
                      f"hours in the past year"
                      + (f"; {likely_high} hours are more likely than not "
-                        f"to qualify." if likely_high else "."))
+                        f"to qualify." if likely_high else ".")
+                     + f" The loudest single hour has about a {max_p:.0%} "
+                     f"chance of topping that line.")
 
     local = today["target_time"].dt.tz_convert(LOCAL_TZ)
     order = np.argsort(med_path)
@@ -90,6 +100,10 @@ def build_outlook(hourly):
     calm = sorted(local.iloc[order[:3]].dt.strftime("%H:00"))
 
     day = origin.tz_convert(LOCAL_TZ).date()
+    dollars = ("" if last_price is None else
+               f" At the last price of ${last_price:,.0f} those are moves "
+               f"of about ${last_price * hr_move:,.0f} and "
+               f"${last_price * day_move:,.0f}.")
     lines = [
         f"# Volatility outlook - {day} (generated)",
         "",
@@ -98,8 +112,17 @@ def build_outlook(hourly):
         f"which is the {pct:.0f}th percentile of the past year's rolling "
         f"24-hour averages.",
         "",
+        f"In plain terms, a typical hour is expected to move about "
+        f"{hr_move:.2%} up or down, and a typical day to drift about "
+        f"{day_move:.1%} end to end.{dollars} Annualized volatility is "
+        f"the same measurement quoted in per-year units. Dividing the "
+        f"annualized number by {ANNUALIZER:.1f} gives the typical "
+        f"single-hour move.",
+        "",
         f"- Hourly median forecast ranges {med_path.min():.0%} to "
-        f"{med_path.max():.0%}.",
+        f"{med_path.max():.0%} annualized, which is a typical hourly "
+        f"move of {med_path.min() / ANNUALIZER:.2%} to "
+        f"{med_path.max() / ANNUALIZER:.2%}.",
         high_line,
         f"- The loudest hours are expected around {', '.join(loud)} local "
         f"({LOCAL_TZ}); the calmest around {', '.join(calm)}.",
@@ -113,7 +136,7 @@ def build_outlook(hourly):
     return "\n".join(lines)
 
 
-def write_outlook(hourly):
+def write_outlook(hourly, last_price=None):
     path = RESULTS_DIR / "OUTLOOK.md"
-    path.write_text(build_outlook(hourly))
+    path.write_text(build_outlook(hourly, last_price))
     return path
