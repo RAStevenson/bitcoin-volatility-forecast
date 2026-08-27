@@ -39,10 +39,10 @@ def _build_rv():
     m = store.load_minutes()
     out = hourly_realized_vol(m.set_index("time")["close"])
     out.to_parquet(DATA_DIR / "hourly_rv.parquet")
-    return out
+    return out, float(m.loc[m["time"].idxmax(), "close"])
 
 
-hourly = step("rebuild rv", _build_rv)
+hourly, last_close = step("rebuild rv", _build_rv)
 resolved = step("score due", lambda: daily.score_due(hourly))
 print(f"  rows resolved: {resolved}")
 
@@ -52,7 +52,7 @@ logged = step("log forecasts", lambda: daily.log_forecasts(feats, origin))
 print(f"  forecast rows logged: {logged} (origin {origin})")
 step("live report", daily.write_live_report)
 from fbench.outlook import write_outlook  # noqa: E402
-step("outlook", lambda: write_outlook(hourly))
+step("outlook", lambda: write_outlook(hourly, last_price=last_close))
 from fbench.review import write_review  # noqa: E402
 step("review", write_review)
 

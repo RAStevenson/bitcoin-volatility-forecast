@@ -39,3 +39,9 @@ def test_outlook_written_with_regime_words(tmp_path, monkeypatch):
         f"look {w}" in text for w in ("quiet", "normal", "elevated", "high")
     )
     assert "price direction" in text
+    # plain-terms translation: present without dollars when no price given
+    assert "typical hour is expected to move" in text
+    assert "$" not in text
+    # with a price, the same layer adds dollar translations of the moves
+    text2 = outlook.write_outlook(h, last_price=50_000.0).read_text()
+    assert "$50,000" in text2
