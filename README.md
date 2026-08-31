@@ -44,10 +44,14 @@ saved candle and rebuilds the dataset from the exchanges.
 |---|---|
 | persistence, seasonal persistence | naive baselines |
 | HAR (plain and hour-of-day seasonal) | econometric baseline (Corsi-style) |
-| SARIMAX (1,0,1)(1,0,1,24) | classical seasonal time series |
+| SARIMAX (1,0,1)(1,0,1,24) | classical time series with a 24-hour seasonal cycle |
 | Prophet | Fourier daily/weekly seasonality |
 | XGBoost | gradient boosting, native quantile objective |
 | N-HiTS | deep learning (pytorch-forecasting), native quantile loss |
+
+The leaderboards and the live log use short code names for these
+entrants: `gbm` is XGBoost, `sarima` is SARIMAX, `har` and
+`har_seasonal` are the two HAR variants, and `nhits` is N-HiTS.
 
 A second dataset, German hourly load (OPSD/ENTSO-E, CC-BY 4.0), runs
 through the identical engine as a generality demo:
@@ -136,6 +140,8 @@ left the list at 0.8056 while `har_seasonal` stayed on it at 0.7956.
 Those two numbers sit about a fifth of a standard error apart. Of the
 two, `seasonal_persistence` had the stronger evidence of undercoverage
 (t = -2.15 against -1.89), because its day-to-day spread was tighter.
+The t statistic counts the shortfall in standard errors, so more
+negative is stronger evidence.
 `har` appeared for two days and left. `seasonal_persistence` appeared
 for four days and left. Nothing about those models had changed.
 
@@ -151,14 +157,20 @@ three consecutive scored days. Earlier verdicts are recomputed from
 from the log with no state file that could drift out of step with the
 data.
 
-Replayed over every scored day, the new check has never fired. It is not
-silent by construction, though. At the current day-to-day spread it
-reports a model whose 90% band is really covering about 0.76 or less.
-`gbm` at 0.7798 sits 0.018 above its own firing point, closer than any
-other model. Its closest approach so far came on 2026-08-18, a p-value
-of 0.0108 against a corrected threshold of 0.0063. What changed is how
-that number reads. `gbm` is now the model to watch, not an announced
-failure.
+Replayed over every scored day, the check stayed silent through
+2026-08-30, and not by a wide margin. `gbm` rejected on 2026-08-26 and
+2026-08-27, `prophet` on 2026-08-27 and 2026-08-28, and each streak
+broke one day short of the report line. A fresh `gbm` streak began on
+2026-08-29, and on 2026-08-31 the check fired for the first time,
+naming `gbm` at a coverage of 0.7932 over its 28 scored days, a
+p-value of 0.0058 against the corrected threshold of 0.0063. A p-value
+is the chance of a gap that large, in either direction, arising from
+noise alone, and a model is named only after it stays below the
+threshold for three consecutive scored days. `gbm` was the model
+nearest the line when the check was rebuilt, so the first flag landing
+on it reads as the check doing what it was rebuilt to do. Its bands
+stay as the model produces them, and the flag is the published record
+that they are too narrow.
 
 The check stays silent in two cases on purpose. A model with fewer than
 10 scored days gets no verdict, because three clean quiet days once
@@ -183,13 +195,8 @@ will settle it at this sample size. It is the reason the check was
 rebuilt rather than removed. The fixed-floor calibration check first
 flagged five models below the 0.80 coverage floor on 2026-08-21, after a
 2026-08-19 forecast day whose realized volatility ran 3.67 times the
-nhits median forecast. I replayed an adaptive conformal layer (a
-band-widening rule driven by recent coverage misses) over the 18 scored
-days then available. It lifted every flagged model above the floor at
-no pinball cost. But it widened the 08-19 band by almost nothing,
-because the two days before it were clean and the rule reacts only to
-misses it has seen. It was not adopted. The bands stay as each model
-produces them, and the coverage column is the honest record of that.
+nhits median forecast. The bands stay as each model produces them, and
+the coverage column is the honest record of that.
 The fixed floor was replaced on 2026-08-24 by the evidence-based check
 described above, after its list had stayed populated for nine
 consecutive days without that membership meaning anything. The

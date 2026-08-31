@@ -66,7 +66,10 @@ def score_due(hourly):
     resolved = pend.dropna(subset=["y_true"])
     if resolved.empty:
         return 0
-    out = pd.concat([ev, resolved], ignore_index=True)
+    # pandas deprecates concat with an empty frame; on the first-ever
+    # resolve there is no evaluation log yet, so skip the empty side.
+    out = resolved if ev.empty else pd.concat([ev, resolved],
+                                              ignore_index=True)
     out.to_csv(EVAL_LOG, index=False)
     return len(resolved)
 
@@ -190,11 +193,8 @@ def calibration_lines(ev, days):
     return [f"The calibration check flags day-level 90% coverage away from "
             f"{COV90_TARGET:.2f} on {CALIBRATION_PERSISTENCE_DAYS} "
             f"consecutive scored days: {parts}. {method} Bands are left as "
-            "each model produces them: a 2026-08-21 replay of an adaptive "
-            "conformal widening rule over the scored days restored coverage "
-            "on average but could not anticipate a first-day shock such as "
-            "2026-08-19, so it was measured and not adopted (see README, "
-            "The calibration check).", ""]
+            "each model produces them, and the coverage column is the "
+            "honest record of that.", ""]
 
 
 def write_live_report():
@@ -217,7 +217,7 @@ def write_live_report():
             f"{max(0, len(fc) - len(ev))}.",
             "",
             "Every row here was committed to git before its target hour "
-            "completed, so before its outcome was observable; the commit "
+            "completed, so before its outcome was observable. The commit "
             "history is the timestamp evidence.",
             "",
             g.round(4).sort_values("pinball_mean").to_markdown(), "",

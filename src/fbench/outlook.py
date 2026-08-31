@@ -27,8 +27,8 @@ def _headline_model():
                           *QCOLS, "y_true"])
     if ev["origin"].nunique() >= 3:
         live = score(ev).groupby("model")["pinball_mean"].mean()
-        return live.idxmin(), "current live leader"
-    return FALLBACK_MODEL, "backtest winner; live sample still small"
+        return live.idxmin(), "the model currently leading the live scoreboard"
+    return FALLBACK_MODEL, "the backtest winner while the live sample is young"
 
 
 def build_outlook(hourly, last_price=None):
@@ -49,9 +49,12 @@ def build_outlook(hourly, last_price=None):
     med_path = vol[:, 2]
     fc_avg = float(med_path.mean())
     # Human translation: annualized vol / sqrt(hours per year) is the
-    # typical single-hour move; sqrt(24) of those compound into a day.
+    # typical single-hour move. The daily figure is the root of summed
+    # hourly variances, a one-sigma close-to-close move rather than a
+    # range; averaging the hourly sigmas first would understate it
+    # whenever vol varies across the day.
     hr_move = fc_avg / ANNUALIZER
-    day_move = hr_move * np.sqrt(24)
+    day_move = float(np.sqrt(np.sum((med_path / ANNUALIZER) ** 2)))
     pct = float((daily_avg < fc_avg).mean() * 100)
     hi_thresh = float(year.quantile(0.90))
     # The quiet/normal boundary compares fc_avg to the distribution of
@@ -83,16 +86,13 @@ def build_outlook(hourly, last_price=None):
                      f"individual hours in the past year; every forecast "
                      f"band sits well below that line.")
     else:
-        max_p = float(max(p_high))
         high_line = (f"- The next 24 hours are expected to include about "
                      f"{exp_high_hours:.1f} hours running high, above "
                      f"{hi_thresh:.0%} annualized (an hourly move over "
                      f"{hi_move:.2%}), higher than 90% of individual "
                      f"hours in the past year"
                      + (f"; {likely_high} hours are more likely than not "
-                        f"to qualify." if likely_high else ".")
-                     + f" The loudest single hour has about a {max_p:.0%} "
-                     f"chance of topping that line.")
+                        f"to qualify." if likely_high else "."))
 
     local = today["target_time"].dt.tz_convert(LOCAL_TZ)
     order = np.argsort(med_path)
@@ -100,24 +100,37 @@ def build_outlook(hourly, last_price=None):
     calm = sorted(local.iloc[order[:3]].dt.strftime("%H:00"))
 
     day = origin.tz_convert(LOCAL_TZ).date()
-    dollars = ("" if last_price is None else
-               f" At the last price of ${last_price:,.0f} those are moves "
-               f"of about ${last_price * hr_move:,.0f} and "
-               f"${last_price * day_move:,.0f}.")
+    if last_price is None:
+        move_line = (f"A typical hour is expected to move about "
+                     f"{hr_move:.2%} up or down. By the end of the day "
+                     f"the price is typically about {day_move:.1%} away "
+                     f"from where it started. Those are typical sizes, "
+                     f"not limits. Bigger days happen regularly.")
+    else:
+        move_line = (f"A typical hour is expected to move about "
+                     f"${last_price * hr_move:,.0f} ({hr_move:.2%}) up or "
+                     f"down. By the end of the day the price is typically "
+                     f"about ${last_price * day_move:,.0f} "
+                     f"({day_move:.1%}) away from where it started, using "
+                     f"the last traded price of ${last_price:,.0f}. Those "
+                     f"are typical sizes, not limits. Bigger days happen "
+                     f"regularly.")
+    # One plain phrase per regime word, same percentile bins as `regime`.
+    pct_phrase = {"quiet": "below most days of the past year",
+                  "normal": "in the middle of the past year's range",
+                  "elevated": "above most days of the past year",
+                  "high": "among the busiest days of the past year"}[regime]
     lines = [
         f"# Volatility outlook - {day} (generated)",
         "",
-        f"**The next 24 hours look {regime} and {trend}.** The median "
-        f"forecast averages about {fc_avg:.0%} annualized volatility, "
-        f"which is the {pct:.0f}th percentile of the past year's rolling "
-        f"24-hour averages.",
+        f"**The next 24 hours look {regime} and {trend}.** {move_line}",
         "",
-        f"In plain terms, a typical hour is expected to move about "
-        f"{hr_move:.2%} up or down, and a typical day to drift about "
-        f"{day_move:.1%} end to end.{dollars} Annualized volatility is "
-        f"the same measurement quoted in per-year units. Dividing the "
-        f"annualized number by {ANNUALIZER:.1f} gives the typical "
-        f"single-hour move.",
+        f"That forecast sits {pct_phrase} (the {pct:.0f}th percentile of "
+        f"the past year's rolling 24-hour averages) and works out to about "
+        f"{fc_avg:.0%} in annualized units, the per-year convention "
+        f"volatility is quoted in. The hourly figures above are that same "
+        f"number divided by {ANNUALIZER:.1f}, the square root of the "
+        f"hours in a year.",
         "",
         f"- Hourly median forecast ranges {med_path.min():.0%} to "
         f"{med_path.max():.0%} annualized, which is a typical hourly "
@@ -126,11 +139,14 @@ def build_outlook(hourly, last_price=None):
         high_line,
         f"- The loudest hours are expected around {', '.join(loud)} local "
         f"({LOCAL_TZ}); the calmest around {', '.join(calm)}.",
-        f"- Yesterday's realized average was {last24:.0%}; the quiet "
-        f"threshold is {q_thresh:.0%}.",
+        f"- Yesterday's realized average was {last24:.0%}, "
+        + (f"below the {q_thresh:.0%} quiet line, so yesterday was a "
+           f"quiet day by that line." if last24 < q_thresh else
+           f"above the {q_thresh:.0%} quiet line, so yesterday was not a "
+           f"quiet day."),
         "",
-        f"The forecast model is {model} ({model_why}). This is a volatility "
-        f"outlook only; it says nothing about price direction.",
+        f"This forecast was produced by {model}, {model_why}. It is a "
+        f"volatility outlook only and says nothing about price direction.",
         "",
     ]
     return "\n".join(lines)

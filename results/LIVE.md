@@ -2,7 +2,7 @@
 
 Forecast days scored: 28. Resolved rows: 5304. Pending (logged, outcome not yet observed): 192.
 
-Every row here was committed to git before its target hour completed; the commit history is the timestamp evidence.
+Every row here was committed to git before its target hour completed, so before its outcome was observable. The commit history is the timestamp evidence.
 
 | model                |   days |   pinball_mean |    mae |   cov50 |   cov90 |   skill_vs_persistence |
 |:---------------------|-------:|---------------:|-------:|--------:|--------:|-----------------------:|
