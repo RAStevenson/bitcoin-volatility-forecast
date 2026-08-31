@@ -21,7 +21,12 @@ def _headline_model_asof(ev, origin):
     prior = ev[ev["origin"] < origin]
     if prior["origin"].nunique() >= 3:
         return score(prior).groupby("model")["pinball_mean"].mean().idxmin()
-    return FALLBACK_MODEL
+    # The fallback may not be in the log (a trimmed registry); narrating
+    # a model with no rows would print NaN prose, so require presence.
+    day_models = ev.loc[ev["origin"] == origin, "model"].unique()
+    if FALLBACK_MODEL in day_models:
+        return FALLBACK_MODEL
+    return sorted(day_models)[0]
 
 
 def day_stats(ev):
