@@ -1,17 +1,17 @@
-# Yesterday in review - forecast issued 2026-08-31 (generated)
+# Yesterday in review - forecast issued 2026-09-01 (generated)
 
-**The forecast was on target.** The nhits median averaged 35% annualized volatility over the 24 hours; realized averaged 34%, 0.99x the forecast.
+**The forecast was on target.** The nhits median averaged 33% annualized volatility over the 24 hours; realized averaged 37%, 1.12x the forecast.
 
-- 22 of 24 hours landed inside the 90% band (0 above it, 2 below). A calibrated band holds about 22 of 24.
-- Across all models this was the 21st worst of 29 scored days (mean log error 0.275, median day 0.371).
-- Best median that day: sarima; worst: seasonal_persistence. Models disagreed on the direction of the miss.
+- 24 of 24 hours landed inside the 90% band (0 above it, 0 below). A calibrated band holds about 22 of 24.
+- Across all models this was the 30th worst of 30 scored days (mean log error 0.240, median day 0.355).
+- Best median that day: sarima; worst: prophet. Every model missed on the same side, so the miss is the information set, not the model choice.
 
 Largest hourly misses (local time, America/Chicago):
 
 | hour | forecast median | 90% band | realized | realized/forecast |
 |:--|--:|--:|--:|--:|
-| 2026-08-31 17:00 | 33% | 21%-59% | 20% | 0.6x |
-| 2026-08-31 18:00 | 31% | 21%-58% | 20% | 0.6x |
-| 2026-09-01 03:00 | 27% | 18%-49% | 42% | 1.6x |
+| 2026-09-01 13:00 | 36% | 22%-67% | 64% | 1.8x |
+| 2026-09-01 08:00 | 42% | 25%-76% | 68% | 1.6x |
+| 2026-09-01 06:00 | 38% | 23%-68% | 27% | 0.7x |
 
 Ratios compare annualized volatility levels, not price moves. This is a volatility review only; it says nothing about price direction.
