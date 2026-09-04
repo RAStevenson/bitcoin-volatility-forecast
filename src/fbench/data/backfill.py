@@ -1,3 +1,6 @@
+"""Chunked catch-up of the local minute store from Coinbase, resuming from
+the last bar already saved."""
+
 import pandas as pd
 
 from fbench.config import HISTORY_START, MINUTE_SECONDS, PRODUCT

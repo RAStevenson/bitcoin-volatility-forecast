@@ -1,3 +1,6 @@
+"""Coinbase Exchange public candle client, the primary price source behind
+the minute store and every product the harness forecasts."""
+
 import time
 
 import pandas as pd
@@ -8,6 +11,11 @@ MAX_CANDLES = 300  # API cap per request
 
 
 def _get(url, params, attempts=4):
+    """Send one GET to the Coinbase public API and return the decoded JSON
+    body, backing off exponentially on an HTTP 429 or a transport error.
+    Every attempt coming back 429 returns None instead of raising, so a
+    caller that indexes the result fails well after the real cause.
+    """
     for i in range(attempts):
         try:
             r = requests.get(url, params=params, timeout=30)

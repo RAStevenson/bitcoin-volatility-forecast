@@ -1,3 +1,7 @@
+"""Check the local Coinbase minute data against a second venue by pulling
+Bitstamp hourly candles over the same span and reporting how far the two
+sets of hourly closes diverge. It calls the Bitstamp API and writes
+results/crosscheck.txt as well as printing the figures."""
 import sys
 from pathlib import Path
 

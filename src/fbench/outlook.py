@@ -1,3 +1,8 @@
+"""Builds results/OUTLOOK.md, the plain-language read of the latest
+logged 24-hour forecast for someone who does not work in volatility.
+Every figure is derived at render time from the forecast log and the
+hourly realized series, so the prose cannot drift away from the
+numbers."""
 import numpy as np
 import pandas as pd
 
@@ -19,6 +24,9 @@ def prob_above(vol_quantiles, threshold):
 
 
 def _headline_model():
+    """Pick the model that narrates the outlook and return it with the
+    short phrase explaining the choice, which is the live pinball leader
+    once three origins have been scored and FALLBACK_MODEL before that."""
     # Three origins is a deliberately lower bar than the 10-day
     # calibration gate: picking which model narrates the outlook only
     # needs a best guess, while the calibration line is a published
@@ -32,6 +40,11 @@ def _headline_model():
 
 
 def build_outlook(hourly, last_price=None):
+    """Return the Markdown body of the outlook, turning the headline
+    model's latest 24-hour quantiles into typical hourly and daily move
+    sizes, a regime word set against the past year, and the loud and calm
+    hours ahead. Without last_price the moves are quoted in percent only,
+    since a dollar figure has no price to hang on."""
     fc = _load(FORECAST_LOG, ["origin", "target_time", "horizon", "model",
                               *QCOLS])
     if fc.empty:
@@ -153,6 +166,8 @@ def build_outlook(hourly, last_price=None):
 
 
 def write_outlook(hourly, last_price=None):
+    """Render the outlook and save it as results/OUTLOOK.md, returning
+    that path for the daily run to commit."""
     path = RESULTS_DIR / "OUTLOOK.md"
     path.write_text(build_outlook(hourly, last_price))
     return path

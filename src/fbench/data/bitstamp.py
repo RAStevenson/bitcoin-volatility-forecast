@@ -1,3 +1,6 @@
+"""Bitstamp hourly OHLC client, the independent second price source the
+Coinbase cross-check compares against."""
+
 import time
 
 import pandas as pd
@@ -8,6 +11,12 @@ LIMIT = 1000
 
 
 def fetch_hourly(pair, start, end):
+    """Walk Bitstamp's paged hourly candles for one pair from start up to
+    end, returning a frame of UTC `time` and float `close` sorted ascending
+    on a fresh index. A pair or window Bitstamp has no data for raises a
+    KeyError rather than returning an empty frame, because the column cast
+    runs on an empty result.
+    """
     out = []
     cur = int(start.timestamp())
     end_s = int(end.timestamp())

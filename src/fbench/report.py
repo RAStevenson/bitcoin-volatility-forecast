@@ -1,3 +1,8 @@
+"""Builds the backtest tournament report, results/REPORT.md for the
+volatility run and results/LOAD_REPORT.md for the load demo, which is
+what a reader compares models on before any live scores exist. Tables and
+figures are rendered from a run's scored rows, and the Dataset section is
+pinned to the snapshot that run recorded rather than to today's data."""
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -7,6 +12,9 @@ from fbench.config import RESULTS_DIR
 
 
 def _fig_hourly_profile(hourly, fig_prefix, value_label):
+    """Save the median-by-hour-of-day curve into results/ as
+    <fig_prefix>_hourly_profile.png and return its path, giving the report
+    the daily shape its horizon curve turns out to inherit."""
     prof = hourly.groupby(hourly.index.hour)["rv"].median()
     fig, ax = plt.subplots(figsize=(8, 3))
     ax.plot(prof.index, prof.values)
@@ -19,6 +27,8 @@ def _fig_hourly_profile(hourly, fig_prefix, value_label):
 
 
 def _fig_pinball(scores, fig_prefix):
+    """Save one pinball-loss-against-horizon line per model into results/
+    as <fig_prefix>_pinball_by_horizon.png and return its path."""
     fig, ax = plt.subplots(figsize=(8, 3))
     for model in scores.index.get_level_values("model").unique():
         s = scores.xs(model)["pinball_mean"]
@@ -35,6 +45,12 @@ def _fig_pinball(scores, fig_prefix):
 def write_report(scores, hourly, results_path, out_name="REPORT.md",
                  fig_prefix="fig", title="Tournament report",
                  value_label="median annualized RV", dataset_stats=None):
+    """Write the tournament report and its two figures into results/ and
+    return the report path, giving the reader a leaderboard averaged over
+    horizons 1 to 24, the horizon 1 and horizon 24 tables, and the caveats
+    this run's numbers need. Without dataset_stats the Dataset section
+    describes the hourly file as it stands now rather than the data the
+    backtest actually saw."""
     # dataset_stats pins the Dataset section to the data the backtest
     # actually saw (recorded in the run's json sidecar at backtest time).
     # Without it the section describes whatever the hourly file holds at

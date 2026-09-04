@@ -1,3 +1,6 @@
+"""The gradient boosted tree entrant, XGBoost quantile regression over
+the engineered feature columns."""
+
 import pandas as pd
 import xgboost as xgb
 
@@ -17,6 +20,11 @@ class Gbm(ForecastModel):
     name = "gbm"
 
     def fit(self, train):
+        """Stacks one training row per (origin row, horizon) pair, then
+        fits an XGBoost regressor under the pinball objective for each
+        level in QUANTILES. Rows with any missing feature or a missing
+        h-step target are dropped, and the final feature row is kept
+        aside as the input predict will score."""
         feats = train[FEATURE_COLS]
         X_parts, y_parts = [], []
         for h in range(1, HORIZON + 1):
@@ -37,6 +45,9 @@ class Gbm(ForecastModel):
         self.x_last_ = feats.iloc[[-1]]
 
     def predict(self, index):
+        """Scores the stored last feature row through all five quantile
+        models once per horizon step, with the h feature set to that
+        step, and returns the sorted quantile frame."""
         rows = []
         for h in range(1, len(index) + 1):
             xrow = self.x_last_.copy()

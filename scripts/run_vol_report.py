@@ -1,3 +1,8 @@
+"""Rebuild results/REPORT.md and its figures from an existing backtest
+parquet, the newest in results/ unless --results names one, and log that
+tournament to MLflow again. It re-reports a finished run rather than
+running one, and the Dataset section is pinned by the parquet's json
+sidecar whenever that carries the snapshot keys."""
 import sys
 from pathlib import Path
 
