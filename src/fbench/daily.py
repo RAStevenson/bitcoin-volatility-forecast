@@ -1,3 +1,8 @@
+"""Runs the live forecast loop over results/forecasts.csv and
+results/evaluation.csv, and builds results/LIVE.md, the published
+scoreboard of how each model is doing on hours none of them saw at fit
+time. Logged forecast rows are pre-outcome evidence, so nothing here ever
+rewrites one."""
 import numpy as np
 import pandas as pd
 from scipy import stats
@@ -14,6 +19,10 @@ LOG_COLS = ["origin", "target_time", "horizon", "model"] + QCOLS
 
 
 def _load(path, cols):
+    """Read one of the CSV logs with its origin and target_time columns
+    parsed as UTC timestamps, returning an empty frame carrying cols when
+    the file does not exist yet, so first-run callers need no special
+    case."""
     if not path.exists():
         return pd.DataFrame(columns=cols)
     df = pd.read_csv(path)
@@ -25,8 +34,8 @@ def _load(path, cols):
 def log_forecasts(feats, origin):
     """Append one 24-hour quantile forecast per registered model, fit on
     data up to origin. Idempotent by (origin, model): rows already logged
-    for this origin are never rewritten - the log is pre-outcome evidence
-    and must be append-only."""
+    for this origin are never rewritten, because the log is
+    pre-outcome evidence and must be append-only."""
     existing = _load(FORECAST_LOG, LOG_COLS)
     done = set(existing.loc[existing["origin"] == origin, "model"])
     future = pd.date_range(origin + pd.Timedelta(hours=1), periods=HORIZON,
@@ -142,6 +151,9 @@ def rejection_streaks(ev, cap=CALIBRATION_PERSISTENCE_DAYS):
 
 
 def _figures(model, verdicts):
+    """Format one model's coverage and p-value as the short phrase the
+    calibration sentences splice in, so a flagged model and a pending one
+    read the same way."""
     v = verdicts[model]
     return f"{model} cov90 {v['cov90']:.4f}, p {v['p']:.4f}"
 
@@ -198,6 +210,10 @@ def calibration_lines(ev, days):
 
 
 def write_live_report():
+    """Write results/LIVE.md from the forecast and evaluation logs and
+    return its path. The reader gets each model's mean scores against its
+    own count of scored days, how many logged rows are still waiting on an
+    outcome, and the calibration verdict."""
     ev = _load(EVAL_LOG, LOG_COLS + ["y_true"])
     fc = _load(FORECAST_LOG, LOG_COLS)
     lines = ["# Live scoreboard (generated)", ""]

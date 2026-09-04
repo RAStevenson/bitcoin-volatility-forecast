@@ -1,3 +1,8 @@
+"""Audit the evidence claim behind the live log by walking the commit
+history of results/forecasts.csv and checking that every (origin, model)
+group was committed before its first target hour completed. It reads git
+history only, prints a line per group with its margin, and exits non-zero
+if any group was late, so it can gate a build."""
 import sys
 from pathlib import Path
 

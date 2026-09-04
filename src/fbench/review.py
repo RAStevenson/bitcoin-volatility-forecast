@@ -39,6 +39,11 @@ def day_stats(ev):
 
 
 def build_review():
+    """Return the Markdown body of the review, comparing the most recent
+    fully resolved forecast day against what realized and ranking that
+    day's error among every scored day. The narrating model is the one
+    that narrated the outlook on that day, re-derived from the scores
+    available then rather than taken from today's leaderboard."""
     ev = _load(EVAL_LOG, LOG_COLS)
     if ev.empty:
         return "# Yesterday in review (generated)\n\nNo resolved forecasts yet.\n"
@@ -119,11 +124,15 @@ def build_review():
 
 
 def _ordinal(n):
+    """Return n with its English ordinal suffix, as in 3 to 3rd, for the
+    sentence that ranks the day among all scored days."""
     suffix = "th" if 10 <= n % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
     return f"{n}{suffix}"
 
 
 def write_review():
+    """Render the review and save it as results/REVIEW.md, returning that
+    path for the daily run to commit."""
     path = RESULTS_DIR / "REVIEW.md"
     path.write_text(build_review())
     return path

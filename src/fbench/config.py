@@ -1,3 +1,9 @@
+"""Settings for the whole harness, covering repo paths and data source
+ids, the quantile grid, the realized-volatility and backtest windows, and
+the thresholds of the live calibration check. Every other fbench module
+and every entry script in scripts/ reads its constants from here rather
+than defining them locally."""
+
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]

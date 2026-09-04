@@ -1,13 +1,26 @@
+"""Parquet store holding the minute bar history on disk, and the grid gap
+check that audits it."""
+
 import pandas as pd
 
 from fbench.config import DATA_DIR, PRODUCT
 
 
 def minute_path():
+    """Return the parquet path holding minute bars for the product named in
+    the config, under the repo's data directory. The product id is part of
+    the file name, so changing PRODUCT points at a different file rather
+    than migrating the one already written.
+    """
     return DATA_DIR / f"minute_{PRODUCT}.parquet"
 
 
 def load_minutes():
+    """Read the whole minute parquet for the configured product into memory,
+    giving a frame with UTC `time` beside the OHLC and volume columns. A
+    store that has never been written comes back as a frame with no rows and
+    no columns at all, so check `.empty` before reaching for `time`.
+    """
     p = minute_path()
     if not p.exists():
         return pd.DataFrame()
@@ -15,6 +28,11 @@ def load_minutes():
 
 
 def save_minutes(df):
+    """Write the frame to the configured product's minute parquet without its
+    index, creating the data directory if it is missing. The file is replaced
+    whole, so a caller adding rows merges them into the loaded frame first
+    instead of expecting an append.
+    """
     DATA_DIR.mkdir(exist_ok=True)
     df.to_parquet(minute_path(), index=False)
 

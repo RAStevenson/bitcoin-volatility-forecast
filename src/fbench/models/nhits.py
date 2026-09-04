@@ -1,3 +1,6 @@
+"""The N-HiTS deep learning entrant, kept in a module of its own so the
+torch stack is imported only when this model actually runs."""
+
 import warnings
 
 import numpy as np
@@ -24,6 +27,11 @@ class NHits(ForecastModel):
     train_days = TRAIN_DAYS
 
     def fit(self, train):
+        """Trains one small N-HiTS network for three CPU epochs on the
+        gap-interpolated log RV series, with a one-week encoder window
+        and a quantile loss covering all five levels at once. Seeds are
+        pinned at 7 and the trainer is deterministic, so a refit on the
+        same window reproduces."""
         # Imports live here so the classical field never pays the torch
         # import cost (and the repo runs without torch installed unless
         # this entrant is requested).
@@ -64,6 +72,9 @@ class NHits(ForecastModel):
         self.ds_ = ds
 
     def predict(self, index):
+        """Returns the quantile frame from a single forward pass over
+        the encoder tail stored at fit time, trimmed to the first
+        len(index) of the network's HORIZON decoder steps."""
         from pytorch_forecasting import TimeSeriesDataSet
 
         # Prediction window: the last encoder span plus HORIZON dummy

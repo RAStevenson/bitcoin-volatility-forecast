@@ -1,3 +1,8 @@
+"""Run the same model tournament on German hourly electricity load
+instead of volatility, to show the harness is not tied to one series, and
+write results/LOAD_REPORT.md with its own parquet, json sidecar and
+figures. The first run downloads about 250 MB of OPSD data and caches it
+locally."""
 import sys
 from pathlib import Path
 

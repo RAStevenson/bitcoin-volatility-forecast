@@ -1,3 +1,8 @@
+"""Run the model tournament over data/hourly_rv.parquet and save the
+scored rows as results/backtest_<date>.parquet with a json sidecar
+holding the run's settings and a snapshot of the dataset it saw. Unless
+--no-report is given it also writes results/REPORT.md with its two
+figures and logs the tournament to MLflow."""
 import sys
 from pathlib import Path
 

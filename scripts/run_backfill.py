@@ -1,3 +1,7 @@
+"""Fetch every 1-minute BTC-USD candle the local minute store is missing,
+from HISTORY_START up to now, then print the rows added and a gap report
+over the whole store. It calls the Coinbase API and writes into data/, so
+it is not a read-only inspection."""
 import sys
 from pathlib import Path
 

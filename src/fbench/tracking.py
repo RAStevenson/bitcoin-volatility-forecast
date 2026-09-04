@@ -1,9 +1,18 @@
+"""MLflow logging for tournament results, writing one run per model into
+a local sqlite tracking store at the repo root."""
+
 import mlflow
 
 from fbench.config import ROOT
 
 
 def log_tournament(scores, results_path, run_config):
+    """Log one MLflow run per model in the scorecard, recording
+    run_config as params, the horizon-averaged and horizon 1 and 24
+    values of the pinball, error, coverage, and skill columns as metrics,
+    and the results file as an artifact. It sets the process-wide MLflow
+    tracking URI and experiment as a side effect, and it expects horizons
+    1 and 24 to be present in scores."""
     # MLflow 3.x retired the plain filesystem store; local sqlite is the
     # supported zero-server backend.
     mlflow.set_tracking_uri(f"sqlite:///{(ROOT / 'mlflow.db').as_posix()}")

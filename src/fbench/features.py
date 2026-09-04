@@ -1,3 +1,8 @@
+"""Feature builder for the volatility models, turning hourly log realized
+volatility into lagged, HAR-style, and time-of-day predictors. The
+time-of-day and day-of-week terms are read off the frame's index, which
+the pipeline supplies in UTC."""
+
 import numpy as np
 import pandas as pd
 
@@ -11,6 +16,11 @@ FEATURE_COLS = ["lag_1", "lag_2", "lag_3", "lag_24", "lag_48", "lag_168",
 
 
 def build_features(hourly):
+    """Return a frame on the same index as hourly, carrying the target
+    column log_rv alongside every predictor named in FEATURE_COLS. Each
+    predictor is shifted before it is rolled, so a row uses only data
+    strictly before its own timestamp, and the leading rows stay NaN
+    until the windows fill."""
     lr = hourly["log_rv"]
     f = pd.DataFrame(index=hourly.index)
     f["log_rv"] = lr

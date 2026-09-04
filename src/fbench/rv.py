@@ -1,3 +1,9 @@
+"""Realized volatility from 1-minute closes, defined for a clock hour as
+the square root of the summed squared 1-minute log returns inside that
+hour, scaled by ANNUALIZER = sqrt(365 * 24) into annualized volatility
+units. The hourly frame is indexed in UTC and carries log_rv, the natural
+log of that annualized rv, which is the target the models forecast."""
+
 import numpy as np
 import pandas as pd
 

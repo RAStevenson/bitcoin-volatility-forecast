@@ -1,3 +1,8 @@
+"""Run the daily loop end to end, backfilling minutes, rebuilding
+the hourly realized volatility series, resolving the forecasts whose
+target hour has closed, logging a fresh 24-hour forecast for every
+registered model, regenerating the three reports, and committing
+and pushing the result."""
 import sys
 from pathlib import Path
 
@@ -24,6 +29,9 @@ from fbench.rv import hourly_realized_vol
 
 
 def step(name, fn):
+    """Runs one named stage of the loop, printing the name first and
+    exiting with a message naming that stage if it raises, so a failed
+    overnight run says where it stopped."""
     print(f"[daily] {name}", flush=True)
     try:
         return fn()
@@ -36,6 +44,9 @@ print(f"  minutes added: {added}")
 
 
 def _build_rv():
+    """Rebuilds the hourly realized volatility series from the minute
+    store and saves it, returning it with the latest minute close that
+    the outlook needs to quote moves in dollars."""
     m = store.load_minutes()
     out = hourly_realized_vol(m.set_index("time")["close"])
     out.to_parquet(DATA_DIR / "hourly_rv.parquet")
@@ -58,6 +69,11 @@ step("review", write_review)
 
 
 def _commit_push():
+    """Commits the regenerated logs and reports, pushing when an origin
+    remote is configured. Committing happens before the logged target
+    hours close, which is what makes the forecast log pre-outcome
+    evidence. A second run on the same day finds nothing staged and
+    returns without committing."""
     day = pd.Timestamp.now(tz="UTC").date()
     tracked = [p for p in ("results/forecasts.csv", "results/evaluation.csv",
                            "results/LIVE.md", "results/OUTLOOK.md",

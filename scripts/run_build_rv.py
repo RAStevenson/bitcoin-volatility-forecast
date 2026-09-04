@@ -1,3 +1,7 @@
+"""Rebuild data/hourly_rv.parquet, the hourly realized volatility series,
+from the whole minute store, then print the hour count, the NaN hours and
+a summary of the rv column. It overwrites the existing parquet rather
+than appending to it."""
 import sys
 from pathlib import Path
 

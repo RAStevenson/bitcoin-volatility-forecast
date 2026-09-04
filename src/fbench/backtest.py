@@ -1,3 +1,7 @@
+"""Walk-forward backtest driver, running each registered model from a
+series of rolling origins and collecting its quantile forecasts next to
+the realized outcomes."""
+
 import pandas as pd
 
 from fbench.config import HORIZON
@@ -5,6 +9,11 @@ from fbench.models.base import REGISTRY
 
 
 def make_origins(index, test_days, stride_days):
+    """Forecast origins for the backtest, one every stride_days across
+    the test_days window that stops a day short of the last midnight in
+    index, returned as UTC midnight timestamps. An origin is the latest
+    timestamp a model may see when it fits, so every hour it forecasts
+    falls strictly after it."""
     last_full = index[-1].floor("D")
     start = last_full - pd.Timedelta(days=test_days)
     return pd.date_range(start, last_full - pd.Timedelta(days=1),
@@ -12,6 +21,12 @@ def make_origins(index, test_days, stride_days):
 
 
 def run_backtest(feats, model_names, origins, horizon=HORIZON):
+    """Fit each named model at each origin and predict the next horizon
+    hours, returning one long frame in which a row is a single (origin,
+    model, target hour) carrying the five quantile columns, the horizon
+    step from 1 to horizon, and y_true for that hour. The quantiles and
+    y_true are in log realized-volatility space, and y_true is NaN for
+    any target hour feats holds no outcome for."""
     out = []
     for origin in origins:
         future = pd.date_range(origin + pd.Timedelta(hours=1),

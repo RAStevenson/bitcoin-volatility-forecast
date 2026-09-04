@@ -1,3 +1,6 @@
+"""German hourly electricity load from Open Power System Data, the
+out-of-domain series used to show the engine is not tied to crypto."""
+
 import numpy as np
 import pandas as pd
 
