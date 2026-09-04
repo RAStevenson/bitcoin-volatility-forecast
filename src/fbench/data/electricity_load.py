@@ -4,7 +4,7 @@ out-of-domain series used to show the engine is not tied to crypto."""
 import numpy as np
 import pandas as pd
 
-from fbench.config import DATA_DIR
+from fbench.harness_config import DATA_DIR
 
 # Open Power System Data time-series package (final 2020-10-06 release),
 # hourly load for Germany from ENTSO-E Transparency. Keyless download;

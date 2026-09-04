@@ -14,7 +14,7 @@ import subprocess
 
 import pandas as pd
 
-from fbench.config import ROOT
+from fbench.harness_config import ROOT
 
 FORECAST_LOG = "results/forecasts.csv"
 

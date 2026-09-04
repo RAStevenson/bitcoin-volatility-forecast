@@ -6,7 +6,7 @@ realized volatility, the space the models forecast in."""
 import numpy as np
 import pandas as pd
 
-from fbench.config import QCOLS, QUANTILES
+from fbench.harness_config import QCOLS, QUANTILES
 
 
 def pinball(y, q, alpha):

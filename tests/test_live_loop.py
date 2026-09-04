@@ -2,16 +2,16 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import fbench.models.persistence  # noqa: F401  (registers baselines only)
-from fbench import daily
-from fbench.features import build_features
+import fbench.models.persistence_model  # noqa: F401  (registers baselines only)
+from fbench import live_loop
+from fbench.feature_builder import build_features
 
 
 @pytest.fixture
 def logs_in_tmp(tmp_path, monkeypatch):
-    monkeypatch.setattr(daily, "FORECAST_LOG", tmp_path / "forecasts.csv")
-    monkeypatch.setattr(daily, "EVAL_LOG", tmp_path / "evaluation.csv")
-    monkeypatch.setattr(daily, "RESULTS_DIR", tmp_path)
+    monkeypatch.setattr(live_loop, "FORECAST_LOG", tmp_path / "forecasts.csv")
+    monkeypatch.setattr(live_loop, "EVAL_LOG", tmp_path / "evaluation.csv")
+    monkeypatch.setattr(live_loop, "RESULTS_DIR", tmp_path)
     return tmp_path
 
 
@@ -26,9 +26,9 @@ def test_log_forecasts_is_idempotent_per_origin(logs_in_tmp):
     h = _frame()
     feats = build_features(h)
     origin = h.index[-30]  # leave future hours unobserved
-    first = daily.log_forecasts(feats, origin)
+    first = live_loop.log_forecasts(feats, origin)
     assert first > 0
-    again = daily.log_forecasts(feats, origin)
+    again = live_loop.log_forecasts(feats, origin)
     assert again == 0
 
 
@@ -36,19 +36,19 @@ def test_score_due_resolves_only_observed_hours(logs_in_tmp):
     h = _frame()
     feats = build_features(h)
     origin = h.index[-13]  # only 12 of 24 target hours observed
-    daily.log_forecasts(feats, origin)
-    n_models = len(pd.read_csv(daily.FORECAST_LOG)["model"].unique())
-    resolved = daily.score_due(h)
+    live_loop.log_forecasts(feats, origin)
+    n_models = len(pd.read_csv(live_loop.FORECAST_LOG)["model"].unique())
+    resolved = live_loop.score_due(h)
     assert resolved == 12 * n_models
-    assert daily.score_due(h) == 0  # second pass appends nothing
+    assert live_loop.score_due(h) == 0  # second pass appends nothing
 
 
 def test_live_report_written(logs_in_tmp):
     h = _frame()
     feats = build_features(h)
-    daily.log_forecasts(feats, h.index[-25])
-    daily.score_due(h)
-    path = daily.write_live_report()
+    live_loop.log_forecasts(feats, h.index[-25])
+    live_loop.score_due(h)
+    path = live_loop.write_live_report()
     text = path.read_text()
     assert "persistence" in text and "pinball" in text
     # one scored day -> the calibration check must be gated, not verdicted
@@ -77,7 +77,7 @@ def _ev(cov_by_model, start="2026-01-01"):
 
 def _lines(cov_by_model):
     ev = _ev(cov_by_model)
-    return daily.calibration_lines(ev, ev["origin"].dt.date.nunique())
+    return live_loop.calibration_lines(ev, ev["origin"].dt.date.nunique())
 
 
 def test_calibration_gated_below_min_days():
@@ -112,9 +112,9 @@ def test_rejection_short_of_the_streak_is_not_reported():
     cov = [0.875, 0.875, 0.917, 0.792, 0.750, 0.917,
            0.917, 0.917, 0.833, 0.792, 0.792, 0.708]
     ev = _ev({"a": cov})
-    assert daily.coverage_verdicts(ev)["a"]["reject"]
-    assert daily.rejection_streaks(ev) == {"a": 2}
-    lines = daily.calibration_lines(ev, ev["origin"].dt.date.nunique())
+    assert live_loop.coverage_verdicts(ev)["a"]["reject"]
+    assert live_loop.rejection_streaks(ev) == {"a": 2}
+    lines = live_loop.calibration_lines(ev, ev["origin"].dt.date.nunique())
     assert "passes" in lines[0]
     assert "day 2 of 3" in lines[0]
 
@@ -123,14 +123,14 @@ def test_no_verdict_when_daily_coverage_has_no_spread():
     """Zero spread leaves the test no uncertainty to divide by, so the
     model gets no verdict rather than an invented one."""
     ev = _ev({"a": [1.0] * 14})
-    assert daily.coverage_verdicts(ev) == {}
+    assert live_loop.coverage_verdicts(ev) == {}
 
 
 def test_correction_is_applied_across_models_tested():
     cov = [0.917, 0.875, 0.917, 0.875, 0.958, 0.875, 0.917,
            0.875, 0.917, 0.958, 0.875, 0.917, 0.875, 0.917]
-    one = daily.coverage_verdicts(_ev({"a": cov}))
-    four = daily.coverage_verdicts(
+    one = live_loop.coverage_verdicts(_ev({"a": cov}))
+    four = live_loop.coverage_verdicts(
         _ev({"a": cov, "b": cov, "c": cov, "d": cov}))
     assert one["a"]["alpha"] == pytest.approx(0.05)
     assert four["a"]["alpha"] == pytest.approx(0.05 / 4)
@@ -139,5 +139,5 @@ def test_correction_is_applied_across_models_tested():
 def test_models_below_min_days_are_not_tested():
     cov = [0.917, 0.875, 0.917, 0.875, 0.958, 0.875, 0.917,
            0.875, 0.917, 0.958, 0.875, 0.917, 0.875, 0.917]
-    v = daily.coverage_verdicts(_ev({"a": cov, "young": cov[:5]}))
+    v = live_loop.coverage_verdicts(_ev({"a": cov, "young": cov[:5]}))
     assert "a" in v and "young" not in v

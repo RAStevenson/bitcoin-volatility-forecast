@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
 
-from fbench.config import ANNUALIZER
-from fbench.rv import hourly_realized_vol
+from fbench.harness_config import ANNUALIZER
+from fbench.realized_volatility import hourly_realized_vol
 
 
 def _minutes(n, start="2026-01-01", ret=0.001):

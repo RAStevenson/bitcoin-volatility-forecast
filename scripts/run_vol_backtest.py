@@ -14,19 +14,20 @@ import time
 
 import pandas as pd
 
-import fbench.models.persistence  # noqa: F401  (registers baselines)
-from fbench.backtest import make_origins, run_backtest
-from fbench.config import (DATA_DIR, HORIZON, ORIGIN_STRIDE_DAYS,
+import fbench.models.persistence_model  # noqa: F401  (registers baselines)
+from fbench.rolling_backtest import make_origins, run_backtest
+from fbench.harness_config import (DATA_DIR, HORIZON, ORIGIN_STRIDE_DAYS,
                            RESULTS_DIR, TEST_DAYS)
-from fbench.features import build_features
-from fbench.models.base import REGISTRY
-from fbench.report import write_report
-from fbench.scoring import add_skill, score
-from fbench.tracking import log_tournament
+from fbench.feature_builder import build_features
+from fbench.models.forecast_model import REGISTRY
+from fbench.report_generator import write_report
+from fbench.quantile_scoring import add_skill, score
+from fbench.mlflow_tracking import log_tournament
 
 # Contender modules are imported as their plan tasks land; each import
 # registers its model class as a side effect.
-for mod in ("har", "sarima", "prophet_model", "gbm", "nhits"):
+for mod in ("har_model", "sarima_model", "prophet_model",
+            "xgboost_model", "nhits_model"):
     try:
         __import__(f"fbench.models.{mod}")
     except ImportError:

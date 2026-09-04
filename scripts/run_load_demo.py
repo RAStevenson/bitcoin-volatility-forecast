@@ -14,18 +14,18 @@ import time
 
 import pandas as pd
 
-import fbench.models.gbm  # noqa: F401  (register the classical field)
-import fbench.models.har  # noqa: F401
-import fbench.models.persistence  # noqa: F401
+import fbench.models.xgboost_model  # noqa: F401  (register the classical field)
+import fbench.models.har_model  # noqa: F401
+import fbench.models.persistence_model  # noqa: F401
 import fbench.models.prophet_model  # noqa: F401
-import fbench.models.sarima  # noqa: F401
-from fbench.backtest import make_origins, run_backtest
-from fbench.config import RESULTS_DIR
-from fbench.data.load_demo import LOAD_PATH, fetch_load
-from fbench.features import build_features
-from fbench.models.base import REGISTRY
-from fbench.report import write_report
-from fbench.scoring import add_skill, score
+import fbench.models.sarima_model  # noqa: F401
+from fbench.rolling_backtest import make_origins, run_backtest
+from fbench.harness_config import RESULTS_DIR
+from fbench.data.electricity_load import LOAD_PATH, fetch_load
+from fbench.feature_builder import build_features
+from fbench.models.forecast_model import REGISTRY
+from fbench.report_generator import write_report
+from fbench.quantile_scoring import add_skill, score
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--stride", type=int, default=4)

@@ -1,9 +1,9 @@
 import numpy as np
 import pandas as pd
 
-from fbench.backtest import make_origins, run_backtest
-from fbench.features import build_features
-from fbench.models.base import ForecastModel, quantile_frame, register
+from fbench.rolling_backtest import make_origins, run_backtest
+from fbench.feature_builder import build_features
+from fbench.models.forecast_model import ForecastModel, quantile_frame, register
 
 
 @register
