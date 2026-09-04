@@ -182,11 +182,17 @@ inventing one would repeat the mistake the fixed floor made.
 ## Limitations and next steps
 
 The live log is young, 21 scored days as of 2026-08-24, so the LIVE.md
-leaderboard will stay noisy until the sample grows. Its coverage
-columns carry real uncertainty, because each day contributes about 24
-dependent hourly rows. The calibration check above quantifies that
-uncertainty rather than reading the column as exact. The load demo runs the classical models only, without N-HiTS,
-so the cross-series comparison covers seven entrants rather than eight.
+leaderboard will stay noisy until the sample grows. Its timing
+evidence is the commit history, which the author controls. The
+GitHub push history, recorded on GitHub's side, is the external
+anchor a reader can check it against. Its coverage columns carry
+real uncertainty, because each day contributes about 24 dependent
+hourly rows. The calibration check above quantifies that uncertainty
+rather than reading the column as exact, though it treats each
+scored day as independent of the last, and that day-to-day
+dependence is unmodeled. The load demo runs the classical models
+only, without N-HiTS, so the cross-series comparison covers seven
+entrants rather than eight.
 The volatility tournament is a single asset, and nothing here shows the
 ranking holds on other coins or other markets. Every model's coverage
 sits below 0.90, none above. That one-sided pattern across all eight is

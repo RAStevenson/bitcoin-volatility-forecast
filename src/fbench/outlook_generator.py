@@ -115,19 +115,25 @@ def build_outlook(hourly, last_price=None):
     day = origin.tz_convert(LOCAL_TZ).date()
     if last_price is None:
         move_line = (f"A typical hour is expected to move about "
-                     f"{hr_move:.2%} up or down. By the end of the day "
-                     f"the price is typically about {day_move:.1%} away "
-                     f"from where it started. Those are typical sizes, "
-                     f"not limits. Bigger days happen regularly.")
+                     f"{hr_move:.2%} up or down. Combining the 24 hourly "
+                     f"forecasts gives a one-standard-deviation move of "
+                     f"about {day_move:.1%} for the whole day. On about "
+                     f"two days in three the price ends within that "
+                     f"distance of where it started, which is what one "
+                     f"standard deviation means when the day's move is "
+                     f"roughly bell-shaped. Bigger days happen regularly.")
     else:
         move_line = (f"A typical hour is expected to move about "
                      f"${last_price * hr_move:,.0f} ({hr_move:.2%}) up or "
-                     f"down. By the end of the day the price is typically "
-                     f"about ${last_price * day_move:,.0f} "
-                     f"({day_move:.1%}) away from where it started, using "
-                     f"the last traded price of ${last_price:,.0f}. Those "
-                     f"are typical sizes, not limits. Bigger days happen "
-                     f"regularly.")
+                     f"down. Combining the 24 hourly forecasts gives a "
+                     f"one-standard-deviation move of about "
+                     f"${last_price * day_move:,.0f} ({day_move:.1%}) for "
+                     f"the whole day, using the last traded price of "
+                     f"${last_price:,.0f}. On about two days in three the "
+                     f"price ends within that distance of where it "
+                     f"started, which is what one standard deviation "
+                     f"means when the day's move is roughly bell-shaped. "
+                     f"Bigger days happen regularly.")
     # One plain phrase per regime word, same percentile bins as `regime`.
     pct_phrase = {"quiet": "below most days of the past year",
                   "normal": "in the middle of the past year's range",

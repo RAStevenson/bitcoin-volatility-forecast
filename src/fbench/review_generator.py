@@ -105,8 +105,9 @@ def build_review():
         f"{n_days} scored days (mean log error {stats.loc[origin, 'mae']:.3f}, "
         f"median day {stats['mae'].median():.3f}).",
         f"- Best median that day: {best}; worst: {worst}."
-        + (" Every model missed on the same side, so the miss is the "
-           "information set, not the model choice." if same_side else
+        + (" Every model missed on the same side, so the miss traces to "
+           "what was knowable that day rather than to any one model's "
+           "choice." if same_side else
            " Models disagreed on the direction of the miss."),
         "",
         "Largest hourly misses (local time, " + LOCAL_TZ + "):",
