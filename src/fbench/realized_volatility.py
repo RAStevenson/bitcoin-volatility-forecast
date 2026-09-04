@@ -7,7 +7,7 @@ log of that annualized rv, which is the target the models forecast."""
 import numpy as np
 import pandas as pd
 
-from fbench.config import ANNUALIZER, MIN_MINUTES_PER_HOUR
+from fbench.harness_config import ANNUALIZER, MIN_MINUTES_PER_HOUR
 
 
 def hourly_realized_vol(minute_close):

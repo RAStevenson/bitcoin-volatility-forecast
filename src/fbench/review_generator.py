@@ -4,10 +4,10 @@ every number is reproducible from the committed files."""
 import numpy as np
 import pandas as pd
 
-from fbench.config import QCOLS, RESULTS_DIR
-from fbench.daily import EVAL_LOG, _load
-from fbench.outlook import FALLBACK_MODEL, LOCAL_TZ
-from fbench.scoring import score
+from fbench.harness_config import QCOLS, RESULTS_DIR
+from fbench.live_loop import EVAL_LOG, _load
+from fbench.outlook_generator import FALLBACK_MODEL, LOCAL_TZ
+from fbench.quantile_scoring import score
 
 # Realized-to-forecast ratio of the day's average. Inside the band the
 # day counts as on target; outside, the forecast was too low or too high.

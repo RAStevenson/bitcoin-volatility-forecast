@@ -13,19 +13,19 @@ import subprocess
 import pandas as pd
 
 # Import all model modules so the registry is complete for the daily fits.
-import fbench.models.gbm  # noqa: F401
-import fbench.models.har  # noqa: F401
-import fbench.models.nhits  # noqa: F401  (added 2026-08-06 after it led
+import fbench.models.xgboost_model  # noqa: F401
+import fbench.models.har_model  # noqa: F401
+import fbench.models.nhits_model  # noqa: F401  (added 2026-08-06 after it led
 #   the 2026-08-05 full tournament)
-import fbench.models.persistence  # noqa: F401
+import fbench.models.persistence_model  # noqa: F401
 import fbench.models.prophet_model  # noqa: F401
-import fbench.models.sarima  # noqa: F401
-from fbench import daily
-from fbench.config import DATA_DIR, ROOT
-from fbench.data import store
-from fbench.data.backfill import backfill
-from fbench.features import build_features
-from fbench.rv import hourly_realized_vol
+import fbench.models.sarima_model  # noqa: F401
+from fbench import live_loop
+from fbench.harness_config import DATA_DIR, ROOT
+from fbench.data import minute_store
+from fbench.data.candle_backfill import backfill
+from fbench.feature_builder import build_features
+from fbench.realized_volatility import hourly_realized_vol
 
 
 def step(name, fn):
@@ -47,24 +47,24 @@ def _build_rv():
     """Rebuilds the hourly realized volatility series from the minute
     store and saves it, returning it with the latest minute close that
     the outlook needs to quote moves in dollars."""
-    m = store.load_minutes()
+    m = minute_store.load_minutes()
     out = hourly_realized_vol(m.set_index("time")["close"])
     out.to_parquet(DATA_DIR / "hourly_rv.parquet")
     return out, float(m.loc[m["time"].idxmax(), "close"])
 
 
 hourly, last_close = step("rebuild rv", _build_rv)
-resolved = step("score due", lambda: daily.score_due(hourly))
+resolved = step("score due", lambda: live_loop.score_due(hourly))
 print(f"  rows resolved: {resolved}")
 
 feats = build_features(hourly)
 origin = hourly["log_rv"].dropna().index[-1]
-logged = step("log forecasts", lambda: daily.log_forecasts(feats, origin))
+logged = step("log forecasts", lambda: live_loop.log_forecasts(feats, origin))
 print(f"  forecast rows logged: {logged} (origin {origin})")
-step("live report", daily.write_live_report)
-from fbench.outlook import write_outlook  # noqa: E402
+step("live report", live_loop.write_live_report)
+from fbench.outlook_generator import write_outlook  # noqa: E402
 step("outlook", lambda: write_outlook(hourly, last_price=last_close))
-from fbench.review import write_review  # noqa: E402
+from fbench.review_generator import write_review  # noqa: E402
 step("review", write_review)
 
 

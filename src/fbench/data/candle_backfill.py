@@ -3,8 +3,8 @@ the last bar already saved."""
 
 import pandas as pd
 
-from fbench.config import HISTORY_START, MINUTE_SECONDS, PRODUCT
-from fbench.data import coinbase, store
+from fbench.harness_config import HISTORY_START, MINUTE_SECONDS, PRODUCT
+from fbench.data import coinbase_client, minute_store
 
 # Fetch and persist in monthly chunks so an interrupted run loses at most
 # one chunk; the watermark then resumes from what was saved.
@@ -16,7 +16,7 @@ def backfill(verbose=True):
     end = pd.Timestamp.now(tz="UTC").floor("min")
     added = 0
     while True:
-        existing = store.load_minutes()
+        existing = minute_store.load_minutes()
         if existing.empty:
             start = pd.Timestamp(HISTORY_START, tz="UTC")
         else:
@@ -28,11 +28,11 @@ def backfill(verbose=True):
         if verbose:
             print(f"backfilling {PRODUCT}: {start} -> {chunk_end}",
                   flush=True)
-        new = coinbase.fetch_candles(PRODUCT, start, chunk_end,
+        new = coinbase_client.fetch_candles(PRODUCT, start, chunk_end,
                                      MINUTE_SECONDS)
         merged = (pd.concat([existing, new]).drop_duplicates("time")
                     .sort_values("time").reset_index(drop=True))
-        store.save_minutes(merged)
+        minute_store.save_minutes(merged)
         added += len(new)
         if verbose:
             print(f"  +{len(new)} rows, total {len(merged)}", flush=True)

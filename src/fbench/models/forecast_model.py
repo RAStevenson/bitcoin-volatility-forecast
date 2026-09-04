@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 import pandas as pd
 
-from fbench.config import QCOLS, TRAIN_DAYS
+from fbench.harness_config import QCOLS, TRAIN_DAYS
 
 REGISTRY = {}
 

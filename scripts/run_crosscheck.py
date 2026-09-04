@@ -9,15 +9,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import pandas as pd
 
-from fbench.config import BITSTAMP_PAIR, RESULTS_DIR
-from fbench.data import bitstamp, store
+from fbench.harness_config import BITSTAMP_PAIR, RESULTS_DIR
+from fbench.data import bitstamp_client, minute_store
 
-m = store.load_minutes()
+m = minute_store.load_minutes()
 cb = (m.set_index("time")["close"].groupby(pd.Grouper(freq="h")).last()
         .rename("cb_close").dropna())
 print(f"fetching Bitstamp hourly {cb.index.min()} -> {cb.index.max()}",
       flush=True)
-bs = bitstamp.fetch_hourly(BITSTAMP_PAIR, cb.index.min(), cb.index.max())
+bs = bitstamp_client.fetch_hourly(BITSTAMP_PAIR, cb.index.min(), cb.index.max())
 j = bs.set_index("time").join(cb, how="inner")
 pct = (j["cb_close"] - j["close"]).abs() / j["close"]
 lines = [

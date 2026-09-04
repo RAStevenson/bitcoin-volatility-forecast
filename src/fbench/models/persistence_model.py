@@ -3,8 +3,8 @@ observed value and same hour one day earlier."""
 
 import numpy as np
 
-from fbench.config import HORIZON, QUANTILES
-from fbench.models.base import ForecastModel, quantile_frame, register
+from fbench.harness_config import HORIZON, QUANTILES
+from fbench.models.forecast_model import ForecastModel, quantile_frame, register
 
 
 @register

@@ -13,10 +13,10 @@ import json
 
 import pandas as pd
 
-from fbench.config import DATA_DIR, RESULTS_DIR
-from fbench.report import write_report
-from fbench.scoring import add_skill, score
-from fbench.tracking import log_tournament
+from fbench.harness_config import DATA_DIR, RESULTS_DIR
+from fbench.report_generator import write_report
+from fbench.quantile_scoring import add_skill, score
+from fbench.mlflow_tracking import log_tournament
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--results", default=None,

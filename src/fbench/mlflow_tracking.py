@@ -3,7 +3,7 @@ a local sqlite tracking store at the repo root."""
 
 import mlflow
 
-from fbench.config import ROOT
+from fbench.harness_config import ROOT
 
 
 def log_tournament(scores, results_path, run_config):

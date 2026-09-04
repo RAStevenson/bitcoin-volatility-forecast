@@ -1,6 +1,6 @@
 import pandas as pd
 
-from fbench.scoring import pinball, score
+from fbench.quantile_scoring import pinball, score
 
 
 def test_pinball_hand_values():

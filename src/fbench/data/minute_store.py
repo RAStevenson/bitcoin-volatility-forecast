@@ -3,7 +3,7 @@ check that audits it."""
 
 import pandas as pd
 
-from fbench.config import DATA_DIR, PRODUCT
+from fbench.harness_config import DATA_DIR, PRODUCT
 
 
 def minute_path():

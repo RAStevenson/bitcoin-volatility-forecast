@@ -7,11 +7,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from fbench.config import MINUTE_SECONDS
-from fbench.data import store
-from fbench.data.backfill import backfill
+from fbench.harness_config import MINUTE_SECONDS
+from fbench.data import minute_store
+from fbench.data.candle_backfill import backfill
 
 added = backfill()
-final = store.load_minutes()
+final = minute_store.load_minutes()
 print("rows added:", added, "| total rows:", len(final))
-print(store.gap_report(final, MINUTE_SECONDS))
+print(minute_store.gap_report(final, MINUTE_SECONDS))

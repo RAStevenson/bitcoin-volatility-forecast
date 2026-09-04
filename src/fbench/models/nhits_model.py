@@ -6,8 +6,8 @@ import warnings
 import numpy as np
 import pandas as pd
 
-from fbench.config import HORIZON, QUANTILES, TRAIN_DAYS
-from fbench.models.base import ForecastModel, quantile_frame, register
+from fbench.harness_config import HORIZON, QUANTILES, TRAIN_DAYS
+from fbench.models.forecast_model import ForecastModel, quantile_frame, register
 
 ENCODER_HOURS = 168  # one week of context per forecast
 

@@ -3,8 +3,8 @@ means of log RV, in a plain form and a seasonal one."""
 
 import numpy as np
 
-from fbench.config import HORIZON, QUANTILES
-from fbench.models.base import ForecastModel, quantile_frame, register
+from fbench.harness_config import HORIZON, QUANTILES
+from fbench.models.forecast_model import ForecastModel, quantile_frame, register
 
 BASE_COLS = ["lag_1", "har_d", "har_w", "har_m"]
 

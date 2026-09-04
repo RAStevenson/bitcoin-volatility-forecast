@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from fbench.features import FEATURE_COLS, build_features
+from fbench.feature_builder import FEATURE_COLS, build_features
 
 
 def _hourly(n=2000, seed=0):

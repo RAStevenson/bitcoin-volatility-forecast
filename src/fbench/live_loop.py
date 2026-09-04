@@ -7,11 +7,11 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-from fbench.config import (CALIBRATION_ALPHA, CALIBRATION_PERSISTENCE_DAYS,
+from fbench.harness_config import (CALIBRATION_ALPHA, CALIBRATION_PERSISTENCE_DAYS,
                            COV90_TARGET, HORIZON, MIN_CALIBRATION_DAYS,
                            QCOLS, RESULTS_DIR)
-from fbench.models.base import REGISTRY
-from fbench.scoring import add_skill, score
+from fbench.models.forecast_model import REGISTRY
+from fbench.quantile_scoring import add_skill, score
 
 FORECAST_LOG = RESULTS_DIR / "forecasts.csv"
 EVAL_LOG = RESULTS_DIR / "evaluation.csv"

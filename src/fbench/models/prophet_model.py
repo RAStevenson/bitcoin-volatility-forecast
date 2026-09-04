@@ -5,8 +5,8 @@ import numpy as np
 import pandas as pd
 from prophet import Prophet
 
-from fbench.config import QUANTILES
-from fbench.models.base import ForecastModel, quantile_frame, register
+from fbench.harness_config import QUANTILES
+from fbench.models.forecast_model import ForecastModel, quantile_frame, register
 
 
 @register
