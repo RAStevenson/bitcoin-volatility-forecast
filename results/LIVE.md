@@ -1,21 +1,21 @@
 # Live scoreboard (generated)
 
-Forecast days scored: 35. Resolved rows: 6648. Pending (logged, outcome not yet observed): 192.
+Forecast days scored: 36. Resolved rows: 6840. Pending (logged, outcome not yet observed): 192.
 
 Every row here was committed to git before its target hour completed. The commit history is the timestamp evidence.
 
 | model                |   days |   pinball_mean |    mae |   cov50 |   cov90 |   skill_vs_persistence |
 |:---------------------|-------:|---------------:|-------:|--------:|--------:|-----------------------:|
-| nhits                |     32 |         0.1094 | 0.3397 |  0.4727 |  0.8932 |                 0.2182 |
-| gbm                  |     35 |         0.1167 | 0.3579 |  0.4131 |  0.806  |                 0.1711 |
-| sarima               |     35 |         0.1213 | 0.3764 |  0.5381 |  0.8893 |                 0.143  |
-| har_seasonal         |     35 |         0.1313 | 0.4106 |  0.4321 |  0.8452 |                 0.0692 |
-| har                  |     35 |         0.1339 | 0.4188 |  0.469  |  0.8536 |                 0.0617 |
-| persistence          |     35 |         0.144  | 0.4481 |  0.5107 |  0.8976 |                 0      |
-| prophet              |     35 |         0.1552 | 0.4628 |  0.406  |  0.756  |                -0.1236 |
-| seasonal_persistence |     35 |         0.1635 | 0.4998 |  0.4643 |  0.8548 |                -0.1728 |
+| nhits                |     33 |         0.1081 | 0.3357 |  0.4747 |  0.8952 |                 0.2182 |
+| gbm                  |     36 |         0.1153 | 0.3535 |  0.4213 |  0.8102 |                 0.1707 |
+| sarima               |     36 |         0.1199 | 0.3711 |  0.5486 |  0.8924 |                 0.1426 |
+| har_seasonal         |     36 |         0.1297 | 0.4049 |  0.4421 |  0.8495 |                 0.07   |
+| har                  |     36 |         0.1323 | 0.4135 |  0.4769 |  0.8576 |                 0.0617 |
+| persistence          |     36 |         0.1422 | 0.4415 |  0.522  |  0.9005 |                 0      |
+| prophet              |     36 |         0.1529 | 0.456  |  0.4132 |  0.7627 |                -0.1203 |
+| seasonal_persistence |     36 |         0.162  | 0.496  |  0.4618 |  0.8588 |                -0.1771 |
 
 The days column is each model's own count of scored days. Models that joined the loop later are averaged over fewer days, so the rows above are not sample-matched.
 
-The calibration check passes, flagging no model. It rejects gbm cov90 0.8060, p 0.0051, day 1 of 3, short of the 3 consecutive days it reports on. The test is two-sided on each model's daily coverage against 0.90 over 35 scored days, Bonferroni-corrected across the 8 models tested (per-model alpha 0.0063).
+The calibration check passes, flagging no model. It rejects gbm cov90 0.8102, p 0.0062, day 2 of 3, short of the 3 consecutive days it reports on. The test is two-sided on each model's daily coverage against 0.90 over 36 scored days, Bonferroni-corrected across the 8 models tested (per-model alpha 0.0063).
 
