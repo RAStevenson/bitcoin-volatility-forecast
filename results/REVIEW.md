@@ -20,10 +20,10 @@ Ratios compare annualized volatility levels, not price moves. This is a volatili
 
 On the most recent resolved day the outlook called the day normal and rising; it turned out normal and rising. The one-standard-deviation day move was 1.5% and the price ended 0.5% from where it started, inside that distance. 2 of the 3 loudest hours named were among the day's 3 loudest, and 1 of the 3 calmest. 0.8 hours were expected to run high and 0 did.
 
-Over 36 resolved days, scored in the terms the outlook states them:
+Over 36 resolved days, scored in the terms the outlook states them, with what repeating yesterday would have scored beside each claim:
 
-- The price ended inside the one-standard-deviation day move on 27 of 36 days (75%). A well-sized move holds about 68% of days.
-- The regime word (quiet, normal, elevated, high) matched the realized day on 29 of 36 days and was one step off on 5.
-- The trend word (rising, steady, falling) matched on 27 of 36 days.
-- Of the 3 loudest hours named each day, 1.2 on average were among the day's 3 loudest, and 0.7 of the 3 calmest. Naming 3 hours at random would score 0.4.
-- 53 hours were expected to run high across those days and 41 did.
+- The price ended inside the one-standard-deviation day move on 27 of 36 days (75%). A well-sized move holds about 68% of days. The same distance taken from yesterday's realized hours would have held on 29.
+- The regime word (quiet, normal, elevated, high) matched the realized day on 29 of 36 days, was one step off on 5, and two or more steps off on 2. Repeating yesterday's word would have matched on 26.
+- The trend word (rising, steady, falling) matched on 27 of 36 days. Always saying steady would have matched on 13.
+- Of the 3 loudest hours named each day, 1.2 on average were among the day's 3 loudest, and 0.7 of the 3 calmest. Naming yesterday's loudest and calmest hours again would have scored 1.2 and 0.4; naming 3 hours at random, 0.4.
+- 43 hours were expected to run high across those days and 41 did. Yesterday's count, carried forward, would have expected 41.

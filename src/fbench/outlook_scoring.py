@@ -6,11 +6,14 @@ the outlook stated it in, never in a paraphrase: the day move against
 the close-to-close price move, the regime and trend words against the
 realized day's words, the named hours against the hours that were in
 fact loudest and calmest, and the expected count of high hours against
-the count that ran high."""
+the count that ran high. Beside every claim sits what repeating
+yesterday would have scored, because the project's rule is that a
+forecast earns its place only past the free alternative, and that rule
+binds on the sentences as much as on the hourly bands."""
 import numpy as np
 import pandas as pd
 
-from fbench.harness_config import HORIZON, QCOLS
+from fbench.harness_config import ANNUALIZER, HORIZON, QCOLS
 from fbench.outlook_generator import (N_NAMED_HOURS, REGIMES, claims, context,
                                       headline_model_asof, realized_claims)
 
@@ -59,18 +62,37 @@ def score_outlook(ev, hourly):
         target_rv = hourly["rv"].reindex(pd.DatetimeIndex(day["target_time"]))
         r = realized_claims(target_rv, ctx)
         ret = day_return(close, origin)
+        # The free alternative for every claim: yesterday, restated. Its
+        # regime word is yesterday's, its trend is always steady (the
+        # ratio of yesterday to itself), its named hours are yesterday's
+        # loudest and calmest at the same clock hours, its high count is
+        # yesterday's, and its day move is the same root-sum-of-squares
+        # taken over yesterday's realized hours.
+        yesterday = hourly["rv"].loc[origin - pd.Timedelta(hours=HORIZON - 1):origin]
+        y = realized_claims(yesterday, ctx)
+        shift = pd.Timedelta(hours=HORIZON)
+        base_move = float(np.sqrt(np.sum((yesterday.dropna() / ANNUALIZER) ** 2)))
         rows.append({
             "origin": origin, "model": model,
             "day_move": c["day_move"], "day_return": ret,
             "day_move_hit": None if ret is None else abs(ret) <= c["day_move"],
+            "base_day_move_hit": None if ret is None else abs(ret) <= base_move,
             "regime_fc": c["regime"], "regime_rz": r["regime"],
             "regime_gap": abs(REGIMES.index(c["regime"])
                               - REGIMES.index(r["regime"])),
+            "base_regime_hit": y["regime"] == r["regime"],
             "trend_fc": c["trend"], "trend_rz": r["trend"],
+            "base_trend_hit": r["trend"] == "steady",
             "loud_overlap": len(set(c["loud"]) & set(r["loud"])),
             "calm_overlap": len(set(c["calm"]) & set(r["calm"])),
-            "exp_high_hours": c["exp_high_hours"],
+            "base_loud_overlap": len({t + shift for t in y["loud"]} & set(r["loud"])),
+            "base_calm_overlap": len({t + shift for t in y["calm"]} & set(r["calm"])),
+            # On a day when every hour sits at the probability floor the
+            # outlook prints "no meaningful chance" rather than a count,
+            # so the claim it made, and the one scored, is zero hours.
+            "exp_high_hours": 0.0 if c["all_at_floor"] else c["exp_high_hours"],
             "high_hours": r["high_hours"],
+            "base_high_hours": y["high_hours"],
         })
     return pd.DataFrame(rows)
 
@@ -105,33 +127,45 @@ def record_lines(scored):
     lines += [" ".join(latest), ""]
 
     lines.append(f"Over {n} resolved days, scored in the terms the outlook "
-                 "states them:")
+                 "states them, with what repeating yesterday would have "
+                 "scored beside each claim:")
     lines.append("")
     if len(moves):
         hits = int(moves["day_move_hit"].sum())
+        base_hits = int(moves["base_day_move_hit"].sum())
         lines.append(
             f"- The price ended inside the one-standard-deviation day move "
             f"on {hits} of {len(moves)} days ({hits / len(moves):.0%}). A "
-            f"well-sized move holds about {DAY_MOVE_TARGET:.0%} of days.")
+            f"well-sized move holds about {DAY_MOVE_TARGET:.0%} of days. "
+            f"The same distance taken from yesterday's realized hours "
+            f"would have held on {base_hits}.")
     exact = int((scored["regime_gap"] == 0).sum())
     adjacent = int((scored["regime_gap"] == 1).sum())
+    far = int((scored["regime_gap"] >= 2).sum())
     lines.append(
         f"- The regime word (quiet, normal, elevated, high) matched the "
-        f"realized day on {exact} of {n} days and was one step off on "
-        f"{adjacent}.")
+        f"realized day on {exact} of {n} days, was one step off on "
+        f"{adjacent}, and two or more steps off on {far}. Repeating "
+        f"yesterday's word would have matched on "
+        f"{int(scored['base_regime_hit'].sum())}.")
     trend_hits = int((scored["trend_fc"] == scored["trend_rz"]).sum())
     lines.append(
         f"- The trend word (rising, steady, falling) matched on "
-        f"{trend_hits} of {n} days.")
+        f"{trend_hits} of {n} days. Always saying steady would have "
+        f"matched on {int(scored['base_trend_hit'].sum())}.")
     lines.append(
         f"- Of the {N_NAMED_HOURS} loudest hours named each day, "
         f"{scored['loud_overlap'].mean():.1f} on average were among the "
         f"day's {N_NAMED_HOURS} loudest, and "
         f"{scored['calm_overlap'].mean():.1f} of the {N_NAMED_HOURS} "
-        f"calmest. Naming {N_NAMED_HOURS} hours at random would score "
-        f"{CHANCE_OVERLAP:.1f}.")
+        f"calmest. Naming yesterday's loudest and calmest hours again "
+        f"would have scored {scored['base_loud_overlap'].mean():.1f} and "
+        f"{scored['base_calm_overlap'].mean():.1f}; naming "
+        f"{N_NAMED_HOURS} hours at random, {CHANCE_OVERLAP:.1f}.")
     lines.append(
         f"- {scored['exp_high_hours'].sum():.0f} hours were expected to run "
-        f"high across those days and {int(scored['high_hours'].sum())} did.")
+        f"high across those days and {int(scored['high_hours'].sum())} did. "
+        f"Yesterday's count, carried forward, would have expected "
+        f"{int(scored['base_high_hours'].sum())}.")
     lines.append("")
     return lines
