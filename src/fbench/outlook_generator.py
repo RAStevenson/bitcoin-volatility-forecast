@@ -2,7 +2,10 @@
 logged 24-hour forecast for someone who does not work in volatility.
 Every figure is derived at render time from the forecast log and the
 hourly realized series, so the prose cannot drift away from the
-numbers."""
+numbers. The arithmetic behind every claim the outlook makes lives in
+claims(), and realized_claims() states what happened in the same terms,
+so the review's outlook scoring replays the claims the outlook actually
+made rather than a paraphrase of them."""
 import numpy as np
 import pandas as pd
 
@@ -12,6 +15,8 @@ from fbench.quantile_scoring import score
 
 LOCAL_TZ = "America/Chicago"
 FALLBACK_MODEL = "gbm"  # full-backtest winner, used until live scores exist
+REGIMES = ["quiet", "normal", "elevated", "high"]
+N_NAMED_HOURS = 3  # the loudest and calmest hours the outlook names
 
 
 def prob_above(vol_quantiles, threshold):
@@ -23,20 +28,133 @@ def prob_above(vol_quantiles, threshold):
     return float(1.0 - cdf)
 
 
-def _headline_model():
-    """Pick the model that narrates the outlook and return it with the
-    short phrase explaining the choice, which is the live pinball leader
-    once three origins have been scored and FALLBACK_MODEL before that."""
+def _live_leader(ev):
+    """The model with the lowest mean pinball loss over the resolved rows
+    in ev, or None while fewer than three origins have been scored."""
     # Three origins is a deliberately lower bar than the 10-day
     # calibration gate: picking which model narrates the outlook only
     # needs a best guess, while the calibration line is a published
     # verdict, so that one waits for the larger sample.
+    if ev["origin"].nunique() >= 3:
+        return score(ev).groupby("model")["pinball_mean"].mean().idxmin()
+    return None
+
+
+def _headline_model():
+    """Pick the model that narrates the outlook and return it with the
+    short phrase explaining the choice, which is the live pinball leader
+    once three origins have been scored and FALLBACK_MODEL before that."""
     ev = _load(EVAL_LOG, ["origin", "target_time", "horizon", "model",
                           *QCOLS, "y_true"])
-    if ev["origin"].nunique() >= 3:
-        live = score(ev).groupby("model")["pinball_mean"].mean()
-        return live.idxmin(), "the model currently leading the live scoreboard"
+    leader = _live_leader(ev)
+    if leader is not None:
+        return leader, "the model currently leading the live scoreboard"
     return FALLBACK_MODEL, "the backtest winner while the live sample is young"
+
+
+def headline_model_asof(ev, origin):
+    """The model that narrated the outlook issued at `origin`, re-derived
+    from the scores that existed then (origins strictly earlier)."""
+    leader = _live_leader(ev[ev["origin"] < origin])
+    if leader is not None:
+        return leader
+    # The fallback may not be in the log (a trimmed registry); narrating
+    # a model with no rows would print NaN prose, so require presence.
+    day_models = ev.loc[ev["origin"] == origin, "model"].unique()
+    if FALLBACK_MODEL in day_models:
+        return FALLBACK_MODEL
+    return sorted(day_models)[0]
+
+
+def context(rv_asof):
+    """Everything a day is compared against, from the hourly realized
+    series up to the origin: the past year of hours, its rolling 24-hour
+    averages, the high line (the year's 90th percentile hour), the quiet
+    line (the 30th percentile of the daily averages) and the average of
+    the 24 hours before the origin."""
+    rv = rv_asof.dropna()
+    year = rv.loc[rv.index >= rv.index.max() - pd.Timedelta(days=365)]
+    daily_avg = year.rolling(24).mean().dropna()
+    # The quiet/normal boundary compares a 24-hour average to the
+    # distribution of rolling 24h averages, so the printed threshold must
+    # come from the same distribution or it is not the deciding line.
+    return {"year": year, "daily_avg": daily_avg,
+            "hi_thresh": float(year.quantile(0.90)),
+            "q_thresh": float(daily_avg.quantile(0.30)),
+            "last24": float(rv.iloc[-24:].mean())}
+
+
+def regime_of(avg, daily_avg):
+    """The regime word for a 24-hour average of annualized volatility,
+    placed against the past year's rolling 24-hour averages, returned
+    with the percentile it sits at."""
+    pct = float((daily_avg < avg).mean() * 100)
+    word = ("quiet" if pct < 30 else
+            "normal" if pct < 70 else
+            "elevated" if pct < 90 else "high")
+    return word, pct
+
+
+def trend_of(avg, last24):
+    """The trend word for a 24-hour average against the average of the
+    24 hours before the origin: rising past a tenth up, falling past a
+    tenth down, steady between."""
+    ratio = avg / last24
+    return ("rising" if ratio > 1.10 else
+            "falling" if ratio < 0.90 else "steady")
+
+
+def claims(vol, target_times, ctx):
+    """The numbers behind every claim the outlook makes, from the
+    narrating model's 24 rows of annualized quantiles (vol, one row per
+    target hour, columns in QUANTILES order) and the context as of the
+    origin: the typical hourly move, the one-standard-deviation day move,
+    the regime and trend words, the expected count of hours above the
+    high line, and which target hours are named loudest and calmest."""
+    med_path = vol[:, 2]
+    fc_avg = float(med_path.mean())
+    # Human translation: annualized vol / sqrt(hours per year) is the
+    # typical single-hour move. The daily figure is the root of summed
+    # hourly variances, a one-sigma close-to-close move rather than a
+    # range; averaging the hourly sigmas first would understate it
+    # whenever vol varies across the day.
+    regime, pct = regime_of(fc_avg, ctx["daily_avg"])
+    p_high = [prob_above(vol[i], ctx["hi_thresh"]) for i in range(len(vol))]
+    order = np.argsort(med_path)
+    tt = pd.DatetimeIndex(target_times)
+    return {
+        "fc_avg": fc_avg, "med_path": med_path,
+        "hr_move": fc_avg / ANNUALIZER,
+        "day_move": float(np.sqrt(np.sum((med_path / ANNUALIZER) ** 2))),
+        "regime": regime, "pct": pct,
+        "trend": trend_of(fc_avg, ctx["last24"]),
+        "p_high": p_high,
+        "exp_high_hours": float(np.sum(p_high)),
+        "likely_high": int(np.sum(np.array(p_high) > 0.5)),
+        # prob_above clamps at 0.02 beyond the fitted quantiles, so when
+        # every hour sits at the clamp the sum is a floor (24 x 0.02), not
+        # a forecast, and printing it as one would dress a constant as
+        # information.
+        "all_at_floor": all(p <= 0.02 + 1e-9 for p in p_high),
+        "loud": tt[order[-N_NAMED_HOURS:]], "calm": tt[order[:N_NAMED_HOURS]],
+    }
+
+
+def realized_claims(target_rv, ctx):
+    """What happened over the target hours, stated in the terms of
+    claims(): the realized 24-hour average with its regime and trend
+    words against the same context, the hours that were in fact loudest
+    and calmest, and how many hours ran above the high line. target_rv is
+    the realized annualized volatility indexed by target hour."""
+    rv = target_rv.dropna()
+    rz_avg = float(rv.mean())
+    regime, pct = regime_of(rz_avg, ctx["daily_avg"])
+    order = np.argsort(rv.to_numpy())
+    return {"rz_avg": rz_avg, "regime": regime, "pct": pct,
+            "trend": trend_of(rz_avg, ctx["last24"]),
+            "loud": rv.index[order[-N_NAMED_HOURS:]],
+            "calm": rv.index[order[:N_NAMED_HOURS]],
+            "high_hours": int((rv > ctx["hi_thresh"]).sum())}
 
 
 def build_outlook(hourly, last_price=None):
@@ -55,44 +173,14 @@ def build_outlook(hourly, last_price=None):
     today = today.sort_values("target_time")
     vol = np.exp(today[QCOLS].to_numpy())  # log RV -> annualized vol
 
-    rv = hourly["rv"].dropna()
-    year = rv.loc[rv.index >= rv.index.max() - pd.Timedelta(days=365)]
-    daily_avg = year.rolling(24).mean().dropna()
+    ctx = context(hourly["rv"].loc[:origin])
+    c = claims(vol, today["target_time"], ctx)
+    med_path, fc_avg = c["med_path"], c["fc_avg"]
+    hr_move, day_move = c["hr_move"], c["day_move"]
+    hi_thresh, q_thresh, last24 = ctx["hi_thresh"], ctx["q_thresh"], ctx["last24"]
 
-    med_path = vol[:, 2]
-    fc_avg = float(med_path.mean())
-    # Human translation: annualized vol / sqrt(hours per year) is the
-    # typical single-hour move. The daily figure is the root of summed
-    # hourly variances, a one-sigma close-to-close move rather than a
-    # range; averaging the hourly sigmas first would understate it
-    # whenever vol varies across the day.
-    hr_move = fc_avg / ANNUALIZER
-    day_move = float(np.sqrt(np.sum((med_path / ANNUALIZER) ** 2)))
-    pct = float((daily_avg < fc_avg).mean() * 100)
-    hi_thresh = float(year.quantile(0.90))
-    # The quiet/normal boundary compares fc_avg to the distribution of
-    # rolling 24h averages, so the printed threshold must come from the
-    # same distribution or it is not the deciding line.
-    q_thresh = float(daily_avg.quantile(0.30))
-
-    regime = ("quiet" if pct < 30 else
-              "normal" if pct < 70 else
-              "elevated" if pct < 90 else "high")
-    last24 = float(rv.iloc[-24:].mean())
-    ratio = fc_avg / last24
-    trend = ("rising" if ratio > 1.10 else
-             "falling" if ratio < 0.90 else "steady")
-
-    p_high = [prob_above(vol[i], hi_thresh) for i in range(len(vol))]
-    exp_high_hours = float(np.sum(p_high))
-    likely_high = int(np.sum(np.array(p_high) > 0.5))
-    # prob_above clamps at 0.02 beyond the fitted quantiles, so when every
-    # hour sits at the clamp the sum is a floor (24 x 0.02), not a
-    # forecast, and printing it as one would dress a constant as
-    # information.
-    all_at_floor = all(p <= 0.02 + 1e-9 for p in p_high)
     hi_move = hi_thresh / ANNUALIZER
-    if all_at_floor:
+    if c["all_at_floor"]:
         high_line = (f"- No hour shows a meaningful chance of running "
                      f"high, above {hi_thresh:.0%} annualized (an hourly "
                      f"move over {hi_move:.2%}), higher than 90% of "
@@ -100,17 +188,15 @@ def build_outlook(hourly, last_price=None):
                      f"band sits well below that line.")
     else:
         high_line = (f"- The next 24 hours are expected to include about "
-                     f"{exp_high_hours:.1f} hours running high, above "
+                     f"{c['exp_high_hours']:.1f} hours running high, above "
                      f"{hi_thresh:.0%} annualized (an hourly move over "
                      f"{hi_move:.2%}), higher than 90% of individual "
                      f"hours in the past year"
-                     + (f"; {likely_high} hours are more likely than not "
-                        f"to qualify." if likely_high else "."))
+                     + (f"; {c['likely_high']} hours are more likely than "
+                        f"not to qualify." if c["likely_high"] else "."))
 
-    local = today["target_time"].dt.tz_convert(LOCAL_TZ)
-    order = np.argsort(med_path)
-    loud = sorted(local.iloc[order[-3:]].dt.strftime("%H:00"))
-    calm = sorted(local.iloc[order[:3]].dt.strftime("%H:00"))
+    loud = sorted(c["loud"].tz_convert(LOCAL_TZ).strftime("%H:00"))
+    calm = sorted(c["calm"].tz_convert(LOCAL_TZ).strftime("%H:00"))
 
     day = origin.tz_convert(LOCAL_TZ).date()
     if last_price is None:
@@ -134,17 +220,17 @@ def build_outlook(hourly, last_price=None):
                      f"started, which is what one standard deviation "
                      f"means when the day's move is roughly bell-shaped. "
                      f"Bigger days happen regularly.")
-    # One plain phrase per regime word, same percentile bins as `regime`.
+    # One plain phrase per regime word, same percentile bins as regime_of.
     pct_phrase = {"quiet": "below most days of the past year",
                   "normal": "in the middle of the past year's range",
                   "elevated": "above most days of the past year",
-                  "high": "among the busiest days of the past year"}[regime]
+                  "high": "among the busiest days of the past year"}[c["regime"]]
     lines = [
         f"# Volatility outlook - {day} (generated)",
         "",
-        f"**The next 24 hours look {regime} and {trend}.** {move_line}",
+        f"**The next 24 hours look {c['regime']} and {c['trend']}.** {move_line}",
         "",
-        f"That forecast sits {pct_phrase} (the {pct:.0f}th percentile of "
+        f"That forecast sits {pct_phrase} (the {c['pct']:.0f}th percentile of "
         f"the past year's rolling 24-hour averages) and works out to about "
         f"{fc_avg:.0%} in annualized units, the per-year convention "
         f"volatility is quoted in. The hourly figures above are that same "

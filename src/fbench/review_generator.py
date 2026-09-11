@@ -1,32 +1,20 @@
 """Yesterday in review: how the most recently resolved forecast day
-compared with what realized. Generated from the evaluation log only, so
-every number is reproducible from the committed files."""
+compared with what realized, followed by the outlook's own claims scored
+over every resolved day. Generated from the evaluation log and the
+hourly realized series, so every number is reproducible from the
+committed files."""
 import numpy as np
 import pandas as pd
 
 from fbench.harness_config import QCOLS, RESULTS_DIR
 from fbench.live_loop import EVAL_LOG, _load
-from fbench.outlook_generator import FALLBACK_MODEL, LOCAL_TZ
-from fbench.quantile_scoring import score
+from fbench.outlook_generator import LOCAL_TZ, headline_model_asof
+from fbench.outlook_scoring import record_lines, score_outlook
 
 # Realized-to-forecast ratio of the day's average. Inside the band the
 # day counts as on target; outside, the forecast was too low or too high.
 ON_TARGET = (1 / 1.5, 1.5)
 LOG_COLS = ["origin", "target_time", "horizon", "model", *QCOLS, "y_true"]
-
-
-def _headline_model_asof(ev, origin):
-    """The model that narrated the outlook issued at `origin`, re-derived
-    from the scores that existed then (origins strictly earlier)."""
-    prior = ev[ev["origin"] < origin]
-    if prior["origin"].nunique() >= 3:
-        return score(prior).groupby("model")["pinball_mean"].mean().idxmin()
-    # The fallback may not be in the log (a trimmed registry); narrating
-    # a model with no rows would print NaN prose, so require presence.
-    day_models = ev.loc[ev["origin"] == origin, "model"].unique()
-    if FALLBACK_MODEL in day_models:
-        return FALLBACK_MODEL
-    return sorted(day_models)[0]
 
 
 def day_stats(ev):
@@ -38,12 +26,15 @@ def day_stats(ev):
                          "cov90": inside.groupby(ev["origin"]).mean()})
 
 
-def build_review():
+def build_review(hourly=None):
     """Return the Markdown body of the review, comparing the most recent
     fully resolved forecast day against what realized and ranking that
     day's error among every scored day. The narrating model is the one
     that narrated the outlook on that day, re-derived from the scores
-    available then rather than taken from today's leaderboard."""
+    available then rather than taken from today's leaderboard. Given the
+    hourly realized series, the review closes with the outlook's own
+    claims scored over every resolved day; without it that section is
+    omitted."""
     ev = _load(EVAL_LOG, LOG_COLS)
     if ev.empty:
         return "# Yesterday in review (generated)\n\nNo resolved forecasts yet.\n"
@@ -53,7 +44,7 @@ def build_review():
     full = counts[counts == counts.max()].index
     origin = full.max()
     day = ev[ev["origin"] == origin]
-    model = _headline_model_asof(ev, origin)
+    model = headline_model_asof(ev, origin)
     h = day[day["model"] == model].sort_values("target_time").copy()
     for c in QCOLS + ["y_true"]:
         h[c] = np.exp(h[c])  # log RV -> annualized vol
@@ -121,6 +112,8 @@ def build_review():
         "direction.",
         "",
     ]
+    if hourly is not None:
+        lines += record_lines(score_outlook(ev, hourly))
     return "\n".join(lines)
 
 
@@ -131,9 +124,10 @@ def _ordinal(n):
     return f"{n}{suffix}"
 
 
-def write_review():
+def write_review(hourly=None):
     """Render the review and save it as results/REVIEW.md, returning that
-    path for the daily run to commit."""
+    path for the daily run to commit. Pass the hourly realized series to
+    include the outlook's scored claims."""
     path = RESULTS_DIR / "REVIEW.md"
-    path.write_text(build_review())
+    path.write_text(build_review(hourly))
     return path

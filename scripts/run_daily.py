@@ -1,8 +1,8 @@
 """Run the daily loop end to end, backfilling minutes, rebuilding
 the hourly realized volatility series, resolving the forecasts whose
 target hour has closed, logging a fresh 24-hour forecast for every
-registered model, regenerating the three reports, and committing
-and pushing the result."""
+registered model, regenerating the three reports (the review with the
+outlook's claims scored), and committing and pushing the result."""
 import sys
 from pathlib import Path
 
@@ -65,7 +65,7 @@ step("live report", live_loop.write_live_report)
 from fbench.outlook_generator import write_outlook  # noqa: E402
 step("outlook", lambda: write_outlook(hourly, last_price=last_close))
 from fbench.review_generator import write_review  # noqa: E402
-step("review", write_review)
+step("review", lambda: write_review(hourly))
 
 
 def _commit_push():

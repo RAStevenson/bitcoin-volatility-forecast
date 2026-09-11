@@ -79,8 +79,10 @@ python scripts/run_load_demo.py    # generality demo: German hourly load
                                    #   LOAD_REPORT.md
 python scripts/run_daily.py        # the live loop: score yesterday, log
                                    #   today, write results/REVIEW.md
-                                   #   (yesterday's forecast vs realized),
-                                   #   LIVE.md and OUTLOOK.md, commit
+                                   #   (yesterday's forecast vs realized,
+                                   #   and the outlook's own claims scored
+                                   #   over every resolved day), LIVE.md
+                                   #   and OUTLOOK.md, commit
 python scripts/run_verify_timing.py  # audit the live log's evidence claim
                                      #   against git history: exits 1 if any
                                      #   forecast row was first committed

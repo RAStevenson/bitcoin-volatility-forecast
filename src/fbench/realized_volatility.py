@@ -2,7 +2,9 @@
 the square root of the summed squared 1-minute log returns inside that
 hour, scaled by ANNUALIZER = sqrt(365 * 24) into annualized volatility
 units. The hourly frame is indexed in UTC and carries log_rv, the natural
-log of that annualized rv, which is the target the models forecast."""
+log of that annualized rv, which is the target the models forecast, and
+close, the last 1-minute close inside the hour, which the outlook scoring
+uses to measure the day's price move."""
 
 import numpy as np
 import pandas as pd
@@ -15,7 +17,9 @@ def hourly_realized_vol(minute_close):
 
     rv = sqrt(sum of squared 1-min log returns in the hour), annualized.
     Hours with fewer than MIN_MINUTES_PER_HOUR returns are NaN rather than
-    silently quiet: a data gap must not masquerade as low volatility.
+    silently quiet: a data gap must not masquerade as low volatility. The
+    close column keeps the hour's last minute close whenever any minute
+    exists, since a price is a price however sparse the hour.
     """
     r = np.log(minute_close).diff().dropna()
     hour = r.index.floor("h")
@@ -24,5 +28,6 @@ def hourly_realized_vol(minute_close):
     out = pd.DataFrame({"rv": np.sqrt(ss) * ANNUALIZER, "n_minutes": n})
     out.loc[out["n_minutes"] < MIN_MINUTES_PER_HOUR, "rv"] = np.nan
     out["log_rv"] = np.log(out["rv"])
+    out["close"] = minute_close.groupby(minute_close.index.floor("h")).last()
     full = pd.date_range(out.index.min(), out.index.max(), freq="h", tz="UTC")
     return out.reindex(full)  # absent hours become explicit NaN rows
