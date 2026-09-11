@@ -22,6 +22,13 @@ def test_constant_return_hour_matches_closed_form():
     assert abs(out["rv"].iloc[1] - expected) < 1e-9
 
 
+def test_close_is_the_hours_last_minute():
+    s = _minutes(121)
+    out = hourly_realized_vol(s)
+    # hour 1 spans minutes 60 to 119; its close is the price at minute 119
+    assert out["close"].iloc[1] == s.iloc[119]
+
+
 def test_sparse_hour_is_nan():
     s = _minutes(61)
     sparse = s.drop(s.index[10:40])  # 30 minutes removed from hour 0
