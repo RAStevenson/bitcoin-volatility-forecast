@@ -71,6 +71,11 @@ def test_day_move_hit_is_close_to_close():
     assert scored["trend_fc"].iloc[0] == scored["trend_rz"].iloc[0]
     assert scored["loud_overlap"].iloc[0] == 3
     assert scored["calm_overlap"].iloc[0] == 3
+    # the yesterday baseline is scored on the same day in the same terms
+    for col in ("base_regime_hit", "base_trend_hit", "base_day_move_hit"):
+        assert scored[col].iloc[0] in (True, False)
+    assert 0 <= scored["base_loud_overlap"].iloc[0] <= 3
+    assert scored["base_high_hours"].iloc[0] >= 0
 
 
 def test_day_move_is_skipped_without_close():
@@ -82,6 +87,7 @@ def test_day_move_is_skipped_without_close():
     lines = outlook_scoring.record_lines(scored)
     assert not any("one-standard-deviation" in ln for ln in lines)
     assert any("regime word" in ln for ln in lines)
+    assert any("Repeating yesterday's word" in ln for ln in lines)
 
 
 def test_partially_resolved_day_is_not_scored():

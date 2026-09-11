@@ -58,7 +58,11 @@ resolved = step("score due", lambda: live_loop.score_due(hourly))
 print(f"  rows resolved: {resolved}")
 
 feats = build_features(hourly)
-origin = hourly["log_rv"].dropna().index[-1]
+# The origin is the last COMPLETE hour with a realized value. The hour in
+# progress can already carry a value at 45 minutes, and a model must not
+# see a partial hour as its last observation.
+complete = hourly.index + pd.Timedelta(hours=1) <= pd.Timestamp.now(tz="UTC")
+origin = hourly.loc[complete, "log_rv"].dropna().index[-1]
 logged = step("log forecasts", lambda: live_loop.log_forecasts(feats, origin))
 print(f"  forecast rows logged: {logged} (origin {origin})")
 step("live report", live_loop.write_live_report)

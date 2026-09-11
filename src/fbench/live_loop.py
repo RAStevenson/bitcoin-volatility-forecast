@@ -34,8 +34,11 @@ def _load(path, cols):
 def log_forecasts(feats, origin):
     """Append one 24-hour quantile forecast per registered model, fit on
     data up to origin. Idempotent by (origin, model): rows already logged
-    for this origin are never rewritten, because the log is
-    pre-outcome evidence and must be append-only."""
+    for this origin are skipped, and the file is opened in append mode so
+    earlier rows are never rewritten, byte for byte, because the log is
+    pre-outcome evidence. Rewriting the whole file used to re-emit every
+    old row with float round-trip drift, which made git blame on any row
+    point at the latest commit."""
     existing = _load(FORECAST_LOG, LOG_COLS)
     done = set(existing.loc[existing["origin"] == origin, "model"])
     future = pd.date_range(origin + pd.Timedelta(hours=1), periods=HORIZON,
@@ -53,21 +56,39 @@ def log_forecasts(feats, origin):
                      horizon=range(1, HORIZON + 1))
         added.append(q.rename_axis("target_time").reset_index())
     if added:
-        frames = ([existing] if len(existing) else []) + added
-        out = pd.concat(frames, ignore_index=True)[LOG_COLS]
         RESULTS_DIR.mkdir(exist_ok=True)
-        out.to_csv(FORECAST_LOG, index=False)
+        _append(FORECAST_LOG, pd.concat(added, ignore_index=True)[LOG_COLS])
     return sum(len(a) for a in added)
 
 
-def score_due(hourly):
-    """Resolve forecast rows whose target hour now has an actual and which
-    are not yet in the evaluation log. Returns rows resolved."""
+def _append(path, rows):
+    """Append rows to one of the CSV logs, writing the header only when
+    the file does not exist yet and matching the line terminator the file
+    already uses, so nothing already on disk is touched."""
+    new = not path.exists()
+    term = "\n"
+    if not new:
+        with open(path, "rb") as f:
+            term = "\r\n" if b"\r\n" in f.readline() else "\n"
+    rows.to_csv(path, index=False, mode="a", header=new, lineterminator=term)
+
+
+def score_due(hourly, now=None):
+    """Resolve forecast rows whose target hour has ended and has an
+    actual, and which are not yet in the evaluation log. Returns rows
+    resolved. `now` defaults to the current UTC time and exists so tests
+    can place the clock."""
+    now = pd.Timestamp.now(tz="UTC") if now is None else now
     fc = _load(FORECAST_LOG, LOG_COLS)
     ev = _load(EVAL_LOG, LOG_COLS + ["y_true"])
     seen = set(zip(ev["origin"], ev["target_time"], ev["model"]))
     pend = fc[~fc.apply(lambda r: (r["origin"], r["target_time"],
                                    r["model"]) in seen, axis=1)].copy()
+    # An hour counts as observed only once it has ended. The realized
+    # series marks an hour valid at 45 minutes, so a run late in the hour
+    # would otherwise resolve a target on partial data and write that
+    # partial truth to the log permanently.
+    pend = pend[pend["target_time"] + pd.Timedelta(hours=1) <= now]
     if pend.empty:
         return 0
     pend["y_true"] = hourly["log_rv"].reindex(
@@ -75,11 +96,7 @@ def score_due(hourly):
     resolved = pend.dropna(subset=["y_true"])
     if resolved.empty:
         return 0
-    # pandas deprecates concat with an empty frame; on the first-ever
-    # resolve there is no evaluation log yet, so skip the empty side.
-    out = resolved if ev.empty else pd.concat([ev, resolved],
-                                              ignore_index=True)
-    out.to_csv(EVAL_LOG, index=False)
+    _append(EVAL_LOG, resolved)
     return len(resolved)
 
 

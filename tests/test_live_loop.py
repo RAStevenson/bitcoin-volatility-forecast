@@ -43,6 +43,30 @@ def test_score_due_resolves_only_observed_hours(logs_in_tmp):
     assert live_loop.score_due(h) == 0  # second pass appends nothing
 
 
+def test_score_due_waits_for_the_hour_to_end(logs_in_tmp):
+    h = _frame()
+    feats = build_features(h)
+    origin = h.index[-30]
+    live_loop.log_forecasts(feats, origin)
+    n_models = len(pd.read_csv(live_loop.FORECAST_LOG)["model"].unique())
+    # every target hour has an actual, but only the hours that have ENDED
+    # by the clock may resolve: targets origin+1h .. origin+12h end by
+    # origin+13h, the 13th is still in progress
+    resolved = live_loop.score_due(h, now=origin + pd.Timedelta(hours=13))
+    assert resolved == 12 * n_models
+
+
+def test_logs_are_appended_not_rewritten(logs_in_tmp):
+    h = _frame()
+    feats = build_features(h)
+    live_loop.log_forecasts(feats, h.index[-60])
+    first = live_loop.FORECAST_LOG.read_bytes()
+    live_loop.log_forecasts(feats, h.index[-30])
+    second = live_loop.FORECAST_LOG.read_bytes()
+    assert second.startswith(first)  # the earlier bytes are untouched
+    assert second.count(b"\n") > first.count(b"\n")
+
+
 def test_live_report_written(logs_in_tmp):
     h = _frame()
     feats = build_features(h)
