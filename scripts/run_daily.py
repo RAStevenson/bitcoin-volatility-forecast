@@ -81,7 +81,7 @@ def _commit_push():
     day = pd.Timestamp.now(tz="UTC").date()
     tracked = [p for p in ("results/forecasts.csv", "results/evaluation.csv",
                            "results/LIVE.md", "results/OUTLOOK.md",
-                           "results/REVIEW.md")
+                           "results/REVIEW.md", "results/fig_live_daily.png")
                if (ROOT / p).exists()]
     subprocess.run(["git", "add", *tracked], cwd=ROOT, check=True)
     diff = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=ROOT)

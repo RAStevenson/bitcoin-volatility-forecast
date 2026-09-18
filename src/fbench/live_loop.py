@@ -100,6 +100,69 @@ def score_due(hourly, now=None):
     return len(resolved)
 
 
+def day_level_scores(ev):
+    """Per-model error of the day's average volatility, the level that
+    could be one input to a position size, over fully resolved days: the mean absolute
+    log error of the median path's 24-hour average against the realized
+    24-hour average (day_error), and one minus that error over the
+    persistence model's on the same days (day_skill), so a model is
+    compared with the baseline only where both forecast the same days."""
+    e = ev.dropna(subset=["y_true", "q50"]).copy()
+    e["fc"] = np.exp(e["q50"])
+    e["rz"] = np.exp(e["y_true"])
+    d = e.groupby(["model", "origin"]).agg(n=("target_time", "nunique"),
+                                           fc=("fc", "mean"), rz=("rz", "mean"))
+    d = d[d["n"] == HORIZON]
+    err = np.log(d["rz"] / d["fc"]).abs().unstack("model")
+    out = pd.DataFrame({"day_error": err.mean()})
+    if "persistence" in err.columns:
+        base = err["persistence"]
+        skill = {}
+        for m in err.columns:
+            ok = err[m].notna() & base.notna()
+            skill[m] = 1 - err.loc[ok, m].mean() / base[ok].mean()
+        out["day_skill"] = pd.Series(skill)
+    return out
+
+
+def _fig_daily(ev, model):
+    """Save results/fig_live_daily.png, the day-by-day record of the
+    leading model's forecast average against the realized average and
+    against the persistence model's own forecast average, and return its
+    path. One line per series on one axis, fully resolved days only."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    e = ev.dropna(subset=["y_true", "q50"])
+
+    def _by_day(name):
+        m = e[e["model"] == name]
+        d = m.groupby("origin").agg(n=("target_time", "nunique"),
+                                    fc=("q50", lambda s: float(np.exp(s).mean())),
+                                    rz=("y_true", lambda s: float(np.exp(s).mean())))
+        return d[d["n"] == HORIZON]
+
+    d = _by_day(model)
+    base = _by_day("persistence")["fc"].reindex(d.index)
+    fig, ax = plt.subplots(figsize=(9, 3))
+    ax.plot(d.index, d["rz"], color="#0b0b0b", lw=1.5, marker="o", ms=3,
+            label="realized, 24-hour average")
+    ax.plot(d.index, d["fc"], color="#2a78d6", lw=1.5, marker="o", ms=3,
+            label=f"forecast ({model})")
+    ax.plot(d.index, base, color="#eb6834", lw=1.1, ls="--", marker="o",
+            ms=2.5, label="persistence forecast")
+    ax.set_ylabel("annualized volatility")
+    ax.set_ylim(0, float(d["rz"].max()) * 1.3)
+    ax.yaxis.set_major_formatter(matplotlib.ticker.PercentFormatter(1.0, decimals=0))
+    ax.grid(axis="y", lw=0.5)
+    ax.legend(frameon=False, ncol=3, loc="upper left", fontsize=8)
+    path = RESULTS_DIR / "fig_live_daily.png"
+    fig.savefig(path, dpi=120, bbox_inches="tight")
+    plt.close(fig)
+    return path
+
+
 def coverage_by_day(ev):
     """Fraction of hours that landed inside each model's 90% band, one
     number per model per scored day. Hourly rows within a day are
@@ -243,6 +306,7 @@ def write_live_report():
                                 "skill_vs_persistence"]].mean()
         g.insert(0, "days", ev.groupby("model")["origin"]
                  .apply(lambda o: o.dt.date.nunique()))
+        g = g.join(day_level_scores(ev))
         days = ev["origin"].dt.date.nunique()
         lines += [
             f"Forecast days scored: {days}. Resolved rows: {len(ev)}. "
@@ -253,6 +317,23 @@ def write_live_report():
             "completed. The commit history is the timestamp evidence.",
             "",
             g.round(4).sort_values("pinball_mean").to_markdown(), "",
+            "The hourly columns score each of the 24 target hours. The day "
+            "columns score the day's average volatility, which could be one "
+            "input to a position size. day_error is the mean absolute log "
+            "error of the 24 hourly median forecasts' average against the "
+            "realized average, over fully resolved days, so lower is better. "
+            "day_skill is one minus the ratio of that error to the "
+            "persistence model's on the same days, so a positive value beats "
+            "persistence and 1 would be a perfect forecast.", "",
+        ]
+        leader = g["pinball_mean"].idxmin()
+        _fig_daily(ev, leader)
+        lines += [
+            f"The figure below is that day-level record for {leader}, the "
+            "current leader: its forecast of each day's average volatility, "
+            "the average that realized, and the persistence model's own "
+            "forecast of the same average.", "",
+            "![day by day: forecast, realized, yesterday](fig_live_daily.png)", "",
         ]
         if g["days"].nunique() > 1:
             lines += ["The days column is each model's own count of scored "
