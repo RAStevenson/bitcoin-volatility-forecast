@@ -1,9 +1,12 @@
 # volatility-forecast-harness
 
-A benchmarking harness for volatility forecasts. Model families from
+A daily forecast of how volatile BTC-USD will be over the next 24 hours, and
+the harness that scores it against what happens. Model families from
 naive persistence to a deep net produce next-24-hour quantile forecasts of
-hourly realized volatility for BTC-USD, a predicted low/median/high band
-rather than a single number.
+hourly realized volatility, a predicted low/median/high band rather than
+a single number. The leading model's forecast is committed to git each
+day before the 24 hours it describes have ended. A forecast of the coming
+day's volatility could be one input to a position size.
 Evaluation is rolling-origin temporal validation, where the forecast origin
 steps forward through time and each forecast sees only data before it, with
 quantile accuracy (pinball loss) and calibration (how often the truth lands
@@ -17,12 +20,23 @@ persistence baseline, a skill score of 0.186, meaning it removed about a
 fifth of the baseline's error, averaged over forecast horizons of 1 to 24
 hours. The current tournament results, figures, and dataset summary are in
 [results/REPORT.md](results/REPORT.md) (generated, never hand-edited).
+Over the live record, 42 fully resolved days to 2026-09-18, the leading
+model's (N-HiTS) forecast of each day's average volatility missed by
+0.19 in log units, a miss of about a fifth. Persistence missed by 0.31
+over its 45 days, which puts the day-level skill at 0.41 on the 42 days
+both forecast. Those columns and the day-by-day figure are in
+[results/LIVE.md](results/LIVE.md), and the figure shows the pattern of
+the record. The forecast tracks the level of ordinary days and misses
+the spikes on the day they arrive.
 
 ## Why
 
-My private trading research system has a standing rule that no forecast
-ships until it beats a classical baseline out of sample. This repo is that
-discipline as a standalone, reusable harness on public data. The harness is
+The forecast is the product, and the scoring is what makes it worth
+reading. My private trading research system has a standing rule that no
+forecast ships until it beats a classical baseline out of sample, because
+a forecast that cannot beat "tomorrow looks like today" tells you
+nothing you did not already know. This repo applies that rule in the
+open, on public data, and keeps the score every day. The harness is
 series-agnostic within its hourly frame. Models implement a small adapter
 (train window in, quantile forecasts out), and any hourly series with a
 timestamp index plugs in; the load demo below is the demonstration.
@@ -183,8 +197,9 @@ inventing one would repeat the mistake the fixed floor made.
 
 ## Limitations and next steps
 
-The live log is young, 21 scored days as of 2026-08-24, so the LIVE.md
-leaderboard will stay noisy until the sample grows. Its timing
+The live log was young when the calibration check was rebuilt, 21
+scored days as of 2026-08-24, and the LIVE.md leaderboard will stay
+noisy until the sample grows. Its timing
 evidence is the commit history, which the author controls. The
 GitHub push history, recorded on GitHub's side, is the external
 anchor a reader can check it against. Its coverage columns carry
@@ -196,15 +211,18 @@ dependence is unmodeled. The load demo runs the classical models
 only, without N-HiTS, so the cross-series comparison covers seven
 entrants rather than eight.
 The volatility tournament is a single asset, and nothing here shows the
-ranking holds on other coins or other markets. Every model's coverage
-sits below 0.90, none above. That one-sided pattern across all eight is
-a weak but real signal that the bands are narrow, and no per-model test
-will settle it at this sample size. It is the reason the check was
+ranking holds on other coins or other markets. As of 2026-09-18, six of
+the eight models' coverage sits below 0.90 and the other two sit just
+above it. That mostly one-sided pattern is a weak signal that the bands
+are narrow, and no per-model test will settle it at this sample size. It is the reason the check was
 rebuilt rather than removed. The fixed-floor calibration check first
 flagged five models below the 0.80 coverage floor on 2026-08-21, after a
 2026-08-19 forecast day whose realized volatility ran 3.67 times the
-nhits median forecast. The bands stay as each model produces them, and
-the coverage column is the honest record of that.
+nhits median forecast. That day shows the pattern of the whole record.
+The forecast tracks the level of ordinary days, and the rare day that
+breaks the pattern is not signaled by the hours before it. The
+bands stay as each model produces them, and the coverage column is the
+honest record of that.
 The fixed floor was replaced on 2026-08-24 by the evidence-based check
 described above, after its list had stayed populated for nine
 consecutive days without that membership meaning anything. The

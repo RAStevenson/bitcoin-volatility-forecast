@@ -67,6 +67,25 @@ def test_logs_are_appended_not_rewritten(logs_in_tmp):
     assert second.count(b"\n") > first.count(b"\n")
 
 
+def test_day_level_scores_reward_the_right_day_average():
+    idx = pd.date_range("2026-01-01 01:00", periods=48, freq="h", tz="UTC")
+    origins = [idx[0] - pd.Timedelta(hours=1), idx[24] - pd.Timedelta(hours=1)]
+    rows = []
+    for o, block in zip(origins, (idx[:24], idx[24:])):
+        y = np.linspace(-1.2, -0.8, 24)
+        for model, offset in (("exact", 0.0), ("persistence", 0.3)):
+            for k, t in enumerate(block):
+                rows.append({"origin": o, "target_time": t, "horizon": k + 1,
+                             "model": model, "q05": y[k] - 1, "q25": y[k] - .5,
+                             "q50": y[k] + offset, "q75": y[k] + .5,
+                             "q95": y[k] + 1, "y_true": y[k]})
+    d = live_loop.day_level_scores(pd.DataFrame(rows))
+    assert d.loc["exact", "day_error"] == pytest.approx(0.0)
+    assert d.loc["persistence", "day_error"] == pytest.approx(0.3)
+    assert d.loc["exact", "day_skill"] == pytest.approx(1.0)
+    assert d.loc["persistence", "day_skill"] == pytest.approx(0.0)
+
+
 def test_live_report_written(logs_in_tmp):
     h = _frame()
     feats = build_features(h)
@@ -77,6 +96,7 @@ def test_live_report_written(logs_in_tmp):
     assert "persistence" in text and "pinball" in text
     # one scored day -> the calibration check must be gated, not verdicted
     assert "calibration check stays inactive" in text
+    assert "day_error" in text and (logs_in_tmp / "fig_live_daily.png").exists()
 
 
 def _ev(cov_by_model, start="2026-01-01"):
