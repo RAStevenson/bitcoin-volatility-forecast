@@ -86,6 +86,50 @@ def test_day_level_scores_reward_the_right_day_average():
     assert d.loc["persistence", "day_skill"] == pytest.approx(0.0)
 
 
+def _matched_log(days=12, seed=0):
+    """Two models over `days` fully resolved days: one whose median is
+    the truth plus noise, and persistence, whose median is further off."""
+    rng = np.random.default_rng(seed)
+    rows = []
+    for k in range(days):
+        o = pd.Timestamp("2026-01-01 10:00", tz="UTC") + pd.Timedelta(days=k)
+        y = rng.normal(-1, 0.3, 24)
+        for model, spread in (("good", 0.1), ("persistence", 0.4)):
+            q50 = y + rng.normal(0, spread, 24)
+            for h in range(24):
+                rows.append({"origin": o, "target_time": o + pd.Timedelta(hours=h + 1),
+                             "horizon": h + 1, "model": model,
+                             "q05": q50[h] - 0.6, "q25": q50[h] - 0.25,
+                             "q50": q50[h], "q75": q50[h] + 0.25,
+                             "q95": q50[h] + 0.6, "y_true": y[h]})
+    return pd.DataFrame(rows)
+
+
+def test_matched_skill_brackets_its_point_and_beats_persistence():
+    m = live_loop.matched_skill(_matched_log(), "good")
+    assert m["days"] == 12
+    for key in ("hourly", "day"):
+        point, lo, hi = m[key]
+        assert lo <= point <= hi
+        assert point > 0
+    assert live_loop.matched_skill(_matched_log(days=5), "good") is None
+
+
+def test_timing_lines_state_exceptions_and_never_assume_an_audit():
+    assert not any("Every row" in ln for ln in live_loop.timing_lines(None))
+    clean = " ".join(live_loop.timing_lines([]))
+    assert "Every row from an earlier run was committed" in clean
+    assert "except" not in clean
+    late = [{"origin": pd.Timestamp("2026-09-03 10:00", tz="UTC"), "models": 8,
+             "committed": pd.Timestamp("2026-09-04 05:15", tz="UTC"),
+             "minutes_late": 1035.0, "sha": "c9feb5305"}]
+    text = " ".join(live_loop.timing_lines(late))
+    assert "except the forecast day listed below" in text
+    assert "hour starting 10:00 UTC (8 models)" in text and "17 hours" in text
+    short = [dict(late[0], minutes_late=20.0)]
+    assert "20 minutes after" in " ".join(live_loop.timing_lines(short))
+
+
 def test_live_report_written(logs_in_tmp):
     h = _frame()
     feats = build_features(h)

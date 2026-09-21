@@ -1,8 +1,9 @@
 """Run the daily loop end to end, backfilling minutes, rebuilding
 the hourly realized volatility series, resolving the forecasts whose
 target hour has closed, logging a fresh 24-hour forecast for every
-registered model, regenerating the three reports (the review with the
-outlook's claims scored), and committing and pushing the result."""
+registered model, auditing the commit timing of earlier forecasts,
+regenerating the three reports (the review with the outlook's claims
+scored), and committing and pushing the result."""
 import sys
 from pathlib import Path
 
@@ -23,6 +24,7 @@ import fbench.models.sarima_model  # noqa: F401
 from fbench import live_loop
 from fbench.harness_config import DATA_DIR, ROOT
 from fbench.data import minute_store
+from fbench.commit_timing import first_commits, late_groups
 from fbench.data.candle_backfill import backfill
 from fbench.feature_builder import build_features
 from fbench.realized_volatility import hourly_realized_vol
@@ -65,7 +67,21 @@ complete = hourly.index + pd.Timedelta(hours=1) <= pd.Timestamp.now(tz="UTC")
 origin = hourly.loc[complete, "log_rv"].dropna().index[-1]
 logged = step("log forecasts", lambda: live_loop.log_forecasts(feats, origin))
 print(f"  forecast rows logged: {logged} (origin {origin})")
-step("live report", live_loop.write_live_report)
+def _audit():
+    """Runs the commit-timing audit over the forecast log's history,
+    returning the late forecast days, or None if git fails, so a broken
+    audit costs the scoreboard its timing claim rather than stopping the
+    day's forecast."""
+    try:
+        return late_groups(first_commits(ROOT))
+    except Exception as e:  # noqa: BLE001
+        print(f"  timing audit skipped: {e}")
+        return None
+
+
+late = step("timing audit", _audit)
+print(f"  late forecast days: {'not audited' if late is None else len(late)}")
+step("live report", lambda: live_loop.write_live_report(late=late))
 from fbench.outlook_generator import write_outlook  # noqa: E402
 step("outlook", lambda: write_outlook(hourly, last_price=last_close))
 from fbench.review_generator import write_review  # noqa: E402
