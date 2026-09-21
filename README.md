@@ -96,6 +96,7 @@ python scripts/run_daily.py        # the live loop: score yesterday, log
                                    #   (yesterday's forecast vs realized,
                                    #   and the outlook's own claims scored
                                    #   over every resolved day), LIVE.md
+                                   #   (with the timing audit's exceptions)
                                    #   and OUTLOOK.md, commit
 python scripts/run_verify_timing.py  # audit the live log's evidence claim
                                      #   against git history: exits 1 if any

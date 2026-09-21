@@ -9,7 +9,7 @@ from scipy import stats
 
 from fbench.harness_config import (CALIBRATION_ALPHA, CALIBRATION_PERSISTENCE_DAYS,
                            COV90_TARGET, HORIZON, MIN_CALIBRATION_DAYS,
-                           QCOLS, RESULTS_DIR)
+                           QCOLS, QUANTILES, RESULTS_DIR)
 from fbench.models.forecast_model import REGISTRY
 from fbench.quantile_scoring import add_skill, score
 
@@ -125,6 +125,72 @@ def day_level_scores(ev):
     return out
 
 
+def matched_skill(ev, model, base="persistence", min_days=MIN_CALIBRATION_DAYS):
+    """Skill of model over base on the fully resolved days both forecast,
+    with a 95% interval, for two scores: the hourly pinball loss pooled
+    over those days, and the day-level error of the 24-hour average (the
+    day_error column). Each skill is the mean day-by-day improvement over
+    base divided by base's mean, and its interval is the t-interval of
+    that mean improvement over the same denominator, which treats each
+    day as independent of the last. Returns None below min_days matched
+    days or when base is absent."""
+    e = ev.dropna(subset=["y_true", *QCOLS]).copy()
+    y = e["y_true"].to_numpy()
+    loss = sum(np.maximum(a * (y - e[c].to_numpy()), (a - 1) * (y - e[c].to_numpy()))
+               for c, a in zip(QCOLS, QUANTILES)) / len(QUANTILES)
+    e["pb"], e["fc"], e["rz"] = loss, np.exp(e["q50"]), np.exp(e["y_true"])
+    d = e.groupby(["model", "origin"]).agg(n=("target_time", "nunique"),
+                                           pb=("pb", "mean"), fc=("fc", "mean"),
+                                           rz=("rz", "mean"))
+    d = d[d["n"] == HORIZON]
+    d["err"] = np.log(d["rz"] / d["fc"]).abs()
+    if base not in d.index.get_level_values("model"):
+        return None
+    both = d.loc[model].join(d.loc[base], lsuffix="_m", rsuffix="_b", how="inner")
+    n = len(both)
+    if n < min_days:
+        return None
+    t = float(stats.t.ppf(0.975, n - 1))
+    out = {"days": n}
+    for key, col in (("hourly", "pb"), ("day", "err")):
+        diff = both[f"{col}_b"] - both[f"{col}_m"]
+        scale = float(both[f"{col}_b"].mean())
+        half = t * float(diff.std(ddof=1)) / np.sqrt(n)
+        mid = float(diff.mean())
+        out[key] = ((mid) / scale, (mid - half) / scale, (mid + half) / scale)
+    return out
+
+
+def timing_lines(late):
+    """The scoreboard's statement about when its rows were committed. late
+    is the list from commit_timing.late_groups, empty when the audit found
+    nothing, or None when no audit ran, in which case the claim is left to
+    scripts/run_verify_timing.py rather than asserted."""
+    if late is None:
+        return ["The commit history is the timestamp evidence for every row "
+                "here, and scripts/run_verify_timing.py audits it.", ""]
+    audit = ("Each run audits every earlier commit of the forecast log, so "
+             "a day's rows are checked on the run after the one that "
+             "committed them. The commit history is the timestamp evidence.")
+    claim = ("Every row from an earlier run was committed to git before its "
+             "target hour completed")
+    if not late:
+        return [f"{claim}. {audit}", ""]
+    which = "day" if len(late) == 1 else "days"
+    lines = [f"{claim}, except the forecast {which} listed below. {audit}", ""]
+    for g in late:
+        mins = g["minutes_late"]
+        delay = (f"{mins / 60:.0f} hours" if mins >= 60
+                 else f"{mins:.0f} minutes")
+        lines.append(
+            f"- The {g['origin']:%Y-%m-%d} forecast, made from data through "
+            f"the hour starting {g['origin']:%H:00} UTC ({g['models']} "
+            f"models), was first committed at "
+            f"{g['committed']:%Y-%m-%d %H:%M} UTC, {delay} after its first "
+            f"target hour completed.")
+    return lines + [""]
+
+
 def _fig_daily(ev, model):
     """Save results/fig_live_daily.png, the day-by-day record of the
     leading model's forecast average against the realized average and
@@ -137,6 +203,8 @@ def _fig_daily(ev, model):
     e = ev.dropna(subset=["y_true", "q50"])
 
     def _by_day(name):
+        """One row per fully resolved day for model name, carrying the
+        day's average median forecast and average realized volatility."""
         m = e[e["model"] == name]
         d = m.groupby("origin").agg(n=("target_time", "nunique"),
                                     fc=("q50", lambda s: float(np.exp(s).mean())),
@@ -289,11 +357,13 @@ def calibration_lines(ev, days):
             "honest record of that.", ""]
 
 
-def write_live_report():
+def write_live_report(late=None):
     """Write results/LIVE.md from the forecast and evaluation logs and
     return its path. The reader gets each model's mean scores against its
     own count of scored days, how many logged rows are still waiting on an
-    outcome, and the calibration verdict."""
+    outcome, the leader's matched-day skill with its interval, and the
+    calibration verdict. late is the timing audit's result, passed by the
+    daily run; see timing_lines."""
     ev = _load(EVAL_LOG, LOG_COLS + ["y_true"])
     fc = _load(FORECAST_LOG, LOG_COLS)
     lines = ["# Live scoreboard (generated)", ""]
@@ -313,9 +383,7 @@ def write_live_report():
             f"Pending (logged, outcome not yet observed): "
             f"{max(0, len(fc) - len(ev))}.",
             "",
-            "Every row here was committed to git before its target hour "
-            "completed. The commit history is the timestamp evidence.",
-            "",
+            *timing_lines(late),
             g.round(4).sort_values("pinball_mean").to_markdown(), "",
             "The hourly columns score each of the 24 target hours. The day "
             "columns score the day's average volatility, which could be one "
@@ -326,20 +394,39 @@ def write_live_report():
             "persistence model's on the same days, so a positive value beats "
             "persistence and 1 would be a perfect forecast.", "",
         ]
+        if g["days"].nunique() > 1:
+            lines += ["The days column is each model's own count of scored "
+                      "days. Models that joined the loop later are averaged "
+                      "over fewer days, so the rows above are not "
+                      "sample-matched.", ""]
         leader = g["pinball_mean"].idxmin()
+        m = matched_skill(ev, leader) if leader != "persistence" else None
+        if m:
+            (hs, hl, hh), (ds, dl, dh) = m["hourly"], m["day"]
+            lines += [
+                f"Matched on the {m['days']} fully resolved days that both "
+                f"{leader} and persistence forecast, the skill of {leader} "
+                f"over persistence is {hs:.2f} on the hourly pinball loss "
+                f"(95% interval {hl:.2f} to {hh:.2f}) and {ds:.2f} on the "
+                f"day-level error ({dl:.2f} to {dh:.2f}). Pinball loss "
+                "scores the whole low-to-high forecast band, not just its "
+                "middle, and lower is better. The hourly figure pools the "
+                "loss over those days, while the table's "
+                "skill_vs_persistence averages the 24 per-hour skills, each "
+                "model over its own days. Each interval comes from the "
+                "day-to-day spread of the gap between the two models' daily "
+                "scores and treats each day as independent of the last. An "
+                "interval that stays above zero means that, on these days, "
+                "the lead over persistence is larger than day-to-day noise "
+                "would explain.", ""]
         _fig_daily(ev, leader)
         lines += [
             f"The figure below is that day-level record for {leader}, the "
             "current leader: its forecast of each day's average volatility, "
             "the average that realized, and the persistence model's own "
             "forecast of the same average.", "",
-            "![day by day: forecast, realized, yesterday](fig_live_daily.png)", "",
+            "![day by day: forecast, realized, persistence](fig_live_daily.png)", "",
         ]
-        if g["days"].nunique() > 1:
-            lines += ["The days column is each model's own count of scored "
-                      "days. Models that joined the loop later are averaged "
-                      "over fewer days, so the rows above are not "
-                      "sample-matched.", ""]
         lines += calibration_lines(ev, days)
     path = RESULTS_DIR / "LIVE.md"
     path.write_text("\n".join(lines) + "\n")
