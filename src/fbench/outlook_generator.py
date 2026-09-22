@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from fbench.harness_config import ANNUALIZER, QCOLS, QUANTILES, RESULTS_DIR
-from fbench.live_loop import EVAL_LOG, FORECAST_LOG, _load
+from fbench.daily_run import EVAL_LOG, FORECAST_LOG, _load
 from fbench.quantile_scoring import score
 
 LOCAL_TZ = "America/Chicago"
@@ -34,13 +34,13 @@ def _live_leader(ev):
     # Three origins is a deliberately lower bar than the 10-day
     # calibration gate: picking which model narrates the outlook only
     # needs a best guess, while the calibration line is a published
-    # verdict, so that one waits for the larger sample.
+    # result, so that one waits for the larger sample.
     if ev["origin"].nunique() >= 3:
         return score(ev).groupby("model")["pinball_mean"].mean().idxmin()
     return None
 
 
-def _headline_model():
+def _leading_model():
     """Pick the model that narrates the outlook and return it with the
     short phrase explaining the choice, which is the live pinball leader
     once three origins have been scored and FALLBACK_MODEL before that."""
@@ -48,11 +48,11 @@ def _headline_model():
                           *QCOLS, "y_true"])
     leader = _live_leader(ev)
     if leader is not None:
-        return leader, "the model currently leading the live scoreboard"
+        return leader, "the model currently leading the daily record"
     return FALLBACK_MODEL, "the backtest winner while the live sample is young"
 
 
-def headline_model_asof(ev, origin):
+def leading_model_asof(ev, origin):
     """The model that narrated the outlook issued at `origin`, re-derived
     from the scores that existed then (origins strictly earlier)."""
     leader = _live_leader(ev[ev["origin"] < origin])
@@ -158,7 +158,7 @@ def realized_claims(target_rv, ctx):
 
 
 def build_outlook(hourly, last_price=None):
-    """Return the Markdown body of the outlook, turning the headline
+    """Return the Markdown body of the outlook, turning the leading
     model's latest 24-hour quantiles into typical hourly and daily move
     sizes, a regime word set against the past year, and the loud and calm
     hours ahead. Without last_price the moves are quoted in percent only,
@@ -167,7 +167,7 @@ def build_outlook(hourly, last_price=None):
                               *QCOLS])
     if fc.empty:
         return "# Volatility outlook\n\nNo forecasts logged yet.\n"
-    model, model_why = _headline_model()
+    model, model_why = _leading_model()
     origin = fc["origin"].max()
     today = fc[(fc["origin"] == origin) & (fc["model"] == model)].copy()
     today = today.sort_values("target_time")

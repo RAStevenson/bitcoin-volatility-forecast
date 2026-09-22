@@ -6,7 +6,7 @@ Results file: backtest_20260805.parquet. All metrics are on the log scale of the
 - hours: 26412, span 2023-08-01 00:00:00+00:00 to 2026-08-05 11:00:00+00:00
 - NaN target hours (data gaps, excluded from training and scoring): 19
 
-## Leaderboard, mean over horizons 1-24
+## Results table, mean over horizons 1-24
 
 | model                |   pinball_mean |    mae |   cov50 |   cov90 |   skill_vs_persistence |
 |:---------------------|---------------:|-------:|--------:|--------:|-----------------------:|

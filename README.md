@@ -13,12 +13,12 @@ against the git history and lists the exceptions in
 validation, where the forecast origin steps forward through time and each
 forecast sees only data before it, with quantile accuracy (pinball loss)
 and calibration (how often the truth lands inside the band) scored
-separately. Every model is scored against two honest baselines,
+separately. Every model is scored against two baselines,
 persistence and the HAR (heterogeneous autoregressive) regression
-standard in volatility work, and the leaderboard shows which models fail
+standard in volatility work, and the results table shows which models fail
 to beat them.
 
-Over the live record, 46 fully resolved days to 2026-09-22, the leading
+Over the 46 fully resolved days to 2026-09-22, the leading
 model, N-HiTS, forecast each day's average volatility with a miss of
 0.19 in log units, a miss of about a fifth. Persistence missed by 0.31
 over its 49 days. On the 46 days both forecast, the day-level skill is
@@ -30,7 +30,7 @@ Those columns and the day-by-day figure are in
 the record. The forecast tracks the level of ordinary days and misses
 the spikes on the day they arrive.
 
-In the pinned 2026-08-05 backtest, the best entrant (N-HiTS, the deep
+In the pinned 2026-08-05 backtest, the best model (N-HiTS, the deep
 net) scored a mean pinball loss of 0.0959 against 0.1180 for the
 persistence baseline, a skill score of 0.186, meaning it removed about a
 fifth of the baseline's error, averaged over forecast horizons of 1 to 24
@@ -66,7 +66,7 @@ saved candle and rebuilds the dataset from the exchanges.
 
 ## Models
 
-| entrant | family |
+| model | family |
 |---|---|
 | persistence, seasonal persistence | naive baselines |
 | HAR (plain and hour-of-day seasonal) | econometric baseline (Corsi-style) |
@@ -75,8 +75,8 @@ saved candle and rebuilds the dataset from the exchanges.
 | XGBoost | gradient boosting, native quantile objective |
 | N-HiTS | deep learning (pytorch-forecasting), native quantile loss |
 
-The leaderboards and the live log use short code names for these
-entrants: `gbm` is XGBoost, `sarima` is SARIMAX, `har` and
+The results tables and the forecast log use short code names for these
+models: `gbm` is XGBoost, `sarima` is SARIMAX, `har` and
 `har_seasonal` are the two HAR variants, and `nhits` is N-HiTS.
 
 A second dataset, German hourly load (OPSD/ENTSO-E, CC-BY 4.0), runs
@@ -103,14 +103,14 @@ python scripts/run_vol_report.py   # re-score an existing backtest parquet
 python scripts/run_load_demo.py    # generality demo: German hourly load
                                    #   through the same engine, writes
                                    #   LOAD_REPORT.md
-python scripts/run_daily.py        # the live loop: score yesterday, log
+python scripts/run_daily.py        # the daily run: score yesterday, log
                                    #   today, write results/REVIEW.md
                                    #   (yesterday's forecast vs realized,
                                    #   and the outlook's own claims scored
                                    #   over every resolved day), LIVE.md
                                    #   (with the timing audit's exceptions)
                                    #   and OUTLOOK.md, commit and push
-python scripts/run_verify_timing.py  # audit the live log's evidence claim
+python scripts/run_verify_timing.py  # audit the forecast log's timing claim
                                      #   against git history: exits 1 if any
                                      #   forecast row was first committed
                                      #   after its target hour completed
@@ -142,7 +142,7 @@ never shows a model data past its origin. It also pins the calibration
 check: that a rejection streak shorter than the three-consecutive-day
 requirement is reported as pending rather than flagged, that the multiple-comparison correction
 scales with the number of models tested, and that a model whose daily
-coverage has no spread gets no verdict at all.
+coverage has no spread gets no result at all.
 
 ## The calibration check
 
@@ -185,7 +185,7 @@ farther from 0.90 than their own spread explains. It then divides the
 because testing eight at once at an uncorrected 5% level produces a
 false rejection often.
 A model is reported only after it rejects on
-three consecutive scored days. Earlier verdicts are recomputed from
+three consecutive scored days. Earlier results are recomputed from
 `evaluation.csv` rather than stored, so the whole check is reproducible
 from the log with no state file that could drift out of step with the
 data.
@@ -194,7 +194,7 @@ Replayed over every scored day, the check stayed silent through
 2026-08-30, and not by a wide margin. `gbm` rejected on 2026-08-26 and
 2026-08-27, `prophet` on 2026-08-27 and 2026-08-28, and each streak
 broke one day short of the report line. A fresh `gbm` streak began on
-2026-08-29, and on 2026-08-31 the check fired for the first time,
+2026-08-29. On 2026-08-31 the check reported a model for the first time,
 naming `gbm` at a coverage of 0.7932 over its 28 scored days, a
 p-value of 0.0058 against the corrected threshold of 0.0063. A p-value
 is the chance of a gap that large, in either direction, arising from
@@ -205,7 +205,7 @@ stay as the model produces them, and the flag is the published record
 that they are too narrow.
 
 The check stays silent in two cases on purpose. A model with fewer than
-10 scored days gets no verdict, because three clean quiet days once
+10 scored days gets no result, because three clean quiet days once
 produced a coverage of 1.0 from models the year-long backtest shows are
 calibrated. A model whose daily coverage has no spread at all also gets
 none, because the test would have no uncertainty to divide by, and
@@ -213,12 +213,12 @@ inventing one would repeat the mistake the fixed floor made.
 
 ## Limitations and next steps
 
-The live record is 49 scored days as of 2026-09-22, and the LIVE.md
-leaderboard will stay noisy until the sample grows.
+The daily record is 49 scored days as of 2026-09-22, and the LIVE.md
+results table will stay noisy until the sample grows.
 
-The live log's timing evidence is the commit history, which I control.
-The GitHub push history, recorded on GitHub's side, is the external
-anchor a reader can check it against. The loop missed 2026-09-02
+The forecast log's timing evidence is the commit history, which I control.
+The GitHub push history, recorded on GitHub's side, is an independent
+record a reader can check it against. The loop missed 2026-09-02
 entirely after an unplanned restart, and the 2026-09-03 forecast was
 committed late, which LIVE.md lists.
 
@@ -242,5 +242,5 @@ pattern is not signaled by the hours before it.
 The volatility tournament is a single asset, and nothing here shows the
 ranking holds on other coins or other markets. The load demo runs the
 classical models only, without N-HiTS, so the cross-series comparison
-covers seven entrants rather than eight. The remaining next step is
+covers seven models rather than eight. The remaining next step is
 adding N-HiTS to the load demo.

@@ -1,9 +1,10 @@
-"""Audit of the live log's evidence claim against git history: for every
-(origin, model) forecast group in results/forecasts.csv, the commit that
-first added it, and which groups were first committed after their first
-target hour completed. The daily loop runs it before writing LIVE.md so
-the scoreboard states its exceptions instead of a blanket claim, and
-scripts/run_verify_timing.py runs it as a standalone check."""
+"""Audit of the forecast log's timing claim against git history, the
+claim that every forecast row was committed before its first target hour
+ended: for every (origin, model) forecast group in results/forecasts.csv,
+the commit that first added it, and which groups were first committed
+after their first target hour completed. The daily run does this before
+writing LIVE.md so that file states its exceptions instead of a blanket
+claim, and scripts/run_verify_timing.py runs it as a standalone check."""
 import subprocess
 
 import pandas as pd

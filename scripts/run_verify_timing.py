@@ -1,9 +1,10 @@
-"""Audit the evidence claim behind the live log by walking the commit
-history of results/forecasts.csv and checking that every (origin, model)
-group was committed before its first target hour completed. It reads git
-history only, prints a line per forecast day with its margin, and exits
-non-zero if any group was late, so it can gate a build. The daily loop
-runs the same audit and prints its exceptions in LIVE.md."""
+"""Audit the timing claim behind the forecast log, that every forecast row
+was committed before its first target hour ended, by walking the commit
+history of results/forecasts.csv and checking every (origin, model)
+group. It reads git history only, prints a line per forecast day with its
+margin, and exits non-zero if any group was late, so a CI job can fail on
+it. The daily run runs the same audit and prints its exceptions in
+LIVE.md."""
 import sys
 from pathlib import Path
 
@@ -17,7 +18,7 @@ from fbench.commit_timing import first_commits, late_groups
 from fbench.harness_config import ROOT
 
 parser = argparse.ArgumentParser(
-    description="Audit the live log's evidence claim: every forecast row "
+    description="Audit the forecast log's timing claim: every forecast row "
                 "was committed to git before its target hour completed. "
                 "Finds the first commit that added each (origin, model) "
                 "group and compares that commit's time against the group's "

@@ -21,7 +21,7 @@ import fbench.models.nhits_model  # noqa: F401  (added 2026-08-06 after it led
 import fbench.models.persistence_model  # noqa: F401
 import fbench.models.prophet_model  # noqa: F401
 import fbench.models.sarima_model  # noqa: F401
-from fbench import live_loop
+from fbench import daily_run
 from fbench.harness_config import DATA_DIR, ROOT
 from fbench.data import minute_store
 from fbench.commit_timing import first_commits, late_groups
@@ -56,7 +56,7 @@ def _build_rv():
 
 
 hourly, last_close = step("rebuild rv", _build_rv)
-resolved = step("score due", lambda: live_loop.score_due(hourly))
+resolved = step("score due", lambda: daily_run.score_due(hourly))
 print(f"  rows resolved: {resolved}")
 
 feats = build_features(hourly)
@@ -65,12 +65,12 @@ feats = build_features(hourly)
 # see a partial hour as its last observation.
 complete = hourly.index + pd.Timedelta(hours=1) <= pd.Timestamp.now(tz="UTC")
 origin = hourly.loc[complete, "log_rv"].dropna().index[-1]
-logged = step("log forecasts", lambda: live_loop.log_forecasts(feats, origin))
+logged = step("log forecasts", lambda: daily_run.log_forecasts(feats, origin))
 print(f"  forecast rows logged: {logged} (origin {origin})")
 def _audit():
     """Runs the commit-timing audit over the forecast log's history,
     returning the late forecast days, or None if git fails, so a broken
-    audit costs the scoreboard its timing claim rather than stopping the
+    audit costs LIVE.md its timing claim rather than stopping the
     day's forecast."""
     try:
         return late_groups(first_commits(ROOT))
@@ -81,7 +81,7 @@ def _audit():
 
 late = step("timing audit", _audit)
 print(f"  late forecast days: {'not audited' if late is None else len(late)}")
-step("live report", lambda: live_loop.write_live_report(late=late))
+step("live report", lambda: daily_run.write_live_report(late=late))
 from fbench.outlook_generator import write_outlook  # noqa: E402
 step("outlook", lambda: write_outlook(hourly, last_price=last_close))
 from fbench.review_generator import write_review  # noqa: E402
