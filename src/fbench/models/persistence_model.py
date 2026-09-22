@@ -36,7 +36,7 @@ class Persistence(BaseForecastModel):
 @register
 class SeasonalPersistence(BaseForecastModel):
     """Forecast = log RV at the same hour one day earlier. The day-ahead
-    seasonal naive; the honest floor for a seasonal series."""
+    seasonal naive; the floor for a seasonal series."""
     name = "seasonal_persistence"
 
     def fit(self, train):

@@ -1,4 +1,4 @@
-"""The Prophet entrant, additive trend plus Fourier seasonality fit on
+"""The Prophet model, additive trend plus Fourier seasonality fit on
 log RV."""
 
 import numpy as np

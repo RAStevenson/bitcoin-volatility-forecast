@@ -1,4 +1,4 @@
-"""The gradient boosted tree entrant, XGBoost quantile regression over
+"""The gradient boosted tree model, XGBoost quantile regression over
 the engineered feature columns."""
 
 import pandas as pd

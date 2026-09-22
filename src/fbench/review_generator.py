@@ -7,8 +7,8 @@ import numpy as np
 import pandas as pd
 
 from fbench.harness_config import QCOLS, RESULTS_DIR
-from fbench.live_loop import EVAL_LOG, _load
-from fbench.outlook_generator import LOCAL_TZ, headline_model_asof
+from fbench.daily_run import EVAL_LOG, _load
+from fbench.outlook_generator import LOCAL_TZ, leading_model_asof
 from fbench.outlook_scoring import record_lines, score_outlook
 
 # Realized-to-forecast ratio of the day's average. Inside the band the
@@ -31,7 +31,7 @@ def build_review(hourly=None):
     fully resolved forecast day against what realized and ranking that
     day's error among every scored day. The narrating model is the one
     that narrated the outlook on that day, re-derived from the scores
-    available then rather than taken from today's leaderboard. Given the
+    available then rather than taken from today's results table. Given the
     hourly realized series, the review closes with the outlook's own
     claims scored over every resolved day; without it that section is
     omitted."""
@@ -44,7 +44,7 @@ def build_review(hourly=None):
     full = counts[counts == counts.max()].index
     origin = full.max()
     day = ev[ev["origin"] == origin]
-    model = headline_model_asof(ev, origin)
+    model = leading_model_asof(ev, origin)
     h = day[day["model"] == model].sort_values("target_time").copy()
     for c in QCOLS + ["y_true"]:
         h[c] = np.exp(h[c])  # log RV -> annualized vol
@@ -52,7 +52,7 @@ def build_review(hourly=None):
     fc_avg = float(h["q50"].mean())
     rz_avg = float(h["y_true"].mean())
     ratio = rz_avg / fc_avg
-    verdict = ("on target" if ON_TARGET[0] <= ratio <= ON_TARGET[1]
+    outcome = ("on target" if ON_TARGET[0] <= ratio <= ON_TARGET[1]
                else "too low" if ratio > ON_TARGET[1] else "too high")
     inside = ((h["q05"] <= h["y_true"]) & (h["y_true"] <= h["q95"]))
     above = h["y_true"] > h["q95"]
@@ -84,7 +84,7 @@ def build_review(hourly=None):
     lines = [
         f"# Yesterday in review - forecast issued {day_local} (generated)",
         "",
-        f"**The forecast was {verdict}.** The {model} median averaged "
+        f"**The forecast was {outcome}.** The {model} median averaged "
         f"{fc_avg:.0%} annualized volatility over the 24 hours; realized "
         f"averaged {rz_avg:.0%}, {ratio:.2f}x the forecast.",
         "",

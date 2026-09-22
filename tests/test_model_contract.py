@@ -21,7 +21,7 @@ def _train(n=24 * 400, seed=1):
 
 
 # Underscore names are test doubles other test modules register; the
-# live loop skips them the same way, and without this the case list
+# daily run skips them the same way, and without this the case list
 # depended on which test file pytest collected first.
 @pytest.mark.parametrize("name", sorted(n for n in REGISTRY
                                         if not n.startswith("_")))

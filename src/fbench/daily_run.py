@@ -1,7 +1,7 @@
-"""Runs the live forecast loop over results/forecasts.csv and
-results/evaluation.csv, and builds results/LIVE.md, the published
-scoreboard of how each model is doing on hours none of them saw at fit
-time. Logged forecast rows are pre-outcome evidence, so nothing here ever
+"""The daily run over results/forecasts.csv and results/evaluation.csv:
+logs today's forecasts, scores the rows whose hours have passed, and
+builds results/LIVE.md, the published record of how each model is doing
+on hours none of them saw at fit time. Logged forecast rows are pre-outcome evidence, so nothing here ever
 rewrites one."""
 import numpy as np
 import pandas as pd
@@ -162,7 +162,7 @@ def matched_skill(ev, model, base="persistence", min_days=MIN_CALIBRATION_DAYS):
 
 
 def timing_lines(late):
-    """The scoreboard's statement about when its rows were committed. late
+    """LIVE.md's statement about when its rows were committed. late
     is the list from commit_timing.late_groups, empty when the audit found
     nothing, or None when no audit ran, in which case the claim is left to
     scripts/run_verify_timing.py rather than asserted."""
@@ -240,13 +240,13 @@ def coverage_by_day(ev):
     return inside.groupby([e["model"], e["origin"].dt.date]).mean()
 
 
-def coverage_verdicts(ev):
+def coverage_test_results(ev):
     """Two-sided t-test of each model's day-level coverage against the
     target, Bonferroni-corrected across the models tested, since testing
     eight at once produces a false rejection often at an uncorrected 5%.
 
     A model with fewer than MIN_CALIBRATION_DAYS scored days gets no
-    verdict. Neither does one whose daily coverage has no spread at all:
+    result. Neither does one whose daily coverage has no spread at all:
     the test then has no uncertainty to divide by, and inventing one
     would be the same mistake as the fixed floor it replaced."""
     cov = coverage_by_day(ev)
@@ -275,7 +275,7 @@ def coverage_verdicts(ev):
 def rejection_streaks(ev, cap=CALIBRATION_PERSISTENCE_DAYS):
     """How many consecutive recent scored days the corrected test has
     rejected each model on, counted back from the latest day and stopped
-    at cap. Earlier verdicts are re-derived from the log rather than
+    at cap. Earlier test_results are re-derived from the log rather than
     stored, so the whole check stays reproducible from evaluation.csv
     with no state file to drift out of step with the data."""
     days = sorted(ev["origin"].dt.date.unique())
@@ -284,7 +284,7 @@ def rejection_streaks(ev, cap=CALIBRATION_PERSISTENCE_DAYS):
         if k >= len(days):
             break
         window = ev if k == 0 else ev[ev["origin"].dt.date <= days[-1 - k]]
-        rejected = {m for m, v in coverage_verdicts(window).items()
+        rejected = {m for m, v in coverage_test_results(window).items()
                     if v["reject"]}
         if k == 0:
             streaks = {m: 1 for m in rejected}
@@ -298,16 +298,16 @@ def rejection_streaks(ev, cap=CALIBRATION_PERSISTENCE_DAYS):
     return streaks
 
 
-def _figures(model, verdicts):
+def _figures(model, test_results):
     """Format one model's coverage and p-value as the short phrase the
     calibration sentences splice in, so a flagged model and a pending one
     read the same way."""
-    v = verdicts[model]
+    v = test_results[model]
     return f"{model} cov90 {v['cov90']:.4f}, p {v['p']:.4f}"
 
 
 def calibration_lines(ev, days):
-    """Calibration verdict for the live report. Reports a model only
+    """Calibration result for the live report. Reports a model only
     when the corrected test rejects it on CALIBRATION_PERSISTENCE_DAYS
     consecutive scored days, so a single noisy day cannot raise an alarm
     and a real departure still surfaces within days."""
@@ -316,20 +316,20 @@ def calibration_lines(ev, days):
         return [f"The calibration check stays inactive until {need} scored "
                 f"days ({days} so far), the point at which it can both "
                 f"estimate a model's day-to-day coverage spread over "
-                f"{MIN_CALIBRATION_DAYS} days and require that verdict to "
+                f"{MIN_CALIBRATION_DAYS} days and require that result to "
                 f"repeat on {CALIBRATION_PERSISTENCE_DAYS} consecutive "
                 "days. Coverage columns are provisional; each day "
                 "contributes ~24 dependent hourly rows, so the effective "
                 "sample is the day count.", ""]
 
-    verdicts = coverage_verdicts(ev)
-    if not verdicts:
+    test_results = coverage_test_results(ev)
+    if not test_results:
         return ["The calibration check found no model with enough scored "
                 f"days to test ({MIN_CALIBRATION_DAYS} required).", ""]
-    alpha = next(iter(verdicts.values()))["alpha"]
+    alpha = next(iter(test_results.values()))["alpha"]
     method = (f"The test is two-sided on each model's daily coverage "
               f"against {COV90_TARGET:.2f} over {days} scored days, "
-              f"Bonferroni-corrected across the {len(verdicts)} models "
+              f"Bonferroni-corrected across the {len(test_results)} models "
               f"tested (per-model alpha {alpha:.4f}).")
 
     streaks = rejection_streaks(ev)
@@ -339,7 +339,7 @@ def calibration_lines(ev, days):
         pending = sorted(streaks)
         if pending:
             parts = "; ".join(
-                f"{_figures(m, verdicts)}, day {streaks[m]} of "
+                f"{_figures(m, test_results)}, day {streaks[m]} of "
                 f"{CALIBRATION_PERSISTENCE_DAYS}" for m in pending)
             return [f"The calibration check passes, flagging no model. It "
                     f"rejects {parts}, short of the "
@@ -349,12 +349,12 @@ def calibration_lines(ev, days):
                 f"90% coverage separable from {COV90_TARGET:.2f} by more "
                 f"than sampling noise. {method}", ""]
 
-    parts = "; ".join(_figures(m, verdicts) for m in sorted(flagged))
+    parts = "; ".join(_figures(m, test_results) for m in sorted(flagged))
     return [f"The calibration check flags day-level 90% coverage away from "
             f"{COV90_TARGET:.2f} on {CALIBRATION_PERSISTENCE_DAYS} "
             f"consecutive scored days: {parts}. {method} Bands are left as "
             "each model produces them, and the coverage column is the "
-            "honest record of that.", ""]
+            "record of that.", ""]
 
 
 def write_live_report(late=None):
@@ -362,11 +362,11 @@ def write_live_report(late=None):
     return its path. The reader gets each model's mean scores against its
     own count of scored days, how many logged rows are still waiting on an
     outcome, the leader's matched-day skill with its interval, and the
-    calibration verdict. late is the timing audit's result, passed by the
+    calibration result. late is the timing audit's result, passed by the
     daily run; see timing_lines."""
     ev = _load(EVAL_LOG, LOG_COLS + ["y_true"])
     fc = _load(FORECAST_LOG, LOG_COLS)
-    lines = ["# Live scoreboard (generated)", ""]
+    lines = ["# Daily record (generated)", ""]
     if ev.empty:
         lines += ["No resolved forecasts yet. First forecasts logged: "
                   f"{fc['origin'].min() if len(fc) else 'none'}."]

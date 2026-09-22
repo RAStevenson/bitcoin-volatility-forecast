@@ -46,7 +46,7 @@ def write_report(scores, hourly, results_path, out_name="REPORT.md",
                  fig_prefix="fig", title="Tournament report",
                  value_label="median annualized RV", dataset_stats=None):
     """Write the tournament report and its two figures into results/ and
-    return the report path, giving the reader a leaderboard averaged over
+    return the report path, giving the reader a results table averaged over
     horizons 1 to 24, the horizon 1 and horizon 24 tables, and the caveats
     this run's numbers need. Without dataset_stats the Dataset section
     describes the hourly file as it stands now rather than the data the
@@ -81,7 +81,7 @@ def write_report(scores, hourly, results_path, out_name="REPORT.md",
         f"{dataset_stats['dataset_span_end']}",
         f"- NaN target hours (data gaps, excluded from training and "
         f"scoring): {dataset_stats['dataset_nan_hours']}", "",
-        "## Leaderboard, mean over horizons 1-24", "",
+        "## Results table, mean over horizons 1-24", "",
         lead.round(4).to_markdown(), "",
         "## Horizon 1", "", h1.round(4).to_markdown(), "",
         "## Horizon 24", "", h24.round(4).to_markdown(), "",

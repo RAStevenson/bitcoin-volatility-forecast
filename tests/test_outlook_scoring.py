@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 import fbench.models.persistence_model  # noqa: F401  (registers baselines)
-from fbench import live_loop, outlook_generator, outlook_scoring, review_generator
+from fbench import daily_run, outlook_generator, outlook_scoring, review_generator
 from fbench.feature_builder import build_features
 from fbench.harness_config import HORIZON
 
@@ -98,15 +98,15 @@ def test_partially_resolved_day_is_not_scored():
 
 
 def test_review_carries_the_outlook_record(tmp_path, monkeypatch):
-    monkeypatch.setattr(live_loop, "FORECAST_LOG", tmp_path / "forecasts.csv")
-    monkeypatch.setattr(live_loop, "EVAL_LOG", tmp_path / "evaluation.csv")
-    monkeypatch.setattr(live_loop, "RESULTS_DIR", tmp_path)
-    monkeypatch.setattr(review_generator, "EVAL_LOG", live_loop.EVAL_LOG)
+    monkeypatch.setattr(daily_run, "FORECAST_LOG", tmp_path / "forecasts.csv")
+    monkeypatch.setattr(daily_run, "EVAL_LOG", tmp_path / "evaluation.csv")
+    monkeypatch.setattr(daily_run, "RESULTS_DIR", tmp_path)
+    monkeypatch.setattr(review_generator, "EVAL_LOG", daily_run.EVAL_LOG)
     monkeypatch.setattr(review_generator, "RESULTS_DIR", tmp_path)
     h = _hourly()
     origin = h.index[-25]
-    live_loop.log_forecasts(build_features(h), origin)
-    live_loop.score_due(h)
+    daily_run.log_forecasts(build_features(h), origin)
+    daily_run.score_due(h)
     text = review_generator.write_review(h).read_text()
     assert "The outlook's own claims" in text
     assert "Over 1 resolved days" in text

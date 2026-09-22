@@ -15,7 +15,7 @@ import pandas as pd
 
 from fbench.harness_config import ANNUALIZER, HORIZON, QCOLS
 from fbench.outlook_generator import (N_NAMED_HOURS, REGIMES, claims, context,
-                                      headline_model_asof, realized_claims)
+                                      leading_model_asof, realized_claims)
 
 # Naming three of 24 hours at random would overlap the true three by
 # 3 x 3 / 24 hours on average; the record is read against that.
@@ -51,7 +51,7 @@ def score_outlook(ev, hourly):
     close = hourly["close"] if "close" in hourly else None
     rows = []
     for origin in full:
-        model = headline_model_asof(ev, origin)
+        model = leading_model_asof(ev, origin)
         day = ev[(ev["origin"] == origin) & (ev["model"] == model)]
         day = day.sort_values("target_time")
         if len(day) != HORIZON:

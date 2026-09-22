@@ -1,4 +1,4 @@
-"""The N-HiTS deep learning entrant, kept in a module of its own so the
+"""The N-HiTS deep learning model, kept in a module of its own so the
 torch stack is imported only when this model actually runs."""
 
 import warnings
@@ -34,7 +34,7 @@ class NHits(BaseForecastModel):
         same window reproduces."""
         # Imports live here so the classical field never pays the torch
         # import cost (and the repo runs without torch installed unless
-        # this entrant is requested).
+        # this model is requested).
         import lightning.pytorch as pl
         import torch
         from pytorch_forecasting import NHiTS, TimeSeriesDataSet

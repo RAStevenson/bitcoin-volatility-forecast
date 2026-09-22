@@ -1,4 +1,4 @@
-"""The SARIMAX entrant, a seasonal state space ARMA on log RV with a
+"""The SARIMAX model, a seasonal state space ARMA on log RV with a
 24-hour seasonal period."""
 
 from scipy.stats import norm

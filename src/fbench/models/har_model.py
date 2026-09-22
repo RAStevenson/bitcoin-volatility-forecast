@@ -1,4 +1,4 @@
-"""The HAR entrants, least squares on trailing daily, weekly and monthly
+"""The HAR models, least squares on trailing daily, weekly and monthly
 means of log RV, in a plain form and a seasonal one."""
 
 import numpy as np
@@ -51,7 +51,7 @@ class _HarCore(BaseForecastModel):
 
 @register
 class Har(_HarCore):
-    """The plain HAR entrant, regressing on the previous hour plus the
+    """The plain HAR model, regressing on the previous hour plus the
     trailing day, week and month means with no seasonal terms."""
     name = "har"
 
