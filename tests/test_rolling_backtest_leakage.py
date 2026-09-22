@@ -3,11 +3,11 @@ import pandas as pd
 
 from fbench.rolling_backtest import make_origins, run_backtest
 from fbench.feature_builder import build_features
-from fbench.models.forecast_model import ForecastModel, quantile_frame, register
+from fbench.models.base_forecast_model import BaseForecastModel, quantile_frame, register
 
 
 @register
-class _Spy(ForecastModel):
+class _Spy(BaseForecastModel):
     name = "_spy"
     train_days = 30
     seen = []

@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from fbench.harness_config import HORIZON, QUANTILES, TRAIN_DAYS
-from src.fbench.models.base_forecast_model import BaseForecastModel, quantile_frame, register
+from fbench.models.base_forecast_model import BaseForecastModel, quantile_frame, register
 
 ENCODER_HOURS = 168  # one week of context per forecast
 

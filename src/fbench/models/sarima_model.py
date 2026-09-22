@@ -5,7 +5,7 @@ from scipy.stats import norm
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 
 from fbench.harness_config import QUANTILES, SARIMA_TRAIN_DAYS
-from src.fbench.models.base_forecast_model import BaseForecastModel, quantile_frame, register
+from fbench.models.base_forecast_model import BaseForecastModel, quantile_frame, register
 
 
 @register

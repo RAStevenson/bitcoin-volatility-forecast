@@ -4,7 +4,7 @@ means of log RV, in a plain form and a seasonal one."""
 import numpy as np
 
 from fbench.harness_config import HORIZON, QUANTILES
-from src.fbench.models.base_forecast_model import BaseForecastModel, quantile_frame, register
+from fbench.models.base_forecast_model import BaseForecastModel, quantile_frame, register
 
 BASE_COLS = ["lag_1", "har_d", "har_w", "har_m"]
 
