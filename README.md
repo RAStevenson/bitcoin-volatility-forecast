@@ -4,9 +4,11 @@ A daily forecast of how volatile BTC-USD will be over the next 24 hours, and
 the harness that scores it against what happens. Model families from
 naive persistence to a deep net produce next-24-hour quantile forecasts of
 hourly realized volatility, a predicted low/median/high band rather than
-a single number. The leading model's forecast is committed to git each
-day before the 24 hours it describes have ended. A forecast of the coming
-day's volatility could be one input to a position size.
+a single number. Each day the loop runs, the leading model's forecast is
+committed to git before the 24 hours it describes have ended, and each
+daily run audits those commit times against the git history and lists
+the exceptions in [results/LIVE.md](results/LIVE.md). A forecast of the
+coming day's volatility could be one input to a position size.
 Evaluation is rolling-origin temporal validation, where the forecast origin
 steps forward through time and each forecast sees only data before it, with
 quantile accuracy (pinball loss) and calibration (how often the truth lands
@@ -20,11 +22,14 @@ persistence baseline, a skill score of 0.186, meaning it removed about a
 fifth of the baseline's error, averaged over forecast horizons of 1 to 24
 hours. The current tournament results, figures, and dataset summary are in
 [results/REPORT.md](results/REPORT.md) (generated, never hand-edited).
-Over the live record, 42 fully resolved days to 2026-09-18, the leading
+Over the live record, 45 fully resolved days to 2026-09-21, the leading
 model's (N-HiTS) forecast of each day's average volatility missed by
 0.19 in log units, a miss of about a fifth. Persistence missed by 0.31
-over its 45 days, which puts the day-level skill at 0.41 on the 42 days
-both forecast. Those columns and the day-by-day figure are in
+over its 48 days. On the 45 days both forecast, the day-level skill is
+0.42, with a 95% interval of 0.19 to 0.65 that treats each day as
+independent of the last. The interval stays above zero, so on those days
+the lead over persistence is larger than day-to-day noise would explain.
+Those columns and the day-by-day figure are in
 [results/LIVE.md](results/LIVE.md), and the figure shows the pattern of
 the record. The forecast tracks the level of ordinary days and misses
 the spikes on the day they arrive.
@@ -70,7 +75,7 @@ entrants: `gbm` is XGBoost, `sarima` is SARIMAX, `har` and
 A second dataset, German hourly load (OPSD/ENTSO-E, CC-BY 4.0), runs
 through the identical engine as a generality demo:
 [results/LOAD_REPORT.md](results/LOAD_REPORT.md). The model ranking
-reorders sharply against the volatility tournament, with Prophet climbing
+reorders against the volatility tournament, with Prophet climbing
 from third from last to second, which is the point. Model family choice
 depends on series structure, and the harness measures it.
 
@@ -97,7 +102,7 @@ python scripts/run_daily.py        # the live loop: score yesterday, log
                                    #   and the outlook's own claims scored
                                    #   over every resolved day), LIVE.md
                                    #   (with the timing audit's exceptions)
-                                   #   and OUTLOOK.md, commit
+                                   #   and OUTLOOK.md, commit and push
 python scripts/run_verify_timing.py  # audit the live log's evidence claim
                                      #   against git history: exits 1 if any
                                      #   forecast row was first committed
@@ -107,7 +112,8 @@ python scripts/run_verify_timing.py  # audit the live log's evidence claim
 `run_vol_backtest.py` takes `--models`, `--stride`, and `--test-days` to run
 subsets quickly, and `--no-report` to stop after writing the backtest
 parquet. `run_load_demo.py` takes `--stride` (default 4) and `--test-days`
-(default 365) with the same meanings. Experiment tracking is local MLflow (sqlite backend). Run
+(default 365) with the same meanings. `run_vol_report.py` takes `--results`
+(default: the newest backtest parquet in results/). Experiment tracking is local MLflow (sqlite backend). Run
 `mlflow ui --backend-store-uri sqlite:///mlflow.db` to browse the runs.
 
 On Windows, Prophet's pip wheel worked as-is here (cmdstanpy backend,
