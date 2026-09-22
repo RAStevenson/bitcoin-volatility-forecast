@@ -7,13 +7,13 @@ import numpy as np
 import pandas as pd
 
 from fbench.harness_config import HORIZON, QUANTILES, TRAIN_DAYS
-from fbench.models.forecast_model import ForecastModel, quantile_frame, register
+from src.fbench.models.base_forecast_model import BaseForecastModel, quantile_frame, register
 
 ENCODER_HOURS = 168  # one week of context per forecast
 
 
 @register
-class NHits(ForecastModel):
+class NHits(BaseForecastModel):
     """N-HiTS (hierarchical interpolation MLP stacks) via
     pytorch-forecasting, trained per origin with the native quantile loss
     so all five quantiles come from one network. Deliberately small and

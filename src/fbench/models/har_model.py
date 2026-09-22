@@ -4,12 +4,12 @@ means of log RV, in a plain form and a seasonal one."""
 import numpy as np
 
 from fbench.harness_config import HORIZON, QUANTILES
-from fbench.models.forecast_model import ForecastModel, quantile_frame, register
+from src.fbench.models.base_forecast_model import BaseForecastModel, quantile_frame, register
 
 BASE_COLS = ["lag_1", "har_d", "har_w", "har_m"]
 
 
-class _HarCore(ForecastModel):
+class _HarCore(BaseForecastModel):
     """Direct multi-horizon OLS on HAR-style trailing features. The
     seasonal variant's hod_* features are those of the ORIGIN hour,
     constant across the 24 predicted hours; the per-horizon regressions

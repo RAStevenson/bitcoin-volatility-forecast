@@ -10,7 +10,7 @@ from scipy import stats
 from fbench.harness_config import (CALIBRATION_ALPHA, CALIBRATION_PERSISTENCE_DAYS,
                            COV90_TARGET, HORIZON, MIN_CALIBRATION_DAYS,
                            QCOLS, QUANTILES, RESULTS_DIR)
-from fbench.models.forecast_model import REGISTRY
+from src.fbench.models.base_forecast_model import REGISTRY
 from fbench.quantile_scoring import add_skill, score
 
 FORECAST_LOG = RESULTS_DIR / "forecasts.csv"

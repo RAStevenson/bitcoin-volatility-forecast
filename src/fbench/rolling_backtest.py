@@ -5,7 +5,7 @@ the realized outcomes."""
 import pandas as pd
 
 from fbench.harness_config import HORIZON
-from fbench.models.forecast_model import REGISTRY
+from src.fbench.models.base_forecast_model import REGISTRY
 
 
 def make_origins(index, test_days, stride_days):

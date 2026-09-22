@@ -21,7 +21,7 @@ def register(cls):
     return cls
 
 
-class ForecastModel(ABC):
+class BaseForecastModel(ABC):
     """Abstract entrant, fixing the fit-then-predict pair that the
     backtest and the daily runner drive every model through. A subclass
     sets name for the registry, and overrides train_days when it wants a
