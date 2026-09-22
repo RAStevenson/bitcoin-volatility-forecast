@@ -19,7 +19,7 @@ from fbench.rolling_backtest import make_origins, run_backtest
 from fbench.harness_config import (DATA_DIR, HORIZON, ORIGIN_STRIDE_DAYS,
                            RESULTS_DIR, TEST_DAYS)
 from fbench.feature_builder import build_features
-from fbench.models.forecast_model import REGISTRY
+from fbench.models.base_forecast_model import REGISTRY
 from fbench.report_generator import write_report
 from fbench.quantile_scoring import add_skill, score
 from fbench.mlflow_tracking import log_tournament

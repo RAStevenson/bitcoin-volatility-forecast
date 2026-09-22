@@ -10,7 +10,7 @@ import fbench.models.persistence_model  # noqa: F401
 import fbench.models.sarima_model  # noqa: F401
 from fbench.harness_config import HORIZON, QCOLS
 from fbench.feature_builder import build_features
-from fbench.models.forecast_model import REGISTRY
+from fbench.models.base_forecast_model import REGISTRY
 
 
 def _train(n=24 * 400, seed=1):

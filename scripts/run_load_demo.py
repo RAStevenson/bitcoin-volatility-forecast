@@ -23,7 +23,7 @@ from fbench.rolling_backtest import make_origins, run_backtest
 from fbench.harness_config import RESULTS_DIR
 from fbench.data.electricity_load import LOAD_PATH, fetch_load
 from fbench.feature_builder import build_features
-from fbench.models.forecast_model import REGISTRY
+from fbench.models.base_forecast_model import REGISTRY
 from fbench.report_generator import write_report
 from fbench.quantile_scoring import add_skill, score
 
