@@ -5,11 +5,11 @@ from scipy.stats import norm
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 
 from fbench.harness_config import QUANTILES, SARIMA_TRAIN_DAYS
-from fbench.models.forecast_model import ForecastModel, quantile_frame, register
+from src.fbench.models.base_forecast_model import BaseForecastModel, quantile_frame, register
 
 
 @register
-class Sarima(ForecastModel):
+class Sarima(BaseForecastModel):
     """SARIMAX(1,0,1)(1,0,1,24) on log RV. Log RV is roughly stationary,
     so d=D=0; the 24-hour seasonal terms carry the diurnal cycle. Train
     window is short because fit cost grows quickly with series length."""

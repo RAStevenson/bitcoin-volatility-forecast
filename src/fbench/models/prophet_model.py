@@ -6,11 +6,11 @@ import pandas as pd
 from prophet import Prophet
 
 from fbench.harness_config import QUANTILES
-from fbench.models.forecast_model import ForecastModel, quantile_frame, register
+from src.fbench.models.base_forecast_model import BaseForecastModel, quantile_frame, register
 
 
 @register
-class ProphetModel(ForecastModel):
+class ProphetModel(BaseForecastModel):
     """Prophet on log RV with daily+weekly Fourier seasonality. Quantiles
     from predictive_samples rather than the fixed-width interval API, so we
     get all five quantiles from one fit."""

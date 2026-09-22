@@ -6,14 +6,14 @@ import xgboost as xgb
 
 from fbench.harness_config import HORIZON, QUANTILES
 from fbench.feature_builder import FEATURE_COLS
-from fbench.models.forecast_model import ForecastModel, quantile_frame, register
+from src.fbench.models.base_forecast_model import BaseForecastModel, quantile_frame, register
 
 PARAMS = dict(n_estimators=300, max_depth=4, learning_rate=0.05,
               subsample=0.8, colsample_bytree=0.8, random_state=7)
 
 
 @register
-class Gbm(ForecastModel):
+class Gbm(BaseForecastModel):
     """Horizon-as-feature direct strategy: training rows are (features at
     origin time t, horizon h) -> log_rv[t+h]. One model per quantile,
     five total, rather than five per horizon."""

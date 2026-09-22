@@ -4,11 +4,11 @@ observed value and same hour one day earlier."""
 import numpy as np
 
 from fbench.harness_config import HORIZON, QUANTILES
-from fbench.models.forecast_model import ForecastModel, quantile_frame, register
+from src.fbench.models.base_forecast_model import BaseForecastModel, quantile_frame, register
 
 
 @register
-class Persistence(ForecastModel):
+class Persistence(BaseForecastModel):
     """Forecast = last observed log RV. Quantiles from the empirical
     distribution of per-horizon changes over the train window."""
     name = "persistence"
@@ -34,7 +34,7 @@ class Persistence(ForecastModel):
 
 
 @register
-class SeasonalPersistence(ForecastModel):
+class SeasonalPersistence(BaseForecastModel):
     """Forecast = log RV at the same hour one day earlier. The day-ahead
     seasonal naive; the honest floor for a seasonal series."""
     name = "seasonal_persistence"
