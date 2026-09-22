@@ -1,7 +1,7 @@
 [project]
 name = "volatility-forecast-harness"
 version = "1.0.0"
-description = "Benchmarking harness for quantile volatility forecasts: five model families against honest baselines under rolling-origin evaluation, with a daily self-scoring live loop"
+description = "Benchmarking harness for quantile volatility forecasts: six model families, two of them baselines, under rolling-origin evaluation, with a daily self-scoring live loop"
 authors = [{ name = "Robert Andrew Stevenson" }]
 requires-python = ">=3.11"
 license = { text = "MIT" }
