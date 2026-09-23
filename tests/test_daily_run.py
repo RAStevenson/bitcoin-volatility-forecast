@@ -175,7 +175,7 @@ def test_calibration_gated_below_min_days():
 
 
 def test_calibration_passes_when_coverage_is_at_target():
-    # jitter around 0.90 so the day-level spread is real but centred
+    # jitter around 0.90 so the day-level spread is real but centered
     cov = [0.875, 0.917, 0.875, 0.917, 0.958, 0.833, 0.917, 0.875,
            0.958, 0.875, 0.917, 0.833, 0.875, 0.917]
     lines = _lines({"a": cov})

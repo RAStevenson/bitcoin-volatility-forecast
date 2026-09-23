@@ -32,7 +32,7 @@ def _live_leader(ev):
     """The model with the lowest mean pinball loss over the resolved rows
     in ev, or None while fewer than three origins have been scored."""
     # Three origins is a deliberately lower bar than the 10-day
-    # calibration gate: picking which model narrates the daily forecast only
+    # calibration gate: picking which model the daily forecast reports only
     # needs a best guess, while the calibration line is a published
     # result, so that one waits for the larger sample.
     if ev["origin"].nunique() >= 3:
@@ -41,7 +41,7 @@ def _live_leader(ev):
 
 
 def _leading_model():
-    """Pick the model that narrates the daily forecast and return it with the
+    """Pick the model the daily forecast reports and return it with the
     short phrase explaining the choice, which is the live pinball leader
     once three origins have been scored and FALLBACK_MODEL before that."""
     ev = _load(EVAL_LOG, ["origin", "target_time", "horizon", "model",
@@ -53,12 +53,12 @@ def _leading_model():
 
 
 def leading_model_asof(ev, origin):
-    """The model that narrated the daily forecast issued at `origin`, re-derived
+    """The model the daily forecast issued at `origin` reported, re-derived
     from the scores that existed then (origins strictly earlier)."""
     leader = _live_leader(ev[ev["origin"] < origin])
     if leader is not None:
         return leader
-    # The fallback may not be in the log (a trimmed registry); narrating
+    # The fallback may not be in the log (a trimmed registry); reporting
     # a model with no rows would print NaN prose, so require presence.
     day_models = ev.loc[ev["origin"] == origin, "model"].unique()
     if FALLBACK_MODEL in day_models:
@@ -106,7 +106,7 @@ def trend_of(avg, last24):
 
 def claims(vol, target_times, ctx):
     """The numbers behind every claim the daily forecast makes, from the
-    narrating model's 24 rows of annualized quantiles (vol, one row per
+    reported model's 24 rows of annualized quantiles (vol, one row per
     target hour, columns in QUANTILES order) and the context as of the
     origin: the typical hourly move, the one-standard-deviation day move,
     the regime and trend words, the expected count of hours above the
