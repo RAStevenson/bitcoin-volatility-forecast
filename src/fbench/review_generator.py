@@ -29,8 +29,8 @@ def day_stats(ev):
 def build_review(hourly=None):
     """Return the Markdown body of the review, comparing the most recent
     fully resolved forecast day against what realized and ranking that
-    day's error among every scored day. The narrating model is the one
-    that narrated the daily forecast on that day, re-derived from the scores
+    day's error among every scored day. The reported model is the one
+    the daily forecast reported on that day, re-derived from the scores
     available then rather than taken from today's results table. Given the
     hourly realized series, the review closes with the daily forecast's own
     claims scored over every resolved day; without it that section is

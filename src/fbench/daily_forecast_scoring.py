@@ -40,10 +40,10 @@ def day_return(close, origin):
 
 def score_daily_forecast(ev, hourly):
     """One row per fully resolved origin, carrying each claim the daily forecast
-    made that morning beside what realized. The narrating model is
+    made that morning beside what realized. The reported model is
     re-derived as of the origin, the same way the review names it, and
     the context is the hourly series up to the origin, so the replay sees
-    what the daily forecast saw. Days whose narrating model lacks a full set of
+    what the daily forecast saw. Days whose reported model lacks a full set of
     rows are skipped. The day-move columns are None when the hourly frame
     carries no close column."""
     counts = ev.groupby("origin")["target_time"].nunique()
