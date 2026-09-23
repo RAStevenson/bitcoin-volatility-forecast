@@ -17,7 +17,7 @@ class NHits(BaseForecastModel):
     """N-HiTS (hierarchical interpolation MLP stacks) via
     pytorch-forecasting, trained per origin with the native quantile loss
     so all five quantiles come from one network. Deliberately small and
-    CPU-friendly: the tournament question is whether deep learning earns
+    CPU-friendly: the backtest question is whether deep learning earns
     its complexity here, not how large a model can be built.
 
     Chosen over the library's TFT because this repo's design fence

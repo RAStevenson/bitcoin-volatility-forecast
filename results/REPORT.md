@@ -1,4 +1,4 @@
-# Tournament report (generated)
+# Backtest report (generated)
 
 Results file: backtest_20260805.parquet. All metrics are on the log scale of the target. Coverage targets: cov50 -> 0.50, cov90 -> 0.90. skill_vs_persistence is the mean of per-horizon skill scores, so a model can rank differently on skill than on pinball_mean; horizons where persistence does worst weigh most.
 

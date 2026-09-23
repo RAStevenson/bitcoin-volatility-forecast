@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 import fbench.models.persistence_model  # noqa: F401  (registers baselines)
-from fbench import daily_run, outlook_generator, outlook_scoring, review_generator
+from fbench import daily_run, daily_forecast_generator, daily_forecast_scoring, review_generator
 from fbench.feature_builder import build_features
 from fbench.harness_config import HORIZON
 
@@ -20,19 +20,19 @@ def _hourly(n=24 * 400, seed=5, with_close=True):
 def test_claims_and_realized_agree_when_the_median_is_exact():
     h = _hourly()
     origin = h.index[-25]
-    ctx = outlook_generator.context(h["rv"].loc[:origin])
+    ctx = daily_forecast_generator.context(h["rv"].loc[:origin])
     tt = pd.date_range(origin + pd.Timedelta(hours=1), periods=HORIZON,
                        freq="h", tz="UTC")
     order = np.random.default_rng(1).permutation(HORIZON)
     med = np.linspace(0.3, 0.6, HORIZON)[order]
     vol = np.column_stack([med * 0.6, med * 0.8, med, med * 1.2, med * 1.6])
-    c = outlook_generator.claims(vol, tt, ctx)
-    r = outlook_generator.realized_claims(pd.Series(med, index=tt), ctx)
+    c = daily_forecast_generator.claims(vol, tt, ctx)
+    r = daily_forecast_generator.realized_claims(pd.Series(med, index=tt), ctx)
     assert c["regime"] == r["regime"]
     assert c["trend"] == r["trend"]
     assert set(c["loud"]) == set(r["loud"])
     assert set(c["calm"]) == set(r["calm"])
-    assert c["regime"] in outlook_generator.REGIMES
+    assert c["regime"] in daily_forecast_generator.REGIMES
 
 
 def _one_day_log(h, origin, end_price):
@@ -57,14 +57,14 @@ def test_day_move_hit_is_close_to_close():
     h = _hourly()
     origin = h.index[-25]
     ev, h_in = _one_day_log(h, origin, end_price=100.0)
-    scored = outlook_scoring.score_outlook(ev, h_in)
+    scored = daily_forecast_scoring.score_daily_forecast(ev, h_in)
     assert len(scored) == 1
     move = float(scored["day_move"].iloc[0])
     assert 0 < move < 0.2
     assert bool(scored["day_move_hit"].iloc[0]) is True
     # a day that moved twice the stated distance is a miss
     ev, h_out = _one_day_log(h, origin, end_price=100.0 * (1 + 2 * move))
-    scored = outlook_scoring.score_outlook(ev, h_out)
+    scored = daily_forecast_scoring.score_daily_forecast(ev, h_out)
     assert bool(scored["day_move_hit"].iloc[0]) is False
     # the exact-median day matches on every word and names every hour
     assert scored["regime_gap"].iloc[0] == 0
@@ -82,9 +82,9 @@ def test_day_move_is_skipped_without_close():
     h = _hourly(with_close=False)
     origin = h.index[-25]
     ev, _ = _one_day_log(_hourly(), origin, end_price=100.0)
-    scored = outlook_scoring.score_outlook(ev, h)
+    scored = daily_forecast_scoring.score_daily_forecast(ev, h)
     assert scored["day_return"].iloc[0] is None
-    lines = outlook_scoring.record_lines(scored)
+    lines = daily_forecast_scoring.record_lines(scored)
     assert not any("one-standard-deviation" in ln for ln in lines)
     assert any("regime word" in ln for ln in lines)
     assert any("Repeating yesterday's word" in ln for ln in lines)
@@ -94,10 +94,10 @@ def test_partially_resolved_day_is_not_scored():
     h = _hourly()
     origin = h.index[-25]
     ev, h_in = _one_day_log(h, origin, end_price=100.0)
-    assert outlook_scoring.score_outlook(ev.iloc[:-1], h_in).empty
+    assert daily_forecast_scoring.score_daily_forecast(ev.iloc[:-1], h_in).empty
 
 
-def test_review_carries_the_outlook_record(tmp_path, monkeypatch):
+def test_review_carries_the_daily_forecast_record(tmp_path, monkeypatch):
     monkeypatch.setattr(daily_run, "FORECAST_LOG", tmp_path / "forecasts.csv")
     monkeypatch.setattr(daily_run, "EVAL_LOG", tmp_path / "evaluation.csv")
     monkeypatch.setattr(daily_run, "RESULTS_DIR", tmp_path)
@@ -108,8 +108,8 @@ def test_review_carries_the_outlook_record(tmp_path, monkeypatch):
     daily_run.log_forecasts(build_features(h), origin)
     daily_run.score_due(h)
     text = review_generator.write_review(h).read_text()
-    assert "The outlook's own claims" in text
+    assert "The daily forecast's own claims" in text
     assert "Over 1 resolved days" in text
     assert "one-standard-deviation day move on" in text
     # without the hourly series the section is omitted, not faked
-    assert "outlook's own claims" not in review_generator.build_review()
+    assert "daily forecast's own claims" not in review_generator.build_review()

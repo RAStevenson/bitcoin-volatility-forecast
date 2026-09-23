@@ -35,8 +35,8 @@ net) scored a mean pinball loss of 0.0959 against 0.1180 for the
 persistence baseline, a skill score of 0.186, meaning it removed about a
 fifth of the baseline's error, averaged over forecast horizons of 1 to 24
 hours. The backtest covers the last 365 days of the data, with a forecast
-origin every second day, 183 origins in all. The current tournament
-results, figures, and dataset summary are in
+origin every second day, 183 origins in all. That backtest's results
+table, figures, and dataset summary are in
 [results/REPORT.md](results/REPORT.md) (generated, never hand-edited).
 
 ## Why
@@ -82,7 +82,7 @@ models: `gbm` is XGBoost, `sarima` is SARIMAX, `har` and
 A second dataset, German hourly load (OPSD/ENTSO-E, CC-BY 4.0), runs
 through the identical engine as a generality demo:
 [results/LOAD_REPORT.md](results/LOAD_REPORT.md). The model ranking
-reorders against the volatility tournament, with Prophet climbing
+reorders against the volatility backtest, with Prophet climbing
 from third from last to second, which is the point. Model family choice
 depends on series structure, and the harness measures it.
 
@@ -96,7 +96,7 @@ pip install -r requirements.txt
 python scripts/run_backfill.py     # fetch 1-min candles (resumable)
 python scripts/run_crosscheck.py   # verify against Bitstamp
 python scripts/run_build_rv.py     # build the hourly realized-vol series
-python scripts/run_vol_backtest.py # rolling-origin tournament; scores it,
+python scripts/run_vol_backtest.py # rolling-origin backtest; scores it,
                                    #   logs to MLflow, writes REPORT.md
 python scripts/run_vol_report.py   # re-score an existing backtest parquet
                                    #   without refitting
@@ -105,11 +105,11 @@ python scripts/run_load_demo.py    # generality demo: German hourly load
                                    #   LOAD_REPORT.md
 python scripts/run_daily.py        # the daily run: score yesterday, log
                                    #   today, write results/REVIEW.md
-                                   #   (yesterday's forecast vs realized,
-                                   #   and the outlook's own claims scored
+                                   #   (yesterday's model forecasts vs realized,
+                                   #   and the daily forecast's own claims scored
                                    #   over every resolved day), LIVE.md
                                    #   (with the timing audit's exceptions)
-                                   #   and OUTLOOK.md, commit and push
+                                   #   and FORECAST.md, commit and push
 python scripts/run_verify_timing.py  # audit the forecast log's timing claim
                                      #   against git history: exits 1 if any
                                      #   forecast row was first committed
@@ -137,8 +137,8 @@ python -m pytest tests -q
 The suite pins the realized-vol closed form, proves features are strictly
 trailing (rewriting the future changes nothing in the past), enforces the
 adapter contract for every registered model, checks pinball loss against
-hand-computed values, and uses a spy model to prove the backtest engine
-never shows a model data past its origin. It also pins the calibration
+hand-computed values, and proves the backtest engine never hands a
+model data past its forecast origin. It also pins the calibration
 check: that a rejection streak shorter than the three-consecutive-day
 requirement is reported as pending rather than flagged, that the multiple-comparison correction
 scales with the number of models tested, and that a model whose daily
@@ -239,7 +239,7 @@ its 0.80 coverage floor, its widest list. The forecast tracks the level
 of ordinary days, and the rare day that breaks the
 pattern is not signaled by the hours before it.
 
-The volatility tournament is a single asset, and nothing here shows the
+The volatility backtest covers one asset, BTC-USD, and nothing here shows the
 ranking holds on other coins or other markets. The load demo runs the
 classical models only, without N-HiTS, so the cross-series comparison
 covers seven models rather than eight. The remaining next step is

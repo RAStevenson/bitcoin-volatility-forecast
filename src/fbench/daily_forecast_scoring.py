@@ -1,8 +1,8 @@
-"""Scores the claims OUTLOOK.md made against what happened, one row per
-fully resolved forecast day, by replaying the outlook's own claim
+"""Scores the claims FORECAST.md made against what happened, one row per
+fully resolved forecast day, by replaying the daily forecast's own claim
 arithmetic from the evaluation log and the hourly realized series. The
 review prints the running record. Every claim is scored in the terms
-the outlook stated it in, never in a paraphrase: the day move against
+the daily forecast stated it in, never in a paraphrase: the day move against
 the close-to-close price move, the regime and trend words against the
 realized day's words, the named hours against the hours that were in
 fact loudest and calmest, and the expected count of high hours against
@@ -14,14 +14,14 @@ import numpy as np
 import pandas as pd
 
 from fbench.harness_config import ANNUALIZER, HORIZON, QCOLS
-from fbench.outlook_generator import (N_NAMED_HOURS, REGIMES, claims, context,
+from fbench.daily_forecast_generator import (N_NAMED_HOURS, REGIMES, claims, context,
                                       leading_model_asof, realized_claims)
 
 # Naming three of 24 hours at random would overlap the true three by
 # 3 x 3 / 24 hours on average; the record is read against that.
 CHANCE_OVERLAP = N_NAMED_HOURS * N_NAMED_HOURS / HORIZON
 # A one-standard-deviation move contains about 68% of bell-shaped
-# outcomes, the "two days in three" the outlook states.
+# outcomes, the "two days in three" the daily forecast states.
 DAY_MOVE_TARGET = 0.68
 
 
@@ -38,12 +38,12 @@ def day_return(close, origin):
     return float(end_px / start_px - 1)
 
 
-def score_outlook(ev, hourly):
-    """One row per fully resolved origin, carrying each claim the outlook
+def score_daily_forecast(ev, hourly):
+    """One row per fully resolved origin, carrying each claim the daily forecast
     made that morning beside what realized. The narrating model is
     re-derived as of the origin, the same way the review names it, and
     the context is the hourly series up to the origin, so the replay sees
-    what the outlook saw. Days whose narrating model lacks a full set of
+    what the daily forecast saw. Days whose narrating model lacks a full set of
     rows are skipped. The day-move columns are None when the hourly frame
     carries no close column."""
     counts = ev.groupby("origin")["target_time"].nunique()
@@ -88,7 +88,7 @@ def score_outlook(ev, hourly):
             "base_loud_overlap": len({t + shift for t in y["loud"]} & set(r["loud"])),
             "base_calm_overlap": len({t + shift for t in y["calm"]} & set(r["calm"])),
             # On a day when every hour sits at the probability floor the
-            # outlook prints "no meaningful chance" rather than a count,
+            # daily forecast prints "no meaningful chance" rather than a count,
             # so the claim it made, and the one scored, is zero hours.
             "exp_high_hours": 0.0 if c["all_at_floor"] else c["exp_high_hours"],
             "high_hours": r["high_hours"],
@@ -106,9 +106,9 @@ def record_lines(scored):
     n = len(scored)
     last = scored.iloc[-1]
     moves = scored.dropna(subset=["day_move_hit"])
-    lines = ["## The outlook's own claims", ""]
+    lines = ["## The daily forecast's own claims", ""]
 
-    latest = [f"On the most recent resolved day the outlook called the day "
+    latest = [f"On the most recent resolved day the daily forecast called the day "
               f"{last['regime_fc']} and {last['trend_fc']}; it turned out "
               f"{last['regime_rz']} and {last['trend_rz']}."]
     if last["day_return"] is not None and not pd.isna(last["day_return"]):
@@ -126,7 +126,7 @@ def record_lines(scored):
         f"{last['high_hours']} did.")
     lines += [" ".join(latest), ""]
 
-    lines.append(f"Over {n} resolved days, scored in the terms the outlook "
+    lines.append(f"Over {n} resolved days, scored in the terms the daily forecast "
                  "states them, with what repeating yesterday would have "
                  "scored beside each claim:")
     lines.append("")

@@ -1,5 +1,5 @@
 """Yesterday in review: how the most recently resolved forecast day
-compared with what realized, followed by the outlook's own claims scored
+compared with what realized, followed by the daily forecast's own claims scored
 over every resolved day. Generated from the evaluation log and the
 hourly realized series, so every number is reproducible from the
 committed files."""
@@ -8,8 +8,8 @@ import pandas as pd
 
 from fbench.harness_config import QCOLS, RESULTS_DIR
 from fbench.daily_run import EVAL_LOG, _load
-from fbench.outlook_generator import LOCAL_TZ, leading_model_asof
-from fbench.outlook_scoring import record_lines, score_outlook
+from fbench.daily_forecast_generator import LOCAL_TZ, leading_model_asof
+from fbench.daily_forecast_scoring import record_lines, score_daily_forecast
 
 # Realized-to-forecast ratio of the day's average. Inside the band the
 # day counts as on target; outside, the forecast was too low or too high.
@@ -30,9 +30,9 @@ def build_review(hourly=None):
     """Return the Markdown body of the review, comparing the most recent
     fully resolved forecast day against what realized and ranking that
     day's error among every scored day. The narrating model is the one
-    that narrated the outlook on that day, re-derived from the scores
+    that narrated the daily forecast on that day, re-derived from the scores
     available then rather than taken from today's results table. Given the
-    hourly realized series, the review closes with the outlook's own
+    hourly realized series, the review closes with the daily forecast's own
     claims scored over every resolved day; without it that section is
     omitted."""
     ev = _load(EVAL_LOG, LOG_COLS)
@@ -113,7 +113,7 @@ def build_review(hourly=None):
         "",
     ]
     if hourly is not None:
-        lines += record_lines(score_outlook(ev, hourly))
+        lines += record_lines(score_daily_forecast(ev, hourly))
     return "\n".join(lines)
 
 
@@ -127,7 +127,7 @@ def _ordinal(n):
 def write_review(hourly=None):
     """Render the review and save it as results/REVIEW.md, returning that
     path for the daily run to commit. Pass the hourly realized series to
-    include the outlook's scored claims."""
+    include the daily forecast's scored claims."""
     path = RESULTS_DIR / "REVIEW.md"
     path.write_text(build_review(hourly))
     return path
