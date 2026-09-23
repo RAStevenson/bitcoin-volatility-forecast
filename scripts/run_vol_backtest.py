@@ -1,8 +1,8 @@
-"""Run the model tournament over data/hourly_rv.parquet and save the
+"""Run the model backtest over data/hourly_rv.parquet and save the
 scored rows as results/backtest_<date>.parquet with a json sidecar
 holding the run's settings and a snapshot of the dataset it saw. Unless
 --no-report is given it also writes results/REPORT.md with its two
-figures and logs the tournament to MLflow."""
+figures and logs the backtest to MLflow."""
 import sys
 from pathlib import Path
 
@@ -22,7 +22,7 @@ from fbench.feature_builder import build_features
 from fbench.models.base_forecast_model import REGISTRY
 from fbench.report_generator import write_report
 from fbench.quantile_scoring import add_skill, score
-from fbench.mlflow_tracking import log_tournament
+from fbench.mlflow_tracking import log_backtest
 
 # Contender modules are imported as their plan tasks land; each import
 # registers its model class as a side effect.
@@ -41,7 +41,7 @@ parser.add_argument("--no-report", action="store_true",
                     help="stop after writing the backtest parquet; skip "
                          "scoring, REPORT.md, and the MLflow log")
 args = parser.parse_args()
-names = [n for n in args.models.split(",") if not n.startswith("_")]
+names = args.models.split(",")
 
 hourly = pd.read_parquet(DATA_DIR / "hourly_rv.parquet")
 feats = build_features(hourly)
@@ -72,11 +72,11 @@ print(f"rows={len(res)} -> {out.name}  total {time.perf_counter()-t_all:.0f}s")
 
 if not args.no_report:
     # Same chain run_vol_report.py applies to an existing parquet. It runs
-    # exactly once per invocation, so one backtest logs one tournament to
+    # exactly once per invocation, so one backtest logs once to
     # MLflow.
     scores = add_skill(score(res))
     report_path = write_report(scores, hourly, out)
     run_config.pop("models", None)  # param values must be scalars
-    log_tournament(scores, out, run_config)
+    log_backtest(scores, out, run_config)
     print(f"report -> {report_path}")
     print(scores.groupby("model")["pinball_mean"].mean().sort_values())

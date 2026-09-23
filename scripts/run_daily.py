@@ -2,7 +2,7 @@
 the hourly realized volatility series, resolving the forecasts whose
 target hour has closed, logging a fresh 24-hour forecast for every
 registered model, auditing the commit timing of earlier forecasts,
-regenerating the three reports (the review with the outlook's claims
+regenerating the three reports (the review with the daily forecast's claims
 scored), and committing and pushing the result."""
 import sys
 from pathlib import Path
@@ -17,7 +17,7 @@ import pandas as pd
 import fbench.models.xgboost_model  # noqa: F401
 import fbench.models.har_model  # noqa: F401
 import fbench.models.nhits_model  # noqa: F401  (added 2026-08-06 after it led
-#   the 2026-08-05 full tournament)
+#   the 2026-08-05 full backtest)
 import fbench.models.persistence_model  # noqa: F401
 import fbench.models.prophet_model  # noqa: F401
 import fbench.models.sarima_model  # noqa: F401
@@ -48,7 +48,7 @@ print(f"  minutes added: {added}")
 def _build_rv():
     """Rebuilds the hourly realized volatility series from the minute
     store and saves it, returning it with the latest minute close that
-    the outlook needs to quote moves in dollars."""
+    the daily forecast needs to quote moves in dollars."""
     m = minute_store.load_minutes()
     out = hourly_realized_vol(m.set_index("time")["close"])
     out.to_parquet(DATA_DIR / "hourly_rv.parquet")
@@ -82,8 +82,8 @@ def _audit():
 late = step("timing audit", _audit)
 print(f"  late forecast days: {'not audited' if late is None else len(late)}")
 step("live report", lambda: daily_run.write_live_report(late=late))
-from fbench.outlook_generator import write_outlook  # noqa: E402
-step("outlook", lambda: write_outlook(hourly, last_price=last_close))
+from fbench.daily_forecast_generator import write_daily_forecast  # noqa: E402
+step("daily forecast", lambda: write_daily_forecast(hourly, last_price=last_close))
 from fbench.review_generator import write_review  # noqa: E402
 step("review", lambda: write_review(hourly))
 
@@ -96,7 +96,7 @@ def _commit_push():
     returns without committing."""
     day = pd.Timestamp.now(tz="UTC").date()
     tracked = [p for p in ("results/forecasts.csv", "results/evaluation.csv",
-                           "results/LIVE.md", "results/OUTLOOK.md",
+                           "results/LIVE.md", "results/FORECAST.md",
                            "results/REVIEW.md", "results/fig_live_daily.png")
                if (ROOT / p).exists()]
     subprocess.run(["git", "add", *tracked], cwd=ROOT, check=True)

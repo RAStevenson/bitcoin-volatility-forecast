@@ -1,4 +1,4 @@
-"""Builds the backtest tournament report, results/REPORT.md for the
+"""Builds the backtest report, results/REPORT.md for the
 volatility run and results/LOAD_REPORT.md for the load demo, which is
 what a reader compares models on before any live scores exist. Tables and
 figures are rendered from a run's scored rows, and the Dataset section is
@@ -43,9 +43,9 @@ def _fig_pinball(scores, fig_prefix):
 
 
 def write_report(scores, hourly, results_path, out_name="REPORT.md",
-                 fig_prefix="fig", title="Tournament report",
+                 fig_prefix="fig", title="Backtest report",
                  value_label="median annualized RV", dataset_stats=None):
-    """Write the tournament report and its two figures into results/ and
+    """Write the backtest report and its two figures into results/ and
     return the report path, giving the reader a results table averaged over
     horizons 1 to 24, the horizon 1 and horizon 24 tables, and the caveats
     this run's numbers need. Without dataset_stats the Dataset section

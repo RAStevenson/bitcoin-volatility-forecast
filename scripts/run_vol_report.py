@@ -1,6 +1,6 @@
 """Rebuild results/REPORT.md and its figures from an existing backtest
 parquet, the newest in results/ unless --results names one, and log that
-tournament to MLflow again. It re-reports a finished run rather than
+backtest to MLflow again. It re-reports a finished run rather than
 running one, and the Dataset section is pinned by the parquet's json
 sidecar whenever that carries the snapshot keys."""
 import sys
@@ -16,7 +16,7 @@ import pandas as pd
 from fbench.harness_config import DATA_DIR, RESULTS_DIR
 from fbench.report_generator import write_report
 from fbench.quantile_scoring import add_skill, score
-from fbench.mlflow_tracking import log_tournament
+from fbench.mlflow_tracking import log_backtest
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--results", default=None,
@@ -43,6 +43,6 @@ dataset_stats = ({k: run_config[k] for k in stat_keys}
 report_path = write_report(scores, hourly, results_path,
                            dataset_stats=dataset_stats)
 run_config.pop("models", None)  # param values must be scalars
-log_tournament(scores, results_path, run_config)
+log_backtest(scores, results_path, run_config)
 print(f"report -> {report_path}")
 print(scores.groupby("model")["pinball_mean"].mean().sort_values())

@@ -20,11 +20,7 @@ def _train(n=24 * 400, seed=1):
     return build_features(pd.DataFrame({"log_rv": lr}))
 
 
-# Underscore names are test doubles other test modules register; the
-# daily run skips them the same way, and without this the case list
-# depended on which test file pytest collected first.
-@pytest.mark.parametrize("name", sorted(n for n in REGISTRY
-                                        if not n.startswith("_")))
+@pytest.mark.parametrize("name", sorted(REGISTRY))
 def test_contract(name):
     train = _train()
     future = pd.date_range(train.index[-1] + pd.Timedelta(hours=1),

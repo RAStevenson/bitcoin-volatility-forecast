@@ -3,7 +3,7 @@ the square root of the summed squared 1-minute log returns inside that
 hour, scaled by ANNUALIZER = sqrt(365 * 24) into annualized volatility
 units. The hourly frame is indexed in UTC and carries log_rv, the natural
 log of that annualized rv, which is the target the models forecast, and
-close, the last 1-minute close inside the hour, which the outlook scoring
+close, the last 1-minute close inside the hour, which the daily forecast scoring
 uses to measure the day's price move."""
 
 import numpy as np

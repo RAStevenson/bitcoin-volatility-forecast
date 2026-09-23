@@ -1,10 +1,10 @@
-"""Builds results/OUTLOOK.md, the plain-language read of the latest
+"""Builds results/FORECAST.md, the plain-language read of the latest
 logged 24-hour forecast for someone who does not work in volatility.
 Every figure is derived at render time from the forecast log and the
 hourly realized series, so the prose cannot drift away from the
-numbers. The arithmetic behind every claim the outlook makes lives in
+numbers. The arithmetic behind every claim the daily forecast makes lives in
 claims(), and realized_claims() states what happened in the same terms,
-so the review's outlook scoring replays the claims the outlook actually
+so the review's daily forecast scoring replays the claims the daily forecast actually
 made rather than a paraphrase of them."""
 import numpy as np
 import pandas as pd
@@ -16,7 +16,7 @@ from fbench.quantile_scoring import score
 LOCAL_TZ = "America/Chicago"
 FALLBACK_MODEL = "gbm"  # full-backtest winner, used until live scores exist
 REGIMES = ["quiet", "normal", "elevated", "high"]
-N_NAMED_HOURS = 3  # the loudest and calmest hours the outlook names
+N_NAMED_HOURS = 3  # the loudest and calmest hours the daily forecast names
 
 
 def prob_above(vol_quantiles, threshold):
@@ -32,7 +32,7 @@ def _live_leader(ev):
     """The model with the lowest mean pinball loss over the resolved rows
     in ev, or None while fewer than three origins have been scored."""
     # Three origins is a deliberately lower bar than the 10-day
-    # calibration gate: picking which model narrates the outlook only
+    # calibration gate: picking which model narrates the daily forecast only
     # needs a best guess, while the calibration line is a published
     # result, so that one waits for the larger sample.
     if ev["origin"].nunique() >= 3:
@@ -41,7 +41,7 @@ def _live_leader(ev):
 
 
 def _leading_model():
-    """Pick the model that narrates the outlook and return it with the
+    """Pick the model that narrates the daily forecast and return it with the
     short phrase explaining the choice, which is the live pinball leader
     once three origins have been scored and FALLBACK_MODEL before that."""
     ev = _load(EVAL_LOG, ["origin", "target_time", "horizon", "model",
@@ -53,7 +53,7 @@ def _leading_model():
 
 
 def leading_model_asof(ev, origin):
-    """The model that narrated the outlook issued at `origin`, re-derived
+    """The model that narrated the daily forecast issued at `origin`, re-derived
     from the scores that existed then (origins strictly earlier)."""
     leader = _live_leader(ev[ev["origin"] < origin])
     if leader is not None:
@@ -105,7 +105,7 @@ def trend_of(avg, last24):
 
 
 def claims(vol, target_times, ctx):
-    """The numbers behind every claim the outlook makes, from the
+    """The numbers behind every claim the daily forecast makes, from the
     narrating model's 24 rows of annualized quantiles (vol, one row per
     target hour, columns in QUANTILES order) and the context as of the
     origin: the typical hourly move, the one-standard-deviation day move,
@@ -157,8 +157,8 @@ def realized_claims(target_rv, ctx):
             "high_hours": int((rv > ctx["hi_thresh"]).sum())}
 
 
-def build_outlook(hourly, last_price=None):
-    """Return the Markdown body of the outlook, turning the leading
+def build_daily_forecast(hourly, last_price=None):
+    """Return the Markdown body of the daily forecast, turning the leading
     model's latest 24-hour quantiles into typical hourly and daily move
     sizes, a regime word set against the past year, and the loud and calm
     hours ahead. Without last_price the moves are quoted in percent only,
@@ -166,7 +166,7 @@ def build_outlook(hourly, last_price=None):
     fc = _load(FORECAST_LOG, ["origin", "target_time", "horizon", "model",
                               *QCOLS])
     if fc.empty:
-        return "# Volatility outlook\n\nNo forecasts logged yet.\n"
+        return "# Volatility forecast\n\nNo forecasts logged yet.\n"
     model, model_why = _leading_model()
     origin = fc["origin"].max()
     today = fc[(fc["origin"] == origin) & (fc["model"] == model)].copy()
@@ -226,7 +226,7 @@ def build_outlook(hourly, last_price=None):
                   "elevated": "above most days of the past year",
                   "high": "among the busiest days of the past year"}[c["regime"]]
     lines = [
-        f"# Volatility outlook - {day} (generated)",
+        f"# Volatility forecast - {day} (generated)",
         "",
         f"**The next 24 hours look {c['regime']} and {c['trend']}.** {move_line}",
         "",
@@ -251,15 +251,15 @@ def build_outlook(hourly, last_price=None):
            f"quiet day."),
         "",
         f"This forecast was produced by {model}, {model_why}. It is a "
-        f"volatility outlook only and says nothing about price direction.",
+        f"volatility forecast only and says nothing about price direction.",
         "",
     ]
     return "\n".join(lines)
 
 
-def write_outlook(hourly, last_price=None):
-    """Render the outlook and save it as results/OUTLOOK.md, returning
+def write_daily_forecast(hourly, last_price=None):
+    """Render the daily forecast and save it as results/FORECAST.md, returning
     that path for the daily run to commit."""
-    path = RESULTS_DIR / "OUTLOOK.md"
-    path.write_text(build_outlook(hourly, last_price))
+    path = RESULTS_DIR / "FORECAST.md"
+    path.write_text(build_daily_forecast(hourly, last_price))
     return path

@@ -1,4 +1,4 @@
-"""Scoring for the tournament, computing pinball loss over the five
+"""Scoring for the backtest, computing pinball loss over the five
 levels in QUANTILES together with point error, band coverage, and skill
 against the persistence baseline. Every number here is computed on log
 realized volatility, the space the models forecast in."""

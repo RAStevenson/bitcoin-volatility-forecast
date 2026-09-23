@@ -45,7 +45,7 @@ def log_forecasts(feats, origin):
                            freq="h", tz="UTC")
     added = []
     for name, cls in sorted(REGISTRY.items()):
-        if name.startswith("_") or name in done:
+        if name in done:
             continue
         train = feats.loc[origin - pd.Timedelta(days=cls.train_days):origin]
         assert train.index.max() <= origin

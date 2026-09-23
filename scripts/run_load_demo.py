@@ -1,4 +1,4 @@
-"""Run the same model tournament on German hourly electricity load
+"""Run the same model backtest on German hourly electricity load
 instead of volatility, to show the harness is not tied to one series, and
 write results/LOAD_REPORT.md with its own parquet, json sidecar and
 figures. The first run downloads about 250 MB of OPSD data and caches it
@@ -43,7 +43,7 @@ print(f"load series: {len(hourly)} hours, "
 
 feats = build_features(hourly)
 origins = make_origins(feats.index, args.test_days, args.stride)
-names = [n for n in sorted(REGISTRY) if not n.startswith("_")]
+names = sorted(REGISTRY)
 print(f"models={names} origins={len(origins)}", flush=True)
 
 rows = []
