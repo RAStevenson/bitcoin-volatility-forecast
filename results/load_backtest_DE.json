@@ -1,1 +1,1 @@
-{"stride": 4, "test_days": 365, "series": "DE_load_actual_entsoe_transparency", "origins": 92}
+{"stride": 4, "test_days": 365, "series": "DE_load_actual_entsoe_transparency", "origins": 92, "dataset_hours": 50400, "dataset_span_start": "2015-01-01 00:00:00+00:00", "dataset_span_end": "2020-09-30 23:00:00+00:00", "dataset_nan_hours": 0}
