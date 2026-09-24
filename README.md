@@ -3,49 +3,58 @@
 This repo publishes a daily forecast of how volatile BTC-USD will be over
 the next 24 hours, and holds the harness that scores it against what
 happens. A forecast of the coming day's volatility could be one input to
-a position size. Model families from naive persistence to a deep net
-produce next-24-hour quantile forecasts of hourly realized volatility, a
-predicted low/median/high band rather than a single number. Each day the
-loop runs, every model's forecast is committed to git before the first of
-its 24 target hours has ended. Each daily run audits those commit times
-against the git history and lists the exceptions in
-[results/LIVE.md](results/LIVE.md). Evaluation is rolling-origin temporal
-validation, where the forecast origin steps forward through time and each
-forecast sees only data before it, with quantile accuracy (pinball loss)
-and calibration (how often the truth lands inside the band) scored
-separately. Every model is scored against two baselines,
-persistence and the HAR (heterogeneous autoregressive) regression
-standard in volatility work, and the results table shows which models fail
-to beat them.
+a position size. Eight models make the forecast, from naive persistence,
+which says tomorrow will look like today, to a deep net. The target is
+hourly realized volatility, a measure of how much the price moved minute
+to minute within each hour. Each model forecasts it for each of the next
+24 hours. Every forecast is a band rather than a single number, five
+levels from a low to a high with the median in the middle (quantiles).
+The outer pair is set so the truth should land inside the band nine
+times in ten. Each day the run happens, every model's forecast is
+committed to git before the first of its 24 target hours has ended. Each
+daily run audits those commit times against the git history and lists
+the exceptions in [results/LIVE.md](results/LIVE.md).
 
-Over the 46 fully resolved days to 2026-09-22, the leading
-model, N-HiTS, forecast each day's average volatility with a miss of
-0.19 in log units, a miss of about a fifth. Persistence missed by 0.31
-over its 49 days. On the 46 days both forecast, the day-level skill is
-0.41, with a 95% interval of 0.18 to 0.64 that treats each day as
-independent of the last. The interval stays above zero, so on those days
-the lead over persistence is larger than day-to-day noise would explain.
+Scoring is rolling-origin validation. Each forecast is made from one
+point in time, its origin, using only data before it, and the origin
+steps forward through the data for the next forecast. The band is scored
+two ways, kept separate. Pinball loss scores how close the whole band sat
+to what happened, and calibration counts how often the truth landed
+inside it. Every model is also scored against two baselines, persistence
+and HAR (heterogeneous autoregressive), a least-squares regression on
+the trailing day, week, and month averages of volatility. The results
+table shows which models fail to beat them.
+
+The daily record scores each day's average volatility. Over the 46
+fully resolved days to 2026-09-22, the leading model, N-HiTS, missed it
+by 0.19 in log units, a miss of about a fifth. Persistence missed by
+0.31 over its 49 days. On the 46 days both forecast, N-HiTS removed 41%
+of persistence's error, a day-level skill of 0.41. The 95% interval on
+that skill is 0.18 to 0.64, computed as if each day were independent of
+the last. The interval stays above zero, so on those days the lead over
+persistence is larger than day-to-day noise would explain.
 Those columns and the day-by-day figure are in
 [results/LIVE.md](results/LIVE.md), and the figure shows the pattern of
 the record. The forecast tracks the level of ordinary days and misses
 the spikes on the day they arrive.
 
-In the pinned 2026-08-05 backtest, the best model (N-HiTS, the deep
-net) scored a mean pinball loss of 0.0959 against 0.1180 for the
-persistence baseline, a skill score of 0.186, meaning it removed about a
-fifth of the baseline's error, averaged over forecast horizons of 1 to 24
-hours. The backtest covers the last 365 days of the data, with a forecast
-origin every second day, 183 origins in all. That backtest's results
-table, figures, and dataset summary are in
+The pinned 2026-08-05 backtest covers the last 365 days of the data,
+with a forecast origin every second day, 183 origins in all. Its best
+model, N-HiTS, the deep net, scored a mean pinball loss of 0.0959,
+averaged over forecast horizons of 1 to 24 hours. The persistence
+baseline scored 0.1180 on the same origins. The skill score, averaged
+over the same horizons, is 0.186, meaning N-HiTS removed about a fifth
+of the baseline's error. That backtest's results table, figures, and
+dataset summary are in
 [results/REPORT.md](results/REPORT.md) (generated, never hand-edited).
 
 ## Why
 
 The forecast is the product, and the scoring is what makes it worth
-reading. Persistence, the baseline that says tomorrow will look like
-today, is the bar. A forecast that cannot beat it out of sample tells
-you nothing you did not already know, so every forecast here is
-committed in public and scored against persistence every day.
+reading. Persistence is the bar. A forecast that cannot beat it out of
+sample tells you nothing you did not already know, so every forecast
+here is committed in public and scored against persistence every day.
+
 The harness is not tied to one series, as long as the series is hourly.
 Models implement a small adapter (train window in, quantile forecasts
 out), and any hourly series with a timestamp index plugs in; the load
@@ -53,15 +62,15 @@ demo below shows it.
 
 ## Data
 
-The data comes from public exchange APIs that need no API key. Coinbase
-Exchange 1-minute candles (one open, high, low, and close per minute) are
-the primary source, three years of them and growing daily. Bitstamp
+The data comes from public exchange APIs that need no API key. The
+primary source is Coinbase Exchange 1-minute candles (one open, high,
+low, and close per minute), three years of them and growing daily. Bitstamp
 hourly closes cross-check them. On 2026-08-03 that check compared 26,363
 hours and found a median divergence of 0.009%, recorded in
-results/crosscheck.txt. Hourly realized
-volatility is computed from 1-minute log returns, annualized, with hours
-missing more than a quarter of their minutes marked missing (NaN) rather than treated
-as quiet. Raw data is not committed. The backfill resumes from its last
+results/crosscheck.txt. Hourly realized volatility is computed from the
+1-minute log returns within each hour and annualized. An hour missing
+more than a quarter of its minutes is marked missing (NaN) rather than
+treated as quiet. Raw data is not committed. The backfill resumes from its last
 saved candle and rebuilds the dataset from the exchanges.
 
 ## Models
@@ -79,8 +88,8 @@ The results tables and the forecast log use short code names for these
 models: `gbm` is XGBoost, `sarima` is SARIMAX, `har` and
 `har_seasonal` are the two HAR variants, and `nhits` is N-HiTS.
 
-A second dataset, German hourly load (OPSD/ENTSO-E, CC-BY 4.0), runs
-through the identical engine as a generality demo:
+The same engine also runs on a second dataset, German hourly
+electricity load from OPSD/ENTSO-E (CC-BY 4.0), as a generality demo:
 [results/LOAD_REPORT.md](results/LOAD_REPORT.md). The model ranking
 reorders against the volatility backtest, with Prophet climbing
 from third from last to second, which is the point. Model family choice
@@ -152,18 +161,18 @@ sits near 0.90, and a model that sits well below it is claiming more
 precision than it has.
 
 The first version of the check compared that column against a fixed
-floor of 0.80 (the band also had a 0.98 ceiling no model came
-near while the check was active) and named anything underneath. From 2026-08-16 to
-2026-08-24 it named `gbm` every day, and from 2026-08-20 on the list
+floor of 0.80 and named anything underneath. The check also had a 0.98
+ceiling, which no model came near while it was active. From
+2026-08-16 to 2026-08-24 the check named `gbm` every day, and from 2026-08-20 on the list
 grew to three to five of the eight models. The list never emptied, so
 the check carried no information. A signal that is always on cannot
 tell you when something changed.
 
 The problem was that the floor sat inside the noise. Hourly rows within
 a day are strongly dependent, so the effective sample is the number of
-scored days, not the row count. At 21 scored days the standard error
-of a typical model's day-level coverage, the noise expected in that
-average from 21 days alone, is about 0.045. The gap between the 0.80
+scored days, not the row count. At 21 scored days, a typical model's
+day-level coverage has a standard error of about 0.045, the noise
+expected in that average from 21 days alone. The gap between the 0.80
 floor and the 0.90 target is roughly two standard errors wide. For a
 model whose true coverage sits anywhere in the 0.80s, which side of the
 floor its estimate lands on is decided by noise. The membership of the
@@ -194,9 +203,9 @@ Replayed over every scored day, the check stayed silent through
 2026-08-30, and not by a wide margin. `gbm` rejected on 2026-08-26 and
 2026-08-27, `prophet` on 2026-08-27 and 2026-08-28, and each streak
 broke one day short of the report line. A fresh `gbm` streak began on
-2026-08-29. On 2026-08-31 the check reported a model for the first time,
-naming `gbm` at a coverage of 0.7932 over its 28 scored days, a
-p-value of 0.0058 against the corrected threshold of 0.0063. A p-value
+2026-08-29. On 2026-08-31 the check reported a model for the first time.
+It named `gbm`, whose coverage over its 28 scored days was 0.7932. The
+p-value was 0.0058 against the corrected threshold of 0.0063. A p-value
 is the chance of a gap that large, in either direction, arising from
 noise alone. `gbm` was the model
 nearest the line when the check was rebuilt, so the first flag landing
@@ -218,16 +227,16 @@ results table will stay noisy until the sample grows.
 
 The forecast log's timing evidence is the commit history, which I control.
 The GitHub push history, recorded on GitHub's side, is an independent
-record a reader can check it against. The loop missed 2026-09-02
+record a reader can check it against. The daily run missed 2026-09-02
 entirely after an unplanned restart, and the 2026-09-03 forecast was
 committed late, which LIVE.md lists.
 
 The coverage columns in LIVE.md carry real uncertainty, because each day
 contributes about 24 dependent hourly rows. The calibration check above
-quantifies that uncertainty rather than reading the column as exact,
-though it treats each scored day as independent of the last, and that
-day-to-day dependence is unmodeled. As of 2026-09-18, six of the eight
-models' coverage sits below 0.90 and the other two sit just above it.
+quantifies that uncertainty rather than reading the column as exact. It
+treats each scored day as independent of the last, and that day-to-day
+dependence is unmodeled. As of 2026-09-22, five of the eight
+models' coverage sits below 0.90 and the other three sit just above it.
 That mostly one-sided pattern is a weak signal that the bands are
 narrow, and no per-model test will settle it at this sample size. A
 pattern like that is why the check was rebuilt rather than removed.
