@@ -9,6 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = ROOT / "data"
 RESULTS_DIR = ROOT / "results"
+HOURLY_PATH = DATA_DIR / "hourly_rv.csv"   # the committed hourly series
 
 PRODUCT = "BTC-USD"            # Coinbase product id
 BITSTAMP_PAIR = "btcusd"

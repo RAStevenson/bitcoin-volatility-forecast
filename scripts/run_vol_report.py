@@ -13,7 +13,8 @@ import json
 
 import pandas as pd
 
-from fbench.harness_config import DATA_DIR, RESULTS_DIR
+from fbench.harness_config import RESULTS_DIR
+from fbench.data.hourly_series import load_hourly
 from fbench.report_generator import write_report
 from fbench.quantile_scoring import add_skill, score
 from fbench.mlflow_tracking import log_backtest
@@ -32,7 +33,7 @@ else:
     results_path = candidates[-1]
 
 results = pd.read_parquet(results_path)
-hourly = pd.read_parquet(DATA_DIR / "hourly_rv.parquet")
+hourly = load_hourly()
 scores = add_skill(score(results))
 
 run_config = json.loads(results_path.with_suffix(".json").read_text())
