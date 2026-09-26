@@ -1,4 +1,5 @@
-/data/
+/data/*
+!/data/hourly_rv.csv
 CLAUDE.md
 .claude/
 mlruns/

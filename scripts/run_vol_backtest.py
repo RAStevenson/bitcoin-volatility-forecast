@@ -1,4 +1,4 @@
-"""Run the model backtest over data/hourly_rv.parquet and save the
+"""Run the model backtest over data/hourly_rv.csv and save the
 scored rows as results/backtest_<date>.parquet with a json sidecar
 holding the run's settings and a snapshot of the dataset it saw. Unless
 --no-report is given it also writes results/REPORT.md with its two
@@ -16,8 +16,9 @@ import pandas as pd
 
 import fbench.models.persistence_model  # noqa: F401  (registers baselines)
 from fbench.rolling_backtest import make_origins, run_backtest
-from fbench.harness_config import (DATA_DIR, HORIZON, ORIGIN_STRIDE_DAYS,
-                           RESULTS_DIR, TEST_DAYS)
+from fbench.harness_config import (HORIZON, ORIGIN_STRIDE_DAYS, RESULTS_DIR,
+                           TEST_DAYS)
+from fbench.data.hourly_series import load_hourly
 from fbench.feature_builder import build_features
 from fbench.models.base_forecast_model import REGISTRY
 from fbench.report_generator import write_report
@@ -43,7 +44,7 @@ parser.add_argument("--no-report", action="store_true",
 args = parser.parse_args()
 names = args.models.split(",")
 
-hourly = pd.read_parquet(DATA_DIR / "hourly_rv.parquet")
+hourly = load_hourly()
 feats = build_features(hourly)
 origins = make_origins(feats.index, args.test_days, args.stride)
 print(f"models={names} origins={len(origins)}", flush=True)
