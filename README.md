@@ -198,7 +198,8 @@ no manual install). If a first fit fails with a cmdstan error, run
 
 The run is a GitHub Actions workflow,
 [.github/workflows/daily-run.yml](.github/workflows/daily-run.yml),
-scheduled at 11:12 UTC each day. It installs the Python packages, with
+scheduled at 11:12 UTC each day, with a second trigger at 11:42 UTC
+that does nothing when the first has committed. It installs the Python packages, with
 the CPU-only build of PyTorch, and runs `scripts/run_daily.py`, which
 commits the result as `github-actions[bot]` and pushes, so the commit
 times in the forecast log are GitHub's, not mine. The origin is the last complete hour before the run,

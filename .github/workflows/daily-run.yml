@@ -6,6 +6,7 @@ on:
                              # first target hour ends 12:00 UTC; minutes past
                              # the hour because GitHub starts scheduled runs
                              # late most often at the top of an hour
+    - cron: "42 11 * * *"   # retry; does nothing when the first run committed
   workflow_dispatch:
     inputs:
       dry_run:
@@ -28,20 +29,32 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0        # the timing audit reads the full history
+      - name: Skip when today's run has already committed
+        id: today
+        run: |
+          if git log -1 --format=%s | grep -q "^Daily run $(date -u +%F)"; then
+            echo "done=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "done=false" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/setup-python@v5
+        if: steps.today.outputs.done == 'false' || github.event_name == 'workflow_dispatch'
         with:
           python-version: "3.11"
           cache: pip
       - name: Install the CPU stack
+        if: steps.today.outputs.done == 'false' || github.event_name == 'workflow_dispatch'
         run: |
           python -m pip install --upgrade pip
           pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cpu
           pip install -r requirements.txt
       - name: Git identity for the run's commit
+        if: steps.today.outputs.done == 'false' || github.event_name == 'workflow_dispatch'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       - name: Daily run
+        if: steps.today.outputs.done == 'false' || github.event_name == 'workflow_dispatch'
         env:
           DRY: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
         run: |

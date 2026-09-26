@@ -3,8 +3,8 @@
 The prompt a scheduled agent runs each morning after the GitHub Actions
 run. It
 reads the committed results and reports them; it computes nothing and
-edits nothing. Schedule it half an hour after the daily run's time
-(the workflow runs at 11:12 UTC) with any agent that can run shell
+edits nothing. Schedule it an hour after the daily run's time (the
+workflow runs at 11:12 UTC, with a retry at 11:42) with any agent that can run shell
 commands and read files, or read the three files yourself.
 
 ---
