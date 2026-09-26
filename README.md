@@ -2,7 +2,7 @@
 
 This repo publishes a daily forecast of how much the price of BTC-USD
 (Bitcoin priced in US dollars) will fluctuate over the next 24 hours,
-and the code that scores that forecast against what then happened. The
+and holds the code that scores that forecast against reality. The
 size of that fluctuation is the volatility. This volatility is useful
 in systematic trading usually for position sizing.
 
@@ -10,8 +10,8 @@ Eight models make the forecast each day. The repo publishes the one
 from whichever model is scoring best so far, in plain language, in
 [results/FORECAST.md](results/FORECAST.md). That file gives the
 expected move in dollars and percent, where the day sits against the
-past year, and which hours are expected to be the loudest, in words a
-reader with no background can use. The simplest is
+past year, and which hours are expected to fluctuate most. The
+simplest of the eight is
 persistence, the naive baseline whose forecast is that each of the next
 24 hours will look like the last hour observed. At the other end is
 N-HiTS, a neural network built for time series. They run side by side
@@ -107,7 +107,7 @@ every day.
 The data comes from the exchanges' public data feeds, which need no
 account or key. The primary source is Coinbase Exchange 1-minute
 candles (one open, high, low, and close per minute), three years of
-them and growing daily. Bitstamp hourly closes cross-check them, so the
+them for the backtest and one more day of them each morning. Bitstamp hourly closes cross-check them, so the
 data is not trusted on one venue's word. On 2026-08-03 that check
 compared 26,363 hours and found a median divergence of 0.009%, recorded
 in results/crosscheck.txt. The hourly realized volatility built from
@@ -121,10 +121,7 @@ data/hourly_rv.csv, and grows by 24 rows a day. Each daily run fetches
 only the minutes since the series' last hour, builds the new hours from
 them, and stores no minutes. The backfill script rebuilds the full
 minute history from Coinbase for the backtest, resuming from its last
-saved candle. Bitcoin trades every hour of every day, which is what
-lets one forecast cover a full day and lets one rule mark an hour as
-missing; a market with a daily close would need a different rule for
-both.
+saved candle.
 
 ## Models
 
@@ -154,6 +151,9 @@ python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 
+# The first three commands rebuild the data from scratch for the
+# backtest. The daily run does not need them; it starts from the
+# committed hourly series.
 python scripts/run_backfill.py     # fetch 1-min candles (resumable)
 python scripts/run_crosscheck.py   # verify against Bitstamp
 python scripts/run_build_rv.py     # build the hourly realized-vol series
@@ -198,10 +198,10 @@ no manual install). If a first fit fails with a cmdstan error, run
 
 The run is a GitHub Actions workflow,
 [.github/workflows/daily-run.yml](.github/workflows/daily-run.yml),
-scheduled at 11:12 UTC each day. It installs the CPU stack, runs
-`scripts/run_daily.py`, and commits the result as `github-actions[bot]`
-and pushes, so the commit times in the forecast log are GitHub's, not a
-machine of mine. The origin is the last complete hour before the run,
+scheduled at 11:12 UTC each day. It installs the Python packages, with
+the CPU-only build of PyTorch, and runs `scripts/run_daily.py`, which
+commits the result as `github-actions[bot]` and pushes, so the commit
+times in the forecast log are GitHub's, not mine. The origin is the last complete hour before the run,
 the 10:00 UTC hour, and its first target hour ends at 12:00 UTC, so a
 run that starts on time commits with about half an hour to spare. The
 schedule is a few minutes past the hour because GitHub starts scheduled
@@ -209,22 +209,24 @@ runs late most often at the top of an hour. A run that commits late is
 listed in [results/LIVE.md](results/LIVE.md) by the audit. A run that
 fails leaves no commit that day, and the gap is visible in the history.
 
-Before 2026-09-27, the run was triggered on my machine by a scheduled
-Claude Code routine at 06:05 local time. The missed day on 2026-09-02
+From 2026-09-27 the run is scheduled on GitHub. Until then it was
+triggered on my machine by a scheduled Claude Code routine at 06:05
+local time. The missed day on 2026-09-02
 and the late commit on 2026-09-03 came from an unplanned restart of
 that machine, which the move to GitHub removes as a cause.
 
 A second routine still runs on my machine each morning. It pulls the
 repo, checks that the day's commit has landed, and briefs me from
-[results/REVIEW.md](results/REVIEW.md) and
-[results/FORECAST.md](results/FORECAST.md), under rules that it relays
+[results/REVIEW.md](results/REVIEW.md),
+[results/FORECAST.md](results/FORECAST.md), and
+[results/LIVE.md](results/LIVE.md), under rules that it relays
 the files' numbers and adds no diagnosis of its own. Its prompt is
 committed as [docs/daily_briefing_prompt.md](docs/daily_briefing_prompt.md),
 and any scheduled agent or a person can run it.
 
 To run the loop yourself on a clone, fork the repo and enable the
 workflow, or schedule `python scripts/run_daily.py --no-push` with
-cron or Task Scheduler; the flag keeps the commit on your clone. The
+cron or Task Scheduler. The flag keeps the commit on your clone. The
 first run needs `data/hourly_rv.csv`, which the repo carries, and
 fetches only the minutes since its last hour.
 
@@ -316,25 +318,25 @@ calibrated. A model whose daily coverage has no spread at all also gets
 none, because the test would have no uncertainty to divide by, and
 inventing one would repeat the mistake the fixed floor made.
 
-Why two models' bands run narrow is visible in how they are built. HAR
-takes its band from the spread of the errors of the regression it has
-just fit, and XGBoost fits each of its five levels to every row of its
-training window with nothing held back. A band drawn from the fit's own
-errors understates the errors the fit will make on hours it has not
-seen. So both models' 90% bands cover less than 90% of hours, which is
-what the coverage column and the check above record. The bands are
-left as each model produces them, because widening them by hand would
-hide the property the check exists to show.
+Part of why some bands run narrow is visible in how they are built.
+HAR takes its band from the spread of the errors of the regression it
+has just fit, on the hours it was fit to. XGBoost fits each of its five
+levels to every row of its training window with nothing held back. A
+band fitted to the hours a model has seen tends to understate the
+errors it makes on hours it has not. In LIVE.md's cov90 column both
+models' 90% bands cover fewer than 90% of hours, and so does Prophet's.
+The bands are left as each model produces them, because widening them
+by hand would hide what the coverage column exists to show.
 
 ## Limitations and next steps
 
 The daily record is 49 scored days as of 2026-09-22, and the LIVE.md
 results table will stay noisy until the sample grows.
 
-The timing evidence for the forecast log is the commit history. Since
-2026-09-27 the commits are made by GitHub's runner on GitHub's clock,
-and before that by a machine I control, with the GitHub push history
-as the independent record for those days. The daily run missed
+The timing evidence for the forecast log is the commit history. From
+2026-09-27 the commits are scheduled to be made by GitHub's runner on
+GitHub's clock. Before that they were made by a machine I control, with
+the GitHub push history as the independent record for those days. The daily run missed
 2026-09-02 entirely after an unplanned restart, and the 2026-09-03
 forecast was committed late, which LIVE.md lists.
 
@@ -359,8 +361,8 @@ pattern is not signaled by the hours before it.
 The backtest covers one asset, BTC-USD, a market that trades every
 hour of every day. Nothing here shows the ranking holds on other
 markets, and a market with a daily close would need the volatility
-rule, the baseline, and the calibration check rebuilt around its
-session. The backtest and the daily record are also two different
+rule, the persistence baseline, and the 24-hour horizon rethought
+around its session. The backtest and the daily record are also two different
 experiments. The backtest's origins sit at midnight UTC, while the
 daily run's origin is the 10:00 UTC hour, so the backtest ranking has
 not been measured at the hour the daily run forecasts from.
