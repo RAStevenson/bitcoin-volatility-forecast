@@ -119,9 +119,12 @@ annualized, so its values sit on the per-year scale volatility is
 usually quoted in. A value of 0.60 means 60% a year, the fluctuation
 to expect over a year if every hour fluctuated like this one. An hour
 missing more than a quarter of its minutes is marked missing (NaN)
-rather than treated as quiet. Raw data is not committed. The backfill,
-the script that fetches the candles, resumes from its last saved candle
-and rebuilds the dataset from Coinbase.
+rather than treated as quiet. The hourly series is committed, in
+data/hourly_rv.csv, and grows by 24 rows a day. Each daily run fetches
+only the minutes since the series' last hour, builds the new hours from
+them, and stores no minutes. The backfill script rebuilds the full
+minute history from Coinbase for the backtest, resuming from its last
+saved candle.
 
 ## Models
 
@@ -177,6 +180,7 @@ python scripts/run_daily.py        # the daily run: score yesterday, log
                                    #   audit's exceptions), and FORECAST.md
                                    #   (the leading model's forecast in
                                    #   plain language), commit and push
+                                   #   (--no-push, --no-commit)
 python scripts/run_verify_timing.py  # audit the forecast log's timing claim
                                      #   against git history: exits 1 if any
                                      #   forecast row was first committed
@@ -188,7 +192,9 @@ python scripts/run_verify_timing.py  # audit the forecast log's timing claim
 (default 365) to run subsets quickly, and `--no-report` to stop after
 writing the backtest parquet. `run_load_demo.py` takes `--stride` (default 4) and `--test-days`
 (default 365) with the same meanings. `run_vol_report.py` takes `--results`
-(default: the newest backtest parquet in results/). Every volatility
+(default: the newest backtest parquet in results/). `run_daily.py` takes `--no-push`
+(commit the run's files locally and do not push) and `--no-commit`
+(write every file and commit nothing). Every volatility
 backtest run is also logged to MLflow, a local run-tracking tool
 (sqlite backend).
 Run `mlflow ui --backend-store-uri sqlite:///mlflow.db` to browse the

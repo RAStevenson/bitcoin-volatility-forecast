@@ -1,6 +1,6 @@
-"""Run the daily loop end to end, backfilling minutes, rebuilding
-the hourly realized volatility series, resolving the forecasts whose
-target hour has closed, logging a fresh 24-hour forecast for every
+"""Run the daily loop end to end, extending the committed hourly
+realized volatility series with the minutes since its last hour,
+resolving the forecasts whose target hour has closed, logging a fresh 24-hour forecast for every
 registered model, auditing the commit timing of earlier forecasts,
 regenerating the three reports (the review with the daily forecast's claims
 scored), and committing and pushing the result."""
@@ -9,6 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+import argparse
 import subprocess
 
 import pandas as pd
@@ -22,12 +23,17 @@ import fbench.models.persistence_model  # noqa: F401
 import fbench.models.prophet_model  # noqa: F401
 import fbench.models.sarima_model  # noqa: F401
 from fbench import daily_run
-from fbench.harness_config import DATA_DIR, ROOT
-from fbench.data import minute_store
+from fbench.harness_config import ROOT
 from fbench.commit_timing import first_commits, late_groups
-from fbench.data.candle_backfill import backfill
+from fbench.data.hourly_series import update_hourly
 from fbench.feature_builder import build_features
-from fbench.realized_volatility import hourly_realized_vol
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--no-push", action="store_true",
+                    help="commit the run's files locally and do not push")
+parser.add_argument("--no-commit", action="store_true",
+                    help="write every file and commit nothing (implies --no-push)")
+args = parser.parse_args()
 
 
 def step(name, fn):
@@ -41,21 +47,9 @@ def step(name, fn):
         sys.exit(f"[daily] FAILED at step '{name}': {e}")
 
 
-added = step("backfill", lambda: backfill(verbose=False))
-print(f"  minutes added: {added}")
-
-
-def _build_rv():
-    """Rebuilds the hourly realized volatility series from the minute
-    store and saves it, returning it with the latest minute close that
-    the daily forecast needs to quote moves in dollars."""
-    m = minute_store.load_minutes()
-    out = hourly_realized_vol(m.set_index("time")["close"])
-    out.to_parquet(DATA_DIR / "hourly_rv.parquet")
-    return out, float(m.loc[m["time"].idxmax(), "close"])
-
-
-hourly, last_close = step("rebuild rv", _build_rv)
+hourly, last_close, fetched = step("update hourly series",
+                                   lambda: update_hourly())
+print(f"  minutes fetched: {fetched}; series through {hourly.index[-1]}")
 resolved = step("score due", lambda: daily_run.score_due(hourly))
 print(f"  rows resolved: {resolved}")
 
@@ -89,13 +83,18 @@ step("review", lambda: write_review(hourly))
 
 
 def _commit_push():
-    """Commits the regenerated logs and reports, pushing when an origin
-    remote is configured. Committing happens before the logged target
+    """Commits the extended hourly series, the logs and the reports,
+    pushing when an origin remote is configured and --no-push is not set;
+    with --no-commit it returns before staging anything. Committing happens before the logged target
     hours close, which is what makes the forecast log pre-outcome
     evidence. A second run on the same day finds nothing staged and
     returns without committing."""
+    if args.no_commit:
+        print("  --no-commit: files written, nothing committed")
+        return
     day = pd.Timestamp.now(tz="UTC").date()
-    tracked = [p for p in ("results/forecasts.csv", "results/evaluation.csv",
+    tracked = [p for p in ("data/hourly_rv.csv",
+                           "results/forecasts.csv", "results/evaluation.csv",
                            "results/LIVE.md", "results/FORECAST.md",
                            "results/REVIEW.md", "results/fig_live_daily.png")
                if (ROOT / p).exists()]
@@ -109,10 +108,12 @@ def _commit_push():
                     f"{resolved} resolved"], cwd=ROOT, check=True)
     remotes = subprocess.run(["git", "remote"], cwd=ROOT,
                              capture_output=True, text=True).stdout.split()
-    if "origin" in remotes:
+    if "origin" in remotes and not args.no_push:
         subprocess.run(["git", "push", "origin", "HEAD"], cwd=ROOT,
                        check=True)
         print("  committed and pushed")
+    elif args.no_push:
+        print("  committed; push skipped (--no-push)")
     else:
         print("  committed; no remote configured, push skipped")
 
