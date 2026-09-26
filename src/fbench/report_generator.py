@@ -1,6 +1,5 @@
-"""Builds the backtest report, results/REPORT.md for the
-volatility run and results/LOAD_REPORT.md for the load demo, which is
-what a reader compares models on before any live scores exist. Tables and
+"""Builds the backtest report, results/REPORT.md, which is what a
+reader compares models on before any live scores exist. Tables and
 figures are rendered from a run's scored rows, and the Dataset section is
 pinned to the snapshot that run recorded rather than to today's data."""
 import matplotlib

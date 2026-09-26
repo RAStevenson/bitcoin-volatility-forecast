@@ -99,12 +99,6 @@ sample tells you nothing you did not already know, so every forecast
 here is committed to the repo's history and scored against persistence
 every day.
 
-The harness is not tied to one series, as long as the series is hourly.
-Models implement a small adapter (train window in, quantile forecasts
-out). Any hourly series plugs in once it is mapped into the frame the
-models are fit on, a timestamp index and the series on the log scale.
-The electricity-load demo below shows it.
-
 ## Data
 
 The data comes from the exchanges' public data feeds, which need no
@@ -143,15 +137,9 @@ short code names for these models: `gbm` is XGBoost, `sarima` is SARIMAX, `har` 
 `persistence`, `seasonal_persistence`, and `prophet` keep their own
 names.
 
-The same engine also runs on a second dataset, German hourly
-electricity load from OPSD/ENTSO-E (CC-BY 4.0), as a generality demo:
-[results/LOAD_REPORT.md](results/LOAD_REPORT.md). The model ranking
-reorders against the volatility backtest, with Prophet climbing
-from third from last to second, which is the point. Load runs on
-strong daily and weekly cycles where volatility is dominated by its
-current level, so the model family that suits one need not suit the
-other, and
-the harness measures it.
+Which model leads is a property of this series. On other data, other
+models might dominate, which is why eight run side by side rather than
+one being chosen in advance.
 
 ## Setup and run
 
@@ -167,9 +155,6 @@ python scripts/run_vol_backtest.py # rolling-origin backtest; scores it,
                                    #   logs to MLflow, writes REPORT.md
 python scripts/run_vol_report.py   # re-score an existing backtest parquet
                                    #   without refitting
-python scripts/run_load_demo.py    # generality demo: German hourly load
-                                   #   through the same engine, writes
-                                   #   LOAD_REPORT.md
 python scripts/run_daily.py        # the daily run: score yesterday, log
                                    #   today's forecasts, write REVIEW.md
                                    #   (yesterday's forecasts against what
@@ -190,8 +175,7 @@ python scripts/run_verify_timing.py  # audit the forecast log's timing claim
 `run_vol_backtest.py` takes `--models` (default: every registered model),
 `--stride` (default 2, days between forecast origins), and `--test-days`
 (default 365) to run subsets quickly, and `--no-report` to stop after
-writing the backtest parquet. `run_load_demo.py` takes `--stride` (default 4) and `--test-days`
-(default 365) with the same meanings. `run_vol_report.py` takes `--results`
+writing the backtest parquet. `run_vol_report.py` takes `--results`
 (default: the newest backtest parquet in results/). `run_daily.py` takes `--no-push`
 (commit the run's files locally and do not push) and `--no-commit`
 (write every file and commit nothing). Every volatility
@@ -321,8 +305,5 @@ its 0.80 coverage floor, its widest list. The forecast tracks the level
 of ordinary days, and the rare day that breaks the
 pattern is not signaled by the hours before it.
 
-The volatility backtest covers one asset, BTC-USD, and nothing here shows the
-ranking holds on other coins or other markets. The load demo runs the
-classical models only, without N-HiTS, so the cross-series comparison
-covers seven models rather than eight. The remaining next step is
-adding N-HiTS to the load demo.
+The backtest covers one asset, BTC-USD, and nothing here shows the
+ranking holds on other coins or other markets.
