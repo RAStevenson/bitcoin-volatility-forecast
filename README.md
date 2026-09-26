@@ -2,13 +2,16 @@
 
 This repo publishes a daily forecast of how much the price of BTC-USD
 (Bitcoin priced in US dollars) will fluctuate over the next 24 hours,
-and holds the harness that scores that forecast against reality. The
+and the code that scores that forecast against what then happened. The
 size of that fluctuation is the volatility. This volatility is useful
 in systematic trading usually for position sizing.
 
 Eight models make the forecast each day. The repo publishes the one
 from whichever model is scoring best so far, in plain language, in
-[results/FORECAST.md](results/FORECAST.md). The simplest is
+[results/FORECAST.md](results/FORECAST.md). That file gives the
+expected move in dollars and percent, where the day sits against the
+past year, and which hours are expected to be the loudest, in words a
+reader with no background can use. The simplest is
 persistence, the naive baseline whose forecast is that each of the next
 24 hours will look like the last hour observed. At the other end is
 N-HiTS, a neural network built for time series. They run side by side
@@ -29,9 +32,9 @@ the time. The middle level is therefore the median, and the outer pair
 should contain the truth nine times in ten. Whether it does is scored,
 which is what makes the band checkable.
 
-Each day the run happens, every model's forecast is committed to git
-before the first of its 24 target hours has ended, so the history
-proves each forecast was made before its outcome was known. Each daily
+Each day, a scheduled run commits every model's forecast to git before
+the first of its 24 target hours has ended, so the history proves each
+forecast was made before its outcome was known. Each daily
 run audits those commit times against the git history and lists the
 exceptions in [results/LIVE.md](results/LIVE.md). That file is the
 daily record, which holds the running scores of every forecast made
@@ -118,7 +121,10 @@ data/hourly_rv.csv, and grows by 24 rows a day. Each daily run fetches
 only the minutes since the series' last hour, builds the new hours from
 them, and stores no minutes. The backfill script rebuilds the full
 minute history from Coinbase for the backtest, resuming from its last
-saved candle.
+saved candle. Bitcoin trades every hour of every day, which is what
+lets one forecast cover a full day and lets one rule mark an hour as
+missing; a market with a daily close would need a different rule for
+both.
 
 ## Models
 
@@ -187,6 +193,40 @@ runs.
 On Windows, Prophet's pip wheel worked as-is here (cmdstanpy backend,
 no manual install). If a first fit fails with a cmdstan error, run
 `python -m cmdstanpy.install_cmdstan` once and retry.
+
+## How the daily run happens
+
+The run is a GitHub Actions workflow,
+[.github/workflows/daily-run.yml](.github/workflows/daily-run.yml),
+scheduled at 11:12 UTC each day. It installs the CPU stack, runs
+`scripts/run_daily.py`, and commits the result as `github-actions[bot]`
+and pushes, so the commit times in the forecast log are GitHub's, not a
+machine of mine. The origin is the last complete hour before the run,
+the 10:00 UTC hour, and its first target hour ends at 12:00 UTC, so a
+run that starts on time commits with about half an hour to spare. The
+schedule is a few minutes past the hour because GitHub starts scheduled
+runs late most often at the top of an hour. A run that commits late is
+listed in [results/LIVE.md](results/LIVE.md) by the audit. A run that
+fails leaves no commit that day, and the gap is visible in the history.
+
+Before 2026-09-27, the run was triggered on my machine by a scheduled
+Claude Code routine at 06:05 local time. The missed day on 2026-09-02
+and the late commit on 2026-09-03 came from an unplanned restart of
+that machine, which the move to GitHub removes as a cause.
+
+A second routine still runs on my machine each morning. It pulls the
+repo, checks that the day's commit has landed, and briefs me from
+[results/REVIEW.md](results/REVIEW.md) and
+[results/FORECAST.md](results/FORECAST.md), under rules that it relays
+the files' numbers and adds no diagnosis of its own. Its prompt is
+committed as [docs/daily_briefing_prompt.md](docs/daily_briefing_prompt.md),
+and any scheduled agent or a person can run it.
+
+To run the loop yourself on a clone, fork the repo and enable the
+workflow, or schedule `python scripts/run_daily.py --no-push` with
+cron or Task Scheduler; the flag keeps the commit on your clone. The
+first run needs `data/hourly_rv.csv`, which the repo carries, and
+fetches only the minutes since its last hour.
 
 ## Tests
 
@@ -276,16 +316,27 @@ calibrated. A model whose daily coverage has no spread at all also gets
 none, because the test would have no uncertainty to divide by, and
 inventing one would repeat the mistake the fixed floor made.
 
+Why two models' bands run narrow is visible in how they are built. HAR
+takes its band from the spread of the errors of the regression it has
+just fit, and XGBoost fits each of its five levels to every row of its
+training window with nothing held back. A band drawn from the fit's own
+errors understates the errors the fit will make on hours it has not
+seen. So both models' 90% bands cover less than 90% of hours, which is
+what the coverage column and the check above record. The bands are
+left as each model produces them, because widening them by hand would
+hide the property the check exists to show.
+
 ## Limitations and next steps
 
 The daily record is 49 scored days as of 2026-09-22, and the LIVE.md
 results table will stay noisy until the sample grows.
 
-The timing evidence for the forecast log is the commit history, which
-I control. The GitHub push history, recorded on
-GitHub's side, is an independent record it can be checked against. The daily run missed 2026-09-02
-entirely after an unplanned restart, and the 2026-09-03 forecast was
-committed late, which LIVE.md lists.
+The timing evidence for the forecast log is the commit history. Since
+2026-09-27 the commits are made by GitHub's runner on GitHub's clock,
+and before that by a machine I control, with the GitHub push history
+as the independent record for those days. The daily run missed
+2026-09-02 entirely after an unplanned restart, and the 2026-09-03
+forecast was committed late, which LIVE.md lists.
 
 The coverage columns in LIVE.md carry real uncertainty, because each day
 contributes about 24 dependent hourly rows. The calibration check above
@@ -305,5 +356,11 @@ its 0.80 coverage floor, its widest list. The forecast tracks the level
 of ordinary days, and the rare day that breaks the
 pattern is not signaled by the hours before it.
 
-The backtest covers one asset, BTC-USD, and nothing here shows the
-ranking holds on other coins or other markets.
+The backtest covers one asset, BTC-USD, a market that trades every
+hour of every day. Nothing here shows the ranking holds on other
+markets, and a market with a daily close would need the volatility
+rule, the baseline, and the calibration check rebuilt around its
+session. The backtest and the daily record are also two different
+experiments. The backtest's origins sit at midnight UTC, while the
+daily run's origin is the 10:00 UTC hour, so the backtest ranking has
+not been measured at the hour the daily run forecasts from.
