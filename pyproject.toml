@@ -1,7 +1,7 @@
 [project]
 name = "volatility-forecast-harness"
 version = "1.0.0"
-description = "Daily quantile forecast of BTC-USD hourly realized volatility from eight models under rolling-origin scoring, committed before each target hour and scored in a public record"
+description = "Daily quantile forecast of BTC-USD hourly realized volatility from eight models under rolling-origin scoring, committed before its first target hour ends and scored in a public record"
 authors = [{ name = "Robert Andrew Stevenson" }]
 requires-python = ">=3.11"
 license = { text = "MIT" }

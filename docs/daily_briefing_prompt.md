@@ -1,6 +1,7 @@
 # Daily briefing prompt
 
-The prompt a scheduled agent runs each morning after the cloud run. It
+The prompt a scheduled agent runs each morning after the GitHub Actions
+run. It
 reads the committed results and reports them; it computes nothing and
 edits nothing. Schedule it half an hour after the daily run's time
 (the workflow runs at 11:12 UTC) with any agent that can run shell
@@ -16,9 +17,9 @@ git log -1 --format=%s
 ```
 
 If the latest commit message starts with "Daily run <today's date in
-UTC, YYYY-MM-DD>", the cloud run has landed: go to STEP 2. If it does
+UTC, YYYY-MM-DD>", the run has landed: go to STEP 2. If it does
 not, the GitHub Actions run has not committed today. Do not run the
-pipeline yourself. Report in one line that the cloud run has not
+pipeline yourself. Report in one line that the GitHub Actions run has not
 landed, with the latest commit's message and date, and stop. The
 workflow's own log on GitHub is where the failure is read.
 
@@ -47,12 +48,12 @@ Then, briefly, system health:
 - Calibration: relay the "calibration check" line from results/LIVE.md
   verbatim in one clause. The script computes the result itself. Raise
   it as an alert only if that line begins "The calibration check
-  flags". While it says "stays inactive" or "passes", it is one clause
-  and never an alert, including when it names a model as pending part
-  way through the three days; a pending model is worth one sentence,
-  not a heading. Never apply a threshold to the raw cov90 column
-  yourself. At this sample size its standard error is about 0.045.
-  Reading the column as exact is the mistake the check was rebuilt on
+  flags". While it says "stays inactive", "passes", or "found no model
+  with enough scored days", it is one clause and never an alert. That
+  holds when it names a model as pending part way through the three
+  days; a pending model is worth one sentence, not a heading. Never apply a threshold to the raw cov90 column
+  yourself. Its day-to-day noise is larger than the gaps between
+  models. Reading the column as exact is the mistake the check was rebuilt on
   2026-08-24 to stop making (see the README, The calibration check).
 
 If a scoring anomaly or a failed step exists, it moves to the top,
