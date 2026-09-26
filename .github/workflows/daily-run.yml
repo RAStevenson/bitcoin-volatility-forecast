@@ -1,0 +1,52 @@
+name: Daily run
+
+on:
+  schedule:
+    - cron: "12 11 * * *"   # 11:12 UTC: the origin is the 10:00 hour and its
+                             # first target hour ends 12:00 UTC; minutes past
+                             # the hour because GitHub starts scheduled runs
+                             # late most often at the top of an hour
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "run with --no-commit (nothing committed or pushed)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-run
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0        # the timing audit reads the full history
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install the CPU stack
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+      - name: Git identity for the run's commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Daily run
+        env:
+          DRY: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        run: |
+          if [ "$DRY" = "true" ]; then
+            python scripts/run_daily.py --no-commit
+          else
+            python scripts/run_daily.py
+          fi
