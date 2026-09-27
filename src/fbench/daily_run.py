@@ -8,9 +8,10 @@ import pandas as pd
 from scipy import stats
 
 from fbench.harness_config import (CALIBRATION_ALPHA, CALIBRATION_PERSISTENCE_DAYS,
+                                   ORIGIN_HOUR_UTC,
                            COV90_TARGET, HORIZON, MIN_CALIBRATION_DAYS,
                            QCOLS, QUANTILES, RESULTS_DIR)
-from fbench.commit_timing import LATE_COMMIT_REASONS
+from fbench.commit_timing import LATE_COMMIT_REASONS, run_note
 from fbench.models.base_forecast_model import REGISTRY
 from fbench.quantile_scoring import add_skill, score
 
@@ -30,6 +31,24 @@ def _load(path, cols):
     for c in ("origin", "target_time"):
         df[c] = pd.to_datetime(df[c], utc=True)
     return df
+
+
+def fixed_origin(hourly, now=None):
+    """The forecast origin for a run at now: the most recent
+    ORIGIN_HOUR_UTC hour that had completed by then, the same clock hour
+    every day. A run that starts hours late therefore forecasts the
+    window an on-time run would have and sees no data past it, which
+    keeps every day of the record on one window. Raises if the series
+    has no realized value at that hour, because forecasting from a
+    substitute origin would put that day on a different window, and a
+    visible failure is what the record should show."""
+    now = pd.Timestamp.now(tz="UTC") if now is None else now
+    origin = now.floor("D") + pd.Timedelta(hours=ORIGIN_HOUR_UTC)
+    if origin + pd.Timedelta(hours=1) > now:
+        origin -= pd.Timedelta(days=1)
+    if origin not in hourly.index or pd.isna(hourly.loc[origin, "log_rv"]):
+        raise ValueError(f"no realized value at the origin hour {origin}")
+    return origin
 
 
 def log_forecasts(feats, origin):
@@ -183,8 +202,9 @@ def timing_lines(late):
         mins = g["minutes_late"]
         delay = (f"{mins / 60:.0f} hours" if mins >= 60
                  else f"{mins:.0f} minutes")
-        why = LATE_COMMIT_REASONS.get(f"{g['origin']:%Y-%m-%d}",
-                                      "No reason is recorded for it.")
+        why = (LATE_COMMIT_REASONS.get(f"{g['origin']:%Y-%m-%d}")
+               or run_note(g.get("subject"))
+               or "No reason is recorded for it.")
         lines.append(
             f"- The {g['origin']:%Y-%m-%d} forecast, made from data through "
             f"the hour starting {g['origin']:%H:00} UTC ({g['models']} "

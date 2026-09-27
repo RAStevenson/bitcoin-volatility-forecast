@@ -1,13 +1,20 @@
 # Daily briefing prompt
 
-The prompt a scheduled agent runs each morning after the GitHub Actions
-run. It reads the committed results and reports them. It computes
-nothing and edits nothing.
+The prompt a scheduled agent runs each morning. It starts the GitHub
+Actions run, waits for it, and reports the committed results. It
+computes nothing and edits nothing. The one thing it may run is the
+pipeline itself, and only when the GitHub run has failed or never
+started.
 
 ## Setting it up
 
-The workflow runs at 11:12 UTC with a retry at 11:42, so schedule the
-briefing for after 12:00 UTC in your local time. Any of these works:
+Schedule it for 11:15 UTC. The forecast origin is the 10:00 UTC hour,
+which closes at 11:00, and the run's commit has to land before 12:00
+UTC to count as made before its first target hour ended. The run is
+started from a machine you control because GitHub's own schedule is
+best-effort and can fire hours late. The workflow keeps GitHub's
+schedule at 11:15 and 11:45 UTC as the fallback for a day this task
+does not run. Any of these works:
 
 - **A Claude Code scheduled task**, which is how the author runs it. In
   the Claude desktop app, ask Claude to schedule a daily task at that
@@ -17,15 +24,26 @@ briefing for after 12:00 UTC in your local time. Any of these works:
   fresh session each day. The briefing arrives as that session's reply.
 - **Any other agent** that can run shell commands and read files, on
   its own scheduler, with the same text as its instructions.
-- **No agent.** Pull the repo and read `results/REVIEW.md`,
-  `results/FORECAST.md`, and `results/LIVE.md` in that order. The
-  prompt below is a reading order, not a computation.
+- **No agent.** Start the run with the first command below, wait for
+  it, pull, and read `results/REVIEW.md`, `results/FORECAST.md`, and
+  `results/LIVE.md` in that order. Step 3 is a reading order,
+  not a computation.
 
-Replace "the repo's directory" in step 1 with your clone's path.
+The machine needs the GitHub CLI signed in to the repo and the
+project's virtual environment built. Replace "the repo's directory"
+with your clone's path.
 
 ---
 
-STEP 1 - PULL AND CHECK. In the repo's directory, execute exactly:
+STEP 1 - START THE RUN. In the repo's directory, execute exactly:
+
+```
+gh workflow run daily-run.yml -f dry_run=false
+```
+
+Then wait five minutes. The run takes about three and a half.
+
+STEP 2 - CHECK THAT IT LANDED. Execute exactly:
 
 ```
 git pull --ff-only
@@ -33,13 +51,38 @@ git log -1 --format=%s
 ```
 
 If the latest commit message starts with "Daily run <today's date in
-UTC, YYYY-MM-DD>", the run has landed: go to STEP 2. If it does
-not, the GitHub Actions run has not committed today. Do not run the
-pipeline yourself. Report in one line that the GitHub Actions run has not
-landed, with the latest commit's message and date, and stop. The
-workflow's own log on GitHub is where the failure is read.
+UTC, YYYY-MM-DD>", the run has landed: go to STEP 3. If it does not,
+execute:
 
-STEP 2 - BRIEF, in this order. Plain prose, no emoji, ASCII only.
+```
+gh run list --workflow daily-run.yml --limit 3
+```
+
+and act on the newest run listed for today:
+
+- Queued or in progress: wait two minutes and repeat STEP 2, for up to
+  twenty minutes in all. After twenty minutes, report in one line that
+  the run is still in progress and stop. GitHub's own schedule may also
+  fire meanwhile; the workflow skips a second start once the day has
+  committed.
+- Failed, or no run for today at all: run the pipeline on this machine
+  with the project's own Python, then repeat the pull and the log check
+  once.
+
+```
+.venv/Scripts/python.exe scripts/run_daily.py
+```
+
+The script commits and pushes for itself. If it commits after 12:00
+UTC, the next run's audit lists the day in results/LIVE.md with what
+started it and when; do not try to hide or repair that. If the local
+run fails too, report its failing step in one line and stop.
+
+Report in one line how the run landed: from GitHub started by this
+task, from GitHub's own schedule, or locally, with the start time. Both
+are in the commit message, after "trigger".
+
+STEP 3 - BRIEF, in this order. Plain prose, no emoji, ASCII only.
 
 Lead with yesterday in review: relay results/REVIEW.md essentially
 verbatim. The result (on target, too low, too high), the forecast
@@ -79,7 +122,8 @@ HARD RULES:
 
 - Never hand-edit anything under data/ or results/. The script produces
   every number.
-- Never commit or push anything.
+- Never commit or push by hand. The only commit this task may cause is
+  the one scripts/run_daily.py makes when it runs locally in STEP 2.
 - Never predict or fabricate a pending result; report only what the
   files say.
 - Do not fetch external URLs.

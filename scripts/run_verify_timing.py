@@ -31,7 +31,7 @@ if not first:
     sys.exit("no committed forecast rows found")
 
 days = {}
-for (origin, _model), (sha, committed) in first.items():
+for (origin, _model), (sha, committed, _subject) in first.items():
     days.setdefault((origin, sha, committed), 0)
     days[(origin, sha, committed)] += 1
 for (origin, sha, committed), n in sorted(days.items()):

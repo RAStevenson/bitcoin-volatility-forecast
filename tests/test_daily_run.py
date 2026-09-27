@@ -129,6 +129,30 @@ def test_timing_lines_state_exceptions_and_never_assume_an_audit():
     assert "hour starting 10:00 UTC (8 models)" in text and "17 hours" in text
     short = [dict(late[0], minutes_late=20.0)]
     assert "20 minutes after" in " ".join(daily_run.timing_lines(short))
+    # a later day with no recorded reason takes it from the commit subject
+    later = [dict(late[0], origin=pd.Timestamp("2026-09-28 10:00", tz="UTC"),
+                  subject="Daily run 2026-09-28: 192 forecast rows logged; "
+                          "trigger workflow_dispatch, started 12:30 UTC")]
+    text = " ".join(daily_run.timing_lines(later))
+    assert "started by a dispatch from the author's machine at 12:30 UTC" in text
+    unknown = [dict(later[0], subject="Daily run 2026-09-28: 192 rows")]
+    assert "No reason is recorded" in " ".join(daily_run.timing_lines(unknown))
+
+
+def test_fixed_origin_is_the_same_clock_hour_whenever_the_run_starts():
+    idx = pd.date_range("2026-09-26 00:00", "2026-09-27 15:00", freq="h",
+                        tz="UTC")
+    hourly = pd.DataFrame({"log_rv": 0.0}, index=idx)
+    ten = pd.Timestamp("2026-09-27 10:00", tz="UTC")
+    for start in ("2026-09-27 11:15", "2026-09-27 15:38", "2026-09-27 23:59"):
+        assert daily_run.fixed_origin(hourly, pd.Timestamp(start, tz="UTC")) == ten
+    # before the 10:00 hour has closed, the origin is yesterday's
+    early = daily_run.fixed_origin(hourly, pd.Timestamp("2026-09-27 10:59", tz="UTC"))
+    assert early == pd.Timestamp("2026-09-26 10:00", tz="UTC")
+    # a missing value at the origin hour is a visible failure, not a substitute
+    hourly.loc[ten, "log_rv"] = float("nan")
+    with pytest.raises(ValueError):
+        daily_run.fixed_origin(hourly, pd.Timestamp("2026-09-27 11:15", tz="UTC"))
 
 
 def test_live_report_written(logs_in_tmp):

@@ -212,27 +212,40 @@ with the rest in two subfolders:
 ## How the daily run happens
 
 The run is a GitHub Actions workflow,
-[.github/workflows/daily-run.yml](.github/workflows/daily-run.yml),
-scheduled at 11:12 UTC each day, with a second trigger at 11:42 UTC
-that does nothing when the first has committed. It installs the Python packages, with
-the CPU-only build of PyTorch, and runs `scripts/run_daily.py`, which
-commits the result as `github-actions[bot]` and pushes, so the commit
-times in the forecast log are GitHub's, not mine. The origin is the last complete hour before the run,
-the 10:00 UTC hour, and its first target hour ends at 12:00 UTC, so a
-run that starts on time commits with about half an hour to spare. The
-schedule is a few minutes past the hour because GitHub starts scheduled
-runs late most often at the top of an hour. A run that commits late is
-listed in [results/LIVE.md](results/LIVE.md) by the audit. A run that
+[.github/workflows/daily-run.yml](.github/workflows/daily-run.yml). A
+scheduled task on my machine starts it at 11:15 UTC each day by asking
+GitHub to run the workflow, and GitHub's own schedule at 11:15 and
+11:45 UTC is the fallback. Whichever fires second does nothing, because
+the day's run has already committed. The workflow installs the Python
+packages, with the CPU-only build of PyTorch, and runs
+`scripts/run_daily.py`, which commits the result as
+`github-actions[bot]` and pushes, so the commit times in the forecast
+log are GitHub's, not mine. The origin is the 10:00 UTC hour every day,
+whatever minute the run starts, so a run that starts late forecasts the
+window an on-time run would have and sees no data past that hour. That
+hour closes at 11:00, and its first target hour ends at 12:00 UTC, so a
+run that starts on time and takes its usual three and a half minutes
+commits with about forty minutes to spare. A run that commits after
+that is listed in [results/LIVE.md](results/LIVE.md) by the audit, with
+what started it and when, read from its commit message. A run that
 fails leaves no commit that day, and the gap is visible in the history.
 
-From 2026-09-27 the run is scheduled on GitHub. Until then it was
-triggered on my machine by a scheduled Claude Code routine at 06:05
-local time. The missed day on 2026-09-02
-and the late commit on 2026-09-03 came from an unplanned restart of
-that machine, which the move to GitHub removes as a cause.
+My machine starts the run alongside GitHub's schedule because GitHub's
+documentation says a scheduled run can be delayed under load, and the
+first scheduled run, on 2026-09-27, started at 15:38 UTC, 4 hours 26
+minutes after that day's 11:12 schedule. A run started on request
+begins within about a minute. That first run forecast from the 14:00
+hour, one of five days in the record off the 10:00 origin. The other
+four, 2026-08-03, 08-04, 09-09, and 09-16, were late starts on my
+machine. The origin was fixed to the clock the same day. Until
+2026-09-26 the run was triggered on my machine alone, at 06:30 local
+time and then 06:05 in its last week. The missed day on 2026-09-02 and
+the late commit on 2026-09-03 came from an unplanned restart of that
+machine. With GitHub's schedule as the fallback, a restart now delays
+the run rather than losing it.
 
-A second routine still runs on my machine each morning. It pulls the
-repo, checks that the day's commit has landed, and briefs me from
+The same task then pulls the repo, checks that the day's commit has
+landed, and briefs me from
 [results/REVIEW.md](results/REVIEW.md),
 [results/FORECAST.md](results/FORECAST.md), and
 [results/LIVE.md](results/LIVE.md), under rules that it relays
@@ -354,7 +367,9 @@ The timing evidence for the forecast log is the commit history. From
 GitHub's clock. Before that they were made by a machine I control, with
 the GitHub push history as the independent record for those days. The daily run missed
 2026-09-02 entirely after an unplanned restart, and the 2026-09-03
-forecast was committed late, which LIVE.md lists.
+forecast was committed late, which LIVE.md lists. GitHub's scheduler
+can start a run hours late, which is why the run is also started from
+my machine. A day on which both start late is listed by the audit.
 
 The coverage columns in LIVE.md carry real uncertainty, because each day
 contributes about 24 dependent hourly rows. The calibration check above
