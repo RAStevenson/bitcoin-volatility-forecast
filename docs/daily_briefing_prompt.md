@@ -9,7 +9,9 @@ started.
 ## Setting it up
 
 Two roles use this prompt. The owner of a daily run, on this repo or
-a fork of it, schedules it for 11:15 UTC and runs every step. A reader
+a fork of it, schedules it for 11:15 UTC or any earlier local time,
+and runs every step. The first step waits for 11:15 UTC, which is how
+a local schedule survives clock changes without being moved. A reader
 who only wants this repo's forecast schedules it after 12:00 UTC,
 skips STEP 1, and, if STEP 2 finds no commit for today, reports that
 and stops. A reader never runs the pipeline. The forecast record is
@@ -43,7 +45,13 @@ with your clone's path.
 
 ---
 
-STEP 1 - START THE RUN. In the repo's directory, execute exactly:
+STEP 1 - START THE RUN. Read the clock in UTC with
+`(Get-Date).ToUniversalTime()`. If it is before 11:15 UTC, wait until
+11:15 UTC, sleeping in stretches of at most 100 seconds
+(`Start-Sleep -Seconds 100`), since a longer sleep outruns the shell
+tool's timeout. The origin hour closes at 11:00. A run started before
+then has nothing to forecast and fails on purpose. Then, in the repo's
+directory, execute exactly:
 
 ```
 gh workflow run daily-run.yml -f dry_run=false

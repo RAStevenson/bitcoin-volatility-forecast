@@ -146,9 +146,9 @@ def test_fixed_origin_is_the_same_clock_hour_whenever_the_run_starts():
     ten = pd.Timestamp("2026-09-27 10:00", tz="UTC")
     for start in ("2026-09-27 11:15", "2026-09-27 15:38", "2026-09-27 23:59"):
         assert daily_run.fixed_origin(hourly, pd.Timestamp(start, tz="UTC")) == ten
-    # before the 10:00 hour has closed, the origin is yesterday's
-    early = daily_run.fixed_origin(hourly, pd.Timestamp("2026-09-27 10:59", tz="UTC"))
-    assert early == pd.Timestamp("2026-09-26 10:00", tz="UTC")
+    # before the 10:00 hour has closed there is nothing to forecast
+    with pytest.raises(ValueError, match="has not closed"):
+        daily_run.fixed_origin(hourly, pd.Timestamp("2026-09-27 10:59", tz="UTC"))
     # a missing value at the origin hour is a visible failure, not a substitute
     hourly.loc[ten, "log_rv"] = float("nan")
     with pytest.raises(ValueError):
