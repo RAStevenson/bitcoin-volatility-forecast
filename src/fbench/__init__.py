@@ -1,1 +1,2 @@
-"""Benchmark harness for quantile forecasts of hourly realized volatility."""
+"""Quantile forecasts of hourly realized volatility, scored under
+rolling-origin validation: the package behind bitcoin-volatility-forecast."""
