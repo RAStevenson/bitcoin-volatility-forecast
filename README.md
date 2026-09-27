@@ -251,7 +251,8 @@ landed, and briefs me from
 [results/LIVE.md](results/LIVE.md), under rules that it relays
 the files' numbers and adds no diagnosis of its own. Its prompt is
 committed as [docs/daily_briefing_prompt.md](docs/daily_briefing_prompt.md),
-and any scheduled agent or a person can run it.
+and any scheduled agent or a person can run it. The prompt says which
+steps a reader without write access runs.
 
 To run the loop yourself on a clone, fork the repo and enable the
 workflow, or schedule `python scripts/run_daily.py --no-push` with
