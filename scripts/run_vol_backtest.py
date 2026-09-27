@@ -1,5 +1,5 @@
 """Run the model backtest over data/hourly_rv.csv and save the
-scored rows as results/backtest_<date>.parquet with a json sidecar
+scored rows as results/backtest/backtest_<date>.parquet with a json sidecar
 holding the run's settings and a snapshot of the dataset it saw. Unless
 --no-report is given it also writes results/REPORT.md with its two
 figures and logs the backtest to MLflow."""
@@ -56,9 +56,9 @@ for name in names:
     print(f"{name}: {time.perf_counter() - t0:.1f}s", flush=True)
 res = pd.concat(rows, ignore_index=True)
 
-RESULTS_DIR.mkdir(exist_ok=True)
+(RESULTS_DIR / "backtest").mkdir(parents=True, exist_ok=True)
 stamp = pd.Timestamp.now(tz="UTC").strftime("%Y%m%d")
-out = RESULTS_DIR / f"backtest_{stamp}.parquet"
+out = RESULTS_DIR / "backtest" / f"backtest_{stamp}.parquet"
 res.to_parquet(out, index=False)
 run_config = {"stride": args.stride, "test_days": args.test_days,
               "horizon": HORIZON, "models": names, "origins": len(origins),

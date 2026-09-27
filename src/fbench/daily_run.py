@@ -195,7 +195,7 @@ def timing_lines(late):
 
 
 def _fig_daily(ev, model):
-    """Save results/fig_live_daily.png, the day-by-day record of the
+    """Save results/figures/fig_live_daily.png, the day-by-day record of the
     leading model's forecast average against the realized average and
     against the persistence model's own forecast average, and return its
     path. One line per series on one axis, fully resolved days only."""
@@ -228,7 +228,8 @@ def _fig_daily(ev, model):
     ax.yaxis.set_major_formatter(matplotlib.ticker.PercentFormatter(1.0, decimals=0))
     ax.grid(axis="y", lw=0.5)
     ax.legend(frameon=False, ncol=3, loc="upper left", fontsize=8)
-    path = RESULTS_DIR / "fig_live_daily.png"
+    path = RESULTS_DIR / "figures" / "fig_live_daily.png"
+    path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(path, dpi=120, bbox_inches="tight")
     plt.close(fig)
     return path
@@ -444,7 +445,8 @@ def write_live_report(late=None):
             "current leader: its forecast of each day's average volatility, "
             "the average that realized, and the persistence model's own "
             "forecast of the same average.", "",
-            "![day by day: forecast, realized, persistence](fig_live_daily.png)", "",
+            "![day by day: forecast, realized, persistence]"
+            "(figures/fig_live_daily.png)", "",
         ]
         lines += calibration_lines(ev, days)
     path = RESULTS_DIR / "LIVE.md"

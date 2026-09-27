@@ -49,8 +49,8 @@ The identical persistence and seasonal_persistence rows at horizon 24 are by con
 
 Where a model's n falls short of the maximum, rows whose forecast came back NaN (a degenerate fit) were dropped before scoring, so per-model samples differ slightly there.
 
-![hourly profile](fig_hourly_profile.png)
+![hourly profile](figures/fig_hourly_profile.png)
 
-![pinball by horizon](fig_pinball_by_horizon.png)
+![pinball by horizon](figures/fig_pinball_by_horizon.png)
 
 Backtest origins all sit at 00:00 UTC, so a given horizon always lands on the same UTC clock hour, and the pinball-by-horizon curve inherits the hour-of-day profile above (correlation 0.79 between the two curves on this run). A bump at one horizon is largely that clock hour showing through, not a property of forecasting that far ahead.

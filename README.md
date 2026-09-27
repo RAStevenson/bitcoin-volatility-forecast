@@ -182,7 +182,7 @@ python scripts/run_verify_timing.py  # audit the forecast log's timing claim
 `--stride` (default 2, days between forecast origins), and `--test-days`
 (default 365) to run subsets quickly, and `--no-report` to stop after
 writing the backtest parquet. `run_vol_report.py` takes `--results`
-(default: the newest backtest parquet in results/). `run_daily.py` takes `--no-push`
+(default: the newest backtest parquet in results/backtest/). `run_daily.py` takes `--no-push`
 (commit the run's files locally and do not push) and `--no-commit`
 (write every file and commit nothing). Every volatility
 backtest run is also logged to MLflow, a local run-tracking tool
@@ -193,6 +193,21 @@ runs.
 On Windows, Prophet's pip wheel worked as-is here (cmdstanpy backend,
 no manual install). If a first fit fails with a cmdstan error, run
 `python -m cmdstanpy.install_cmdstan` once and retry.
+
+The results folder keeps at its top level the files a reader needs,
+with the rest in two subfolders:
+
+- `REPORT.md`, `LIVE.md`, `REVIEW.md`, and `FORECAST.md` are the four
+  generated reports described above.
+- `forecasts.csv` and `evaluation.csv` are the forecast log and the log
+  of every scored forecast, appended by each daily run. The forecast
+  log stays at this path because the timing audit reads its git history
+  by path.
+- `crosscheck.txt` is the output of the Bitstamp cross-check.
+- `backtest/` holds each backtest run's scored rows (parquet, not
+  committed) with a json file of the same name recording the run's
+  settings and the dataset it saw.
+- `figures/` holds the three figures the reports embed.
 
 ## How the daily run happens
 

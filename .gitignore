@@ -5,7 +5,7 @@ CLAUDE.md
 mlruns/
 mlflow.db
 mlartifacts/
-results/*.parquet
+results/backtest/*.parquet
 __pycache__/
 *.pyc
 .venv/

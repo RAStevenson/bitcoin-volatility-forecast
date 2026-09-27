@@ -11,7 +11,7 @@ from fbench.harness_config import RESULTS_DIR
 
 
 def _fig_hourly_profile(hourly, fig_prefix, value_label):
-    """Save the median-by-hour-of-day curve into results/ as
+    """Save the median-by-hour-of-day curve into results/figures/ as
     <fig_prefix>_hourly_profile.png and return its path, giving the report
     the daily shape its horizon curve turns out to inherit."""
     prof = hourly.groupby(hourly.index.hour)["rv"].median()
@@ -19,15 +19,17 @@ def _fig_hourly_profile(hourly, fig_prefix, value_label):
     ax.plot(prof.index, prof.values)
     ax.set_xlabel("hour of day (UTC)")
     ax.set_ylabel(value_label)
-    path = RESULTS_DIR / f"{fig_prefix}_hourly_profile.png"
+    path = RESULTS_DIR / "figures" / f"{fig_prefix}_hourly_profile.png"
+    path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(path, dpi=120, bbox_inches="tight")
     plt.close(fig)
     return path
 
 
 def _fig_pinball(scores, fig_prefix):
-    """Save one pinball-loss-against-horizon line per model into results/
-    as <fig_prefix>_pinball_by_horizon.png and return its path."""
+    """Save one pinball-loss-against-horizon line per model into
+    results/figures/ as <fig_prefix>_pinball_by_horizon.png and return
+    its path."""
     fig, ax = plt.subplots(figsize=(8, 3))
     for model in scores.index.get_level_values("model").unique():
         s = scores.xs(model)["pinball_mean"]
@@ -35,7 +37,8 @@ def _fig_pinball(scores, fig_prefix):
     ax.set_xlabel("horizon (hours ahead)")
     ax.set_ylabel("mean pinball loss (log-scale target)")
     ax.legend(fontsize=7)
-    path = RESULTS_DIR / f"{fig_prefix}_pinball_by_horizon.png"
+    path = RESULTS_DIR / "figures" / f"{fig_prefix}_pinball_by_horizon.png"
+    path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(path, dpi=120, bbox_inches="tight")
     plt.close(fig)
     return path
@@ -44,7 +47,8 @@ def _fig_pinball(scores, fig_prefix):
 def write_report(scores, hourly, results_path, out_name="REPORT.md",
                  fig_prefix="fig", title="Backtest report",
                  value_label="median annualized RV", dataset_stats=None):
-    """Write the backtest report and its two figures into results/ and
+    """Write the backtest report into results/, its two figures into
+    results/figures/, and
     return the report path, giving the reader a results table averaged over
     horizons 1 to 24, the horizon 1 and horizon 24 tables, and the caveats
     this run's numbers need. Without dataset_stats the Dataset section
@@ -100,8 +104,9 @@ def write_report(scores, hourly, results_path, out_name="REPORT.md",
             "",
         ]
     lines += [
-        f"![hourly profile]({fig_prefix}_hourly_profile.png)", "",
-        f"![pinball by horizon]({fig_prefix}_pinball_by_horizon.png)", "",
+        f"![hourly profile](figures/{fig_prefix}_hourly_profile.png)", "",
+        f"![pinball by horizon](figures/{fig_prefix}_pinball_by_horizon.png)",
+        "",
     ]
     # Origins are floored to 00:00 UTC by make_origins, so horizon h always
     # scores the same clock hour and the two figures above are confounded
