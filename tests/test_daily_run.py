@@ -141,7 +141,7 @@ def test_live_report_written(logs_in_tmp):
     assert "persistence" in text and "pinball" in text
     # one scored day -> the calibration check must stay inactive, not report a result
     assert "calibration check stays inactive" in text
-    assert "day_error" in text and (logs_in_tmp / "fig_live_daily.png").exists()
+    assert "day_error" in text and (logs_in_tmp / "figures" / "fig_live_daily.png").exists()
 
 
 def _ev(cov_by_model, start="2026-01-01"):

@@ -1,5 +1,5 @@
 """Rebuild results/REPORT.md and its figures from an existing backtest
-parquet, the newest in results/ unless --results names one, and log that
+parquet, the newest in results/backtest/ unless --results names one, and log that
 backtest to MLflow again. It re-reports a finished run rather than
 running one, and the Dataset section is pinned by the parquet's json
 sidecar whenever that carries the snapshot keys."""
@@ -21,15 +21,16 @@ from fbench.mlflow_tracking import log_backtest
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--results", default=None,
-                    help="backtest parquet; default: newest in results/")
+                    help="backtest parquet; default: newest in "
+                         "results/backtest/")
 args = parser.parse_args()
 
 if args.results:
     results_path = Path(args.results)
 else:
-    candidates = sorted(RESULTS_DIR.glob("backtest_*.parquet"))
+    candidates = sorted((RESULTS_DIR / "backtest").glob("backtest_*.parquet"))
     if not candidates:
-        sys.exit("no backtest parquet in results/")
+        sys.exit("no backtest parquet in results/backtest/")
     results_path = candidates[-1]
 
 results = pd.read_parquet(results_path)

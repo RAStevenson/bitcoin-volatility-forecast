@@ -8,7 +8,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = ROOT / "data"
-RESULTS_DIR = ROOT / "results"
+RESULTS_DIR = ROOT / "results"   # reports and the two live logs at the
+                                 # top; backtest/ holds each backtest
+                                 # run's rows and sidecar, figures/ the
+                                 # figures the reports embed. The logs
+                                 # stay at the top because the timing
+                                 # audit reads forecasts.csv's history
+                                 # by path.
 HOURLY_PATH = DATA_DIR / "hourly_rv.csv"   # the committed hourly series
 
 PRODUCT = "BTC-USD"            # Coinbase product id

@@ -96,7 +96,7 @@ def _commit_push():
     tracked = [p for p in ("data/hourly_rv.csv",
                            "results/forecasts.csv", "results/evaluation.csv",
                            "results/LIVE.md", "results/FORECAST.md",
-                           "results/REVIEW.md", "results/fig_live_daily.png")
+                           "results/REVIEW.md", "results/figures/fig_live_daily.png")
                if (ROOT / p).exists()]
     subprocess.run(["git", "add", *tracked], cwd=ROOT, check=True)
     diff = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=ROOT)
