@@ -1,1 +1,0 @@
-{"stride": 2, "test_days": 365, "horizon": 24, "models": ["gbm", "har", "har_seasonal", "persistence", "prophet", "sarima", "seasonal_persistence"], "origins": 183}
