@@ -10,6 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import argparse
+import os
 import subprocess
 
 import pandas as pd
@@ -35,6 +36,13 @@ parser.add_argument("--no-commit", action="store_true",
                     help="write every file and commit nothing (implies --no-push)")
 args = parser.parse_args()
 
+# Recorded in the day's commit message so the timing audit can say what
+# started a late run and when. GitHub sets GITHUB_EVENT_NAME to
+# "schedule" or "workflow_dispatch"; a run on a person's machine has
+# neither and is recorded as local.
+STARTED = pd.Timestamp.now(tz="UTC")
+TRIGGER = os.environ.get("GITHUB_EVENT_NAME", "local")
+
 
 def step(name, fn):
     """Runs one named stage of the loop, printing the name first and
@@ -54,11 +62,10 @@ resolved = step("score due", lambda: daily_run.score_due(hourly))
 print(f"  rows resolved: {resolved}")
 
 feats = build_features(hourly)
-# The origin is the last COMPLETE hour with a realized value. The hour in
-# progress can already carry a value at 45 minutes, and a model must not
-# see a partial hour as its last observation.
-complete = hourly.index + pd.Timedelta(hours=1) <= pd.Timestamp.now(tz="UTC")
-origin = hourly.loc[complete, "log_rv"].dropna().index[-1]
+# The origin is the same clock hour every day (see fixed_origin), never
+# the hour the run happens to start in, so a late start changes nothing
+# about which data the models see.
+origin = step("choose origin", lambda: daily_run.fixed_origin(hourly))
 logged = step("log forecasts", lambda: daily_run.log_forecasts(feats, origin))
 print(f"  forecast rows logged: {logged} (origin {origin})")
 def _audit():
@@ -105,7 +112,9 @@ def _commit_push():
         return
     subprocess.run(["git", "commit", "-m",
                     f"Daily run {day}: {logged} forecast rows logged, "
-                    f"{resolved} resolved"], cwd=ROOT, check=True)
+                    f"{resolved} resolved; origin {origin:%H:%M} UTC; "
+                    f"trigger {TRIGGER}, started {STARTED:%H:%M} UTC"],
+                   cwd=ROOT, check=True)
     remotes = subprocess.run(["git", "remote"], cwd=ROOT,
                              capture_output=True, text=True).stdout.split()
     if "origin" in remotes and not args.no_push:

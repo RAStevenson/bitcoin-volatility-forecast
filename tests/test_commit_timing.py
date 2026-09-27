@@ -10,14 +10,15 @@ def _row(origin, model):
 
 
 LOG = "\n".join([
-    "@@commit aaaaaaaaaaaa 2026-01-01T10:30:00+00:00",
+    "@@commit aaaaaaaaaaaa 2026-01-01T10:30:00+00:00 Daily run 2026-01-01",
     "+++ b/results/forecasts.csv",
     HEADER,
     _row("2026-01-01 10:00:00+00:00", "gbm"),
     _row("2026-01-01 10:00:00+00:00", "har"),
     # the next day's forecast lands 17 hours late, and the old rows are
     # re-added the way the whole-file rewrite used to re-add them
-    "@@commit bbbbbbbbbbbb 2026-01-03T05:00:00+00:00",
+    "@@commit bbbbbbbbbbbb 2026-01-03T05:00:00+00:00 Daily run 2026-01-02: "
+    "8 rows; trigger schedule, started 04:57 UTC",
     _row("2026-01-01 10:00:00+00:00", "gbm"),
     _row("2026-01-02 10:00:00+00:00", "gbm"),
     "-2026-01-01 10:00:00+00:00,removed,1,gbm,1,2,3,4,5",
@@ -39,3 +40,14 @@ def test_only_the_day_committed_after_its_first_target_hour_is_late():
     assert g["models"] == 1
     # deadline is origin + 2h = 12:00 on the 2nd; committed 05:00 on the 3rd
     assert g["minutes_late"] == 17 * 60
+    assert g["subject"].startswith("Daily run 2026-01-02")
+
+
+def test_run_note_reads_the_trigger_from_the_subject():
+    note = commit_timing.run_note(
+        "Daily run 2026-09-28: 192 rows; origin 10:00 UTC; trigger "
+        "schedule, started 15:38 UTC")
+    assert note == ("The run that committed it was started by GitHub's "
+                    "scheduled trigger at 15:38 UTC.")
+    assert commit_timing.run_note("Daily run 2026-09-03: 192 rows") is None
+    assert commit_timing.run_note("") is None

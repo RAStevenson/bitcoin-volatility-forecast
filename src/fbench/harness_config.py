@@ -33,6 +33,10 @@ TEST_DAYS = 365                # backtest span
 ORIGIN_STRIDE_DAYS = 2         # ~183 origins over TEST_DAYS
 
 MIN_MINUTES_PER_HOUR = 45      # fewer 1-min returns -> hour is NaN
+ORIGIN_HOUR_UTC = 10           # the daily run's origin, the same clock
+                               # hour every day whatever minute the run
+                               # starts, so a late start forecasts the
+                               # same window and sees no data past it
 ANNUALIZER = (365 * 24) ** 0.5 # hourly variance -> annualized vol units
 
 # Live calibration check. Hourly rows within a day are strongly

@@ -2,11 +2,14 @@ name: Daily run
 
 on:
   schedule:
-    - cron: "12 11 * * *"   # 11:12 UTC: the origin is the 10:00 hour and its
-                             # first target hour ends 12:00 UTC; minutes past
-                             # the hour because GitHub starts scheduled runs
-                             # late most often at the top of an hour
-    - cron: "42 11 * * *"   # retry; does nothing when the first run committed
+    - cron: "15 11 * * *"   # fallback: the origin is the 10:00 UTC hour,
+                             # which closes at 11:00, and its first target
+                             # hour ends at 12:00. The on-time start is a
+                             # dispatch from the author's machine at 11:15
+                             # (docs/daily_briefing_prompt.md); GitHub's
+                             # schedule is best-effort and fired 4h26m late
+                             # on its first day, 2026-09-27
+    - cron: "45 11 * * *"   # second fallback; does nothing once committed
   workflow_dispatch:
     inputs:
       dry_run:
@@ -37,24 +40,26 @@ jobs:
           else
             echo "done=false" >> "$GITHUB_OUTPUT"
           fi
+      # A real run, scheduled or dispatched, skips once the day has
+      # committed; only a dry run goes ahead regardless.
       - uses: actions/setup-python@v5
-        if: steps.today.outputs.done == 'false' || github.event_name == 'workflow_dispatch'
+        if: steps.today.outputs.done == 'false' || (github.event_name == 'workflow_dispatch' && inputs.dry_run)
         with:
           python-version: "3.11"
           cache: pip
       - name: Install the CPU stack
-        if: steps.today.outputs.done == 'false' || github.event_name == 'workflow_dispatch'
+        if: steps.today.outputs.done == 'false' || (github.event_name == 'workflow_dispatch' && inputs.dry_run)
         run: |
           python -m pip install --upgrade pip
           pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cpu
           pip install -r requirements.txt
       - name: Git identity for the run's commit
-        if: steps.today.outputs.done == 'false' || github.event_name == 'workflow_dispatch'
+        if: steps.today.outputs.done == 'false' || (github.event_name == 'workflow_dispatch' && inputs.dry_run)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       - name: Daily run
-        if: steps.today.outputs.done == 'false' || github.event_name == 'workflow_dispatch'
+        if: steps.today.outputs.done == 'false' || (github.event_name == 'workflow_dispatch' && inputs.dry_run)
         env:
           DRY: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
         run: |
