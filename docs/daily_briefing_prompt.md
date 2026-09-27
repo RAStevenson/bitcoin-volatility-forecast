@@ -8,7 +8,15 @@ started.
 
 ## Setting it up
 
-Schedule it for 11:15 UTC. The forecast origin is the 10:00 UTC hour,
+Two roles use this prompt. The owner of a daily run, on this repo or
+a fork of it, schedules it for 11:15 UTC and runs every step. A reader
+who only wants this repo's forecast schedules it after 12:00 UTC,
+skips STEP 1, and, if STEP 2 finds no commit for today, reports that
+and stops. A reader never runs the pipeline. The forecast record is
+this repo's commit history, and a local run would write only to the
+reader's clone.
+
+For the owner, the forecast origin is the 10:00 UTC hour,
 which closes at 11:00, and the run's commit has to land before 12:00
 UTC to count as made before its first target hour ended. The run is
 started from a machine you control because GitHub's own schedule is
@@ -52,7 +60,8 @@ git log -1 --format=%s
 
 If the latest commit message starts with "Daily run <today's date in
 UTC, YYYY-MM-DD>", the run has landed: go to STEP 3. If it does not,
-execute:
+a reader reports in one line that today's commit has not landed and
+stops. The owner executes:
 
 ```
 gh run list --workflow daily-run.yml --limit 3
