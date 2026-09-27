@@ -4,9 +4,9 @@
 
 - 24 of 24 hours landed inside the 90% band (0 above it, 0 below). A calibrated band holds about 22 of 24.
 - Across all models this was the 17th worst of 53 scored days (mean log error 0.421, median day 0.329).
-- Best median that day: prophet; worst: har. Models disagreed on the direction of the miss.
+- Best median that day: prophet; worst: har. Some models forecast too high and others too low.
 
-Largest hourly misses (local time, America/Chicago):
+Largest hourly errors (local time, America/Chicago):
 
 | hour | forecast median | 90% band | realized | realized/forecast |
 |:--|--:|--:|--:|--:|

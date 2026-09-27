@@ -69,7 +69,8 @@ def build_review(hourly=None):
     ).groupby("model").agg(err=("err", "mean"), cov90=("inside", "mean"),
                            fc=("fc", "mean"))
     best, worst = per_model["err"].idxmin(), per_model["err"].idxmax()
-    same_side = (per_model["fc"] < rz_avg).all() or (per_model["fc"] > rz_avg).all()
+    side = ("too low" if (per_model["fc"] < rz_avg).all()
+            else "too high" if (per_model["fc"] > rz_avg).all() else None)
 
     local = h["target_time"].dt.tz_convert(LOCAL_TZ)
     miss = (h["y_true"] / h["q50"]).to_numpy()
@@ -96,12 +97,12 @@ def build_review(hourly=None):
         f"{n_days} scored days (mean log error {stats.loc[origin, 'mae']:.3f}, "
         f"median day {stats['mae'].median():.3f}).",
         f"- Best median that day: {best}; worst: {worst}."
-        + (" Every model missed on the same side, so the miss traces to "
-           "what was knowable that day rather than to any one model's "
-           "choice." if same_side else
-           " Models disagreed on the direction of the miss."),
+        + (f" Every model forecast {side}, so the error traces to what "
+           "was knowable that day rather than to any one model's choice."
+           if side else
+           " Some models forecast too high and others too low."),
         "",
-        "Largest hourly misses (local time, " + LOCAL_TZ + "):",
+        "Largest hourly errors (local time, " + LOCAL_TZ + "):",
         "",
         "| hour | forecast median | 90% band | realized | realized/forecast |",
         "|:--|--:|--:|--:|--:|",

@@ -119,12 +119,13 @@ def test_timing_lines_state_exceptions_and_never_assume_an_audit():
     assert not any("Every row" in ln for ln in daily_run.timing_lines(None))
     clean = " ".join(daily_run.timing_lines([]))
     assert "Every row from an earlier run was committed" in clean
-    assert "except" not in clean
+    assert "no exceptions so far" in clean and "listed below" not in clean
     late = [{"origin": pd.Timestamp("2026-09-03 10:00", tz="UTC"), "models": 8,
              "committed": pd.Timestamp("2026-09-04 05:15", tz="UTC"),
              "minutes_late": 1035.0, "sha": "c9feb5305"}]
     text = " ".join(daily_run.timing_lines(late))
-    assert "except the forecast day listed below" in text
+    assert "Any exceptions and their reasons are listed below" in text
+    assert "completed. The machine that ran the daily job" in text
     assert "hour starting 10:00 UTC (8 models)" in text and "17 hours" in text
     short = [dict(late[0], minutes_late=20.0)]
     assert "20 minutes after" in " ".join(daily_run.timing_lines(short))
@@ -180,7 +181,8 @@ def test_calibration_passes_when_coverage_is_at_target():
            0.958, 0.875, 0.917, 0.833, 0.875, 0.917]
     lines = _lines({"a": cov})
     assert "passes" in lines[0]
-    assert "Bonferroni-corrected" in lines[0]
+    assert "Bonferroni correction" in lines[0]
+    assert "0.05 divided by 1, or 0.0500" in lines[0]
 
 
 def test_calibration_flags_a_persistently_miscalibrated_model():
@@ -189,7 +191,7 @@ def test_calibration_flags_a_persistently_miscalibrated_model():
     lines = _lines({"a": [0.500, 0.542, 0.458, 0.500, 0.583, 0.458, 0.500,
                           0.542, 0.500, 0.458, 0.542, 0.500, 0.583, 0.500]})
     assert "flags" in lines[0]
-    assert "a cov90 0.5" in lines[0]
+    assert "a, coverage 0.5" in lines[0]
 
 
 def test_rejection_short_of_the_streak_is_not_reported():
