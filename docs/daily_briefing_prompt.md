@@ -45,7 +45,7 @@ Lead with yesterday in review: relay results/REVIEW.md essentially
 verbatim. The result (on target, too low, too high), the forecast
 average against the realized average and the ratio, the hours inside
 the 90% band, where the day ranks among scored days, and the table of
-the largest hourly misses. Every number comes from the file; add no
+the largest hourly errors. Every number comes from the file; add no
 diagnosis the file does not contain.
 
 Then the forecast: relay results/FORECAST.md essentially verbatim. Its

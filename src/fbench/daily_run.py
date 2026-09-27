@@ -10,6 +10,7 @@ from scipy import stats
 from fbench.harness_config import (CALIBRATION_ALPHA, CALIBRATION_PERSISTENCE_DAYS,
                            COV90_TARGET, HORIZON, MIN_CALIBRATION_DAYS,
                            QCOLS, QUANTILES, RESULTS_DIR)
+from fbench.commit_timing import LATE_COMMIT_REASONS
 from fbench.models.base_forecast_model import REGISTRY
 from fbench.quantile_scoring import add_skill, score
 
@@ -175,19 +176,21 @@ def timing_lines(late):
     claim = ("Every row from an earlier run was committed to git before its "
              "target hour completed")
     if not late:
-        return [f"{claim}. {audit}", ""]
-    which = "day" if len(late) == 1 else "days"
-    lines = [f"{claim}, except the forecast {which} listed below. {audit}", ""]
+        return [f"{claim}, with no exceptions so far. {audit}", ""]
+    lines = [f"{claim}. Any exceptions and their reasons are listed below. "
+             f"{audit}", ""]
     for g in late:
         mins = g["minutes_late"]
         delay = (f"{mins / 60:.0f} hours" if mins >= 60
                  else f"{mins:.0f} minutes")
+        why = LATE_COMMIT_REASONS.get(f"{g['origin']:%Y-%m-%d}",
+                                      "No reason is recorded for it.")
         lines.append(
             f"- The {g['origin']:%Y-%m-%d} forecast, made from data through "
             f"the hour starting {g['origin']:%H:00} UTC ({g['models']} "
             f"models), was first committed at "
             f"{g['committed']:%Y-%m-%d %H:%M} UTC, {delay} after its first "
-            f"target hour completed.")
+            f"target hour completed. {why}")
     return lines + [""]
 
 
@@ -303,7 +306,7 @@ def _figures(model, test_results):
     calibration sentences splice in, so a flagged model and a pending one
     read the same way."""
     v = test_results[model]
-    return f"{model} cov90 {v['cov90']:.4f}, p {v['p']:.4f}"
+    return f"{model}, coverage {v['cov90']:.4f}, p-value {v['p']:.4f}"
 
 
 def calibration_lines(ev, days):
@@ -327,10 +330,25 @@ def calibration_lines(ev, days):
         return ["The calibration check found no model with enough scored "
                 f"days to test ({MIN_CALIBRATION_DAYS} required).", ""]
     alpha = next(iter(test_results.values()))["alpha"]
-    method = (f"The test is two-sided on each model's daily coverage "
-              f"against {COV90_TARGET:.2f} over {days} scored days, "
-              f"Bonferroni-corrected across the {len(test_results)} models "
-              f"tested (per-model alpha {alpha:.4f}).")
+    n_models = len(test_results)
+    target = f"{COV90_TARGET:.2f}"
+    method = (
+        f"A model's 90% band is meant to contain the realized value on about "
+        f"90% of hours. Coverage is the share of hours that landed inside "
+        f"it. The check takes that share for each day a model has been "
+        f"scored, one number per day. It asks whether the average of those "
+        f"numbers sits farther from {target} than their day-to-day spread "
+        f"would explain, in either direction (a two-sided t-test). The "
+        f"p-value is the chance of an average at least that far from "
+        f"{target} if the model's true coverage were exactly {target}. "
+        f"Because {n_models} models are tested at once, each is held to a "
+        f"threshold of {CALIBRATION_ALPHA:.2f} divided by {n_models}, or "
+        f"{alpha:.4f}, so that the chance of a false alarm across all of "
+        f"them stays at or below {CALIBRATION_ALPHA:.0%} (a Bonferroni "
+        f"correction). A p-value below that threshold is a rejection. A "
+        f"model is flagged only after it is rejected on "
+        f"{CALIBRATION_PERSISTENCE_DAYS} consecutive scored days, so one "
+        f"noisy day cannot raise an alarm.")
 
     streaks = rejection_streaks(ev)
     flagged = {m: n for m, n in streaks.items()
@@ -341,20 +359,21 @@ def calibration_lines(ev, days):
             parts = "; ".join(
                 f"{_figures(m, test_results)}, day {streaks[m]} of "
                 f"{CALIBRATION_PERSISTENCE_DAYS}" for m in pending)
-            return [f"The calibration check passes, flagging no model. It "
+            return [f"The calibration check passes and flags no model. It "
                     f"rejects {parts}, short of the "
-                    f"{CALIBRATION_PERSISTENCE_DAYS} consecutive days it "
-                    f"reports on. {method}", ""]
-        return [f"The calibration check passes, with no model's day-level "
-                f"90% coverage separable from {COV90_TARGET:.2f} by more "
-                f"than sampling noise. {method}", ""]
+                    f"{CALIBRATION_PERSISTENCE_DAYS} consecutive days needed "
+                    f"to flag it. {method}", ""]
+        return [f"The calibration check passes. {method} No model's "
+                f"average coverage sits farther from {target} than its "
+                f"day-to-day spread would explain.", ""]
 
     parts = "; ".join(_figures(m, test_results) for m in sorted(flagged))
-    return [f"The calibration check flags day-level 90% coverage away from "
-            f"{COV90_TARGET:.2f} on {CALIBRATION_PERSISTENCE_DAYS} "
-            f"consecutive scored days: {parts}. {method} Bands are left as "
-            "each model produces them, and the coverage column is the "
-            "record of that.", ""]
+    return [f"The calibration check flags these models, whose average "
+            f"coverage has sat farther from {target} than day-to-day spread "
+            f"would explain on {CALIBRATION_PERSISTENCE_DAYS} consecutive "
+            f"scored days: {parts}. Bands are left as each model produces "
+            f"them, and the coverage column is the record of that. "
+            f"{method}", ""]
 
 
 def write_live_report(late=None):

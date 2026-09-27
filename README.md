@@ -63,15 +63,15 @@ and the table shows which models fail to beat it.
 
 The daily record scores each day's average volatility, the mean of a
 model's 24 hourly median forecasts against the mean of the 24 hourly
-values that occurred. The miss is measured on the log scale, which makes it a
+values that occurred. The error is measured on the log scale, which makes it a
 ratio between forecast and truth, so a forecast 20% off counts the same
 on a quiet day as on a spike day. A day is fully resolved once all 24
 of its hours have been observed. Over the 46 fully resolved days as of
-2026-09-22, N-HiTS, the leading model, missed by 0.19 on that scale, a
-miss of about a fifth. Persistence missed by 0.31, about a third, over
-its 49 days. It has three more days because N-HiTS joined the daily run
-three days after the others. On the 46 days both forecast, N-HiTS
-removed 41% of persistence's error. That is a day-level skill of 0.41,
+2026-09-22, N-HiTS, the leading model, had an average error of 0.19 on
+that scale. Persistence's average error was 0.31 over its 49 days. Lower
+is better. Persistence has three more days because N-HiTS joined the daily run
+three days after the others. On the 46 days that both models forecast, N-HiTS's
+error was 41% below persistence's. That is a day-level skill of 0.41,
 where skill is one minus the model's error over persistence's. A zero would 
 mean a model ties persistence and a value of one would be a perfect forecast. 
 The 95% interval on that skill is 0.18 to 0.64. That interval is the range the true
@@ -90,7 +90,7 @@ every second day, 183 origins in all. Its best model, N-HiTS, scored a
 mean pinball loss of 0.0959 on the log scale, averaged over forecast
 horizons of 1 to 24 hours ahead. The persistence baseline scored 0.1180
 on the same origins. The skill score, averaged over the same horizons,
-is 0.186, meaning N-HiTS removed about a fifth of the baseline's error.
+is 0.186. A skill of 0.186 means N-HiTS's loss was 18.6% below persistence's.
 That backtest's results table, figures, and dataset summary are in
 [results/REPORT.md](results/REPORT.md) (generated, never hand-edited).
 
@@ -274,7 +274,7 @@ model whose true coverage sits anywhere in the 0.80s, which side of the
 floor its estimate lands on is decided by noise. The membership of the
 flagged list showed exactly that. On 2026-08-24, `seasonal_persistence`
 left the list at 0.8056 while `har_seasonal` stayed on it at 0.7956.
-Those two numbers sit about a fifth of a standard error apart. The t
+Those two numbers are 0.01 apart, against a standard error of 0.045. The t
 statistic counts a model's shortfall below 0.90 in standard errors, so
 more negative is stronger evidence. Of the two, `seasonal_persistence`
 had the stronger evidence of coverage below target (t = -2.15 against
