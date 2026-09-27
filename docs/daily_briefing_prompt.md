@@ -1,11 +1,27 @@
 # Daily briefing prompt
 
 The prompt a scheduled agent runs each morning after the GitHub Actions
-run. It
-reads the committed results and reports them; it computes nothing and
-edits nothing. Schedule it an hour after the daily run's time (the
-workflow runs at 11:12 UTC, with a retry at 11:42) with any agent that can run shell
-commands and read files, or read the three files yourself.
+run. It reads the committed results and reports them. It computes
+nothing and edits nothing.
+
+## Setting it up
+
+The workflow runs at 11:12 UTC with a retry at 11:42, so schedule the
+briefing for after 12:00 UTC in your local time. Any of these works:
+
+- **A Claude Code scheduled task**, which is how the author runs it. In
+  the Claude desktop app, ask Claude to schedule a daily task at that
+  time and give it the text below the line as the prompt. The app
+  stores the task as a Markdown file under `~/.claude/scheduled-tasks/`
+  with a name and a one-line description at the top, and runs it in a
+  fresh session each day. The briefing arrives as that session's reply.
+- **Any other agent** that can run shell commands and read files, on
+  its own scheduler, with the same text as its instructions.
+- **No agent.** Pull the repo and read `results/REVIEW.md`,
+  `results/FORECAST.md`, and `results/LIVE.md` in that order. The
+  prompt below is a reading order, not a computation.
+
+Replace "the repo's directory" in step 1 with your clone's path.
 
 ---
 
