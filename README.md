@@ -1,4 +1,4 @@
-# volatility-forecast-harness
+# bitcoin-volatility-forecast
 
 This repo publishes a daily forecast of how much the price of BTC-USD
 (Bitcoin priced in US dollars) will fluctuate over the next 24 hours,
@@ -45,38 +45,38 @@ point in time, its origin, using only data before it, and the origin
 steps forward for the next forecast. Every score is therefore out of
 sample in time, the same position a live forecast is in.
 
-The band is scored two ways, kept separate, because a model can be
+The band is scored two ways, pinball loss and calibration, because a model can be
 accurate with a band too narrow, or well-banded and inaccurate.
-Pinball loss scores accuracy. It charges each of the five levels by its
+Pinball loss scores accuracy. It measures each of the five levels by its
 distance from the truth and is lowest on average only when each level
 sits at its true value, so a model cannot improve it by hedging wide or
-narrow. Calibration scores whether the band's promise holds. It counts
+narrow. Calibration scores whether the band's are sized correctly. It counts
 how often the truth landed inside the band, against the nine times in
 ten the outer pair claims.
 
 Two baselines sit in the results tables beside the other six models.
-One is persistence. The other is HAR (heterogeneous autoregressive), a
-least-squares regression on the trailing day, week, and month averages
+One is persistence. The other is a HAR model (heterogeneous autoregressive). 
+It is a least-squares regression model on the trailing day, week, and month averages
 of volatility. It is the published standard baseline for realized
 volatility. The skill column measures every model against persistence,
-and the table shows which fail to beat it.
+and the table shows which models fail to beat it.
 
 The daily record scores each day's average volatility, the mean of a
 model's 24 hourly median forecasts against the mean of the 24 hourly
 values that occurred. The miss is measured on the log scale, which makes it a
 ratio between forecast and truth, so a forecast 20% off counts the same
 on a quiet day as on a spike day. A day is fully resolved once all 24
-of its hours have been observed. Over the 46 fully resolved days to
+of its hours have been observed. Over the 46 fully resolved days as of
 2026-09-22, N-HiTS, the leading model, missed by 0.19 on that scale, a
 miss of about a fifth. Persistence missed by 0.31, about a third, over
 its 49 days. It has three more days because N-HiTS joined the daily run
 three days after the others. On the 46 days both forecast, N-HiTS
 removed 41% of persistence's error. That is a day-level skill of 0.41,
-where skill is one minus the model's error over persistence's, so zero
-ties persistence and one would be a perfect forecast. The 95% interval
-on that skill is 0.18 to 0.64. That interval is the range the true
+where skill is one minus the model's error over persistence's. A zero would 
+mean a model ties persistence and a value of one would be a perfect forecast. 
+The 95% interval on that skill is 0.18 to 0.64. That interval is the range the true
 skill could plausibly sit in given the day-to-day noise, computed as if
-each day were independent of the last. It stays above zero, so on those
+each day were independent of the last. It stays above zero, indicating that on those
 days the lead over persistence is larger than day-to-day noise would
 explain. Those columns and the day-by-day figure are recorded in
 [results/LIVE.md](results/LIVE.md), and the figure shows the pattern of
