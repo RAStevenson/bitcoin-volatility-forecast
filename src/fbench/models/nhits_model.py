@@ -94,6 +94,11 @@ class NHits(BaseForecastModel):
             out = self.model_.predict(
                 pred_ds.to_dataloader(train=False, batch_size=1,
                                       num_workers=0),
-                mode="quantiles")
+                mode="quantiles",
+                # predict builds a Trainer of its own; without these it
+                # writes lightning_logs/version_N/hparams.yaml per call.
+                trainer_kwargs=dict(logger=False, accelerator="cpu",
+                                    enable_progress_bar=False,
+                                    enable_model_summary=False))
         q = out[0].cpu().numpy()[:len(index), :]
         return quantile_frame(q, index)
