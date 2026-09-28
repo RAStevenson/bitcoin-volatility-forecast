@@ -1,6 +1,6 @@
 # Daily record (generated)
 
-Forecast days scored: 54. Resolved rows: 10296. Pending (logged, outcome not yet observed): 192.
+Forecast days scored: 55. Resolved rows: 10456. Pending (logged, outcome not yet observed): 224.
 
 Every row from an earlier run was committed to git before its target hour completed. Any exceptions and their reasons are listed below. Each run audits every earlier commit of the forecast log, so a day's rows are checked on the run after the one that committed them. The commit history is the timestamp evidence.
 
@@ -8,14 +8,14 @@ Every row from an earlier run was committed to git before its target hour comple
 
 | model                |   days |   pinball_mean |    mae |   cov50 |   cov90 |   skill_vs_persistence |   day_error |   day_skill |
 |:---------------------|-------:|---------------:|-------:|--------:|--------:|-----------------------:|------------:|------------:|
-| nhits                |     51 |         0.1023 | 0.3188 |  0.4951 |  0.8995 |                 0.2242 |      0.1867 |      0.3852 |
-| gbm                  |     54 |         0.1087 | 0.3347 |  0.4506 |  0.8395 |                 0.1817 |      0.1909 |      0.3523 |
-| sarima               |     54 |         0.1138 | 0.35   |  0.5679 |  0.9113 |                 0.1435 |      0.2041 |      0.3076 |
-| har_seasonal         |     54 |         0.1246 | 0.3905 |  0.4491 |  0.8657 |                 0.0602 |      0.2581 |      0.1243 |
-| har                  |     54 |         0.1278 | 0.4011 |  0.4753 |  0.8665 |                 0.0476 |      0.2659 |      0.0978 |
-| prophet              |     54 |         0.1345 | 0.4044 |  0.4753 |  0.814  |                -0.0255 |      0.3303 |     -0.1207 |
-| persistence          |     54 |         0.1355 | 0.4218 |  0.5409 |  0.9167 |                 0      |      0.2947 |      0      |
-| seasonal_persistence |     54 |         0.156  | 0.478  |  0.4807 |  0.8688 |                -0.184  |      0.2975 |     -0.0094 |
+| nhits                |     52 |         0.102  | 0.318  |  0.4953 |  0.8996 |                 0.2236 |      0.1867 |      0.3852 |
+| gbm                  |     55 |         0.1084 | 0.3338 |  0.4527 |  0.8403 |                 0.1806 |      0.1909 |      0.3523 |
+| sarima               |     55 |         0.1137 | 0.3502 |  0.5662 |  0.9118 |                 0.1404 |      0.2041 |      0.3076 |
+| har_seasonal         |     55 |         0.1244 | 0.3903 |  0.4477 |  0.8663 |                 0.058  |      0.2581 |      0.1243 |
+| har                  |     55 |         0.1272 | 0.3996 |  0.4773 |  0.8678 |                 0.0471 |      0.2659 |      0.0978 |
+| prophet              |     55 |         0.1338 | 0.4025 |  0.4772 |  0.8161 |                -0.0241 |      0.3303 |     -0.1207 |
+| persistence          |     55 |         0.135  | 0.4197 |  0.5424 |  0.9172 |                 0      |      0.2947 |      0      |
+| seasonal_persistence |     55 |         0.1565 | 0.4806 |  0.4756 |  0.8686 |                -0.1939 |      0.2975 |     -0.0094 |
 
 The hourly columns score each of the 24 target hours. The day columns score the day's average volatility, which could be one input to a position size. day_error is the mean absolute log error of the 24 hourly median forecasts' average against the realized average, over fully resolved days, so lower is better. day_skill is one minus the ratio of that error to the persistence model's on the same days, so a positive value beats persistence and 1 would be a perfect forecast.
 

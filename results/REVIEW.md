@@ -3,7 +3,7 @@
 **The forecast was on target.** The nhits median averaged 20% annualized volatility over the 24 hours; realized averaged 15%, 0.76x the forecast.
 
 - 17 of 24 hours landed inside the 90% band (0 above it, 7 below). A calibrated band holds about 22 of 24.
-- Across all models this was the 21st worst of 54 scored days (mean log error 0.407, median day 0.331).
+- Across all models this was the 21st worst of 55 scored days (mean log error 0.407, median day 0.333).
 - Best median that day: gbm; worst: seasonal_persistence. Every model forecast too high, so the error traces to what was knowable that day rather than to any one model's choice.
 
 Largest hourly errors (local time, America/Chicago):
