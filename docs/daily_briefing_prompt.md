@@ -68,11 +68,12 @@ STEP 2 - CHECK THAT IT LANDED. Execute exactly:
 
 ```
 git pull --ff-only
-git log -1 --format=%s
+git log -30 --format=%s
 ```
 
-If the latest commit message starts with "Daily run <today's date in
-UTC, YYYY-MM-DD>", the run has landed: go to STEP 3. If it does not,
+If any line starts with "Daily run <today's date in UTC, YYYY-MM-DD>",
+the run has landed: go to STEP 3. It need not be the newest commit,
+since other work may have been pushed after the run. If no line does,
 a reader reports in one line that today's commit has not landed and
 stops. The owner executes:
 
