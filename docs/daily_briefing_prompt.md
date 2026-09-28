@@ -57,6 +57,11 @@ directory, execute exactly:
 gh workflow run daily-run.yml -f dry_run=false
 ```
 
+Run that command once and do not retry it. A second start the same
+day, from a retry, from a second session of this task, or from
+GitHub's own schedule, is harmless: the workflow checks the branch tip
+and skips once the day has committed.
+
 Then wait five minutes. The run takes about three and a half.
 
 STEP 2 - CHECK THAT IT LANDED. Execute exactly:
