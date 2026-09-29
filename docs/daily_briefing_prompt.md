@@ -47,9 +47,13 @@ with your clone's path.
 
 STEP 1 - START THE RUN. Read the clock in UTC with
 `(Get-Date).ToUniversalTime()`. If it is before 11:15 UTC, wait until
-11:15 UTC, sleeping in stretches of at most 100 seconds
-(`Start-Sleep -Seconds 100`), since a longer sleep outruns the shell
-tool's timeout. The origin hour closes at 11:00. A run started before
+11:15 UTC in sleeps of five minutes (`Start-Sleep -Seconds 300`). Run
+each sleep through the PowerShell tool with its timeout parameter set
+to at least 400000 milliseconds (400 seconds), because the default of
+two minutes would cut the sleep short. Size the last sleep to the
+seconds remaining so the wait ends at 11:15, not after it:
+`Start-Sleep -Seconds ([int]([datetime]::UtcNow.Date.AddHours(11).AddMinutes(15) - [datetime]::UtcNow).TotalSeconds)`.
+The origin hour closes at 11:00. A run started before
 then has nothing to forecast and fails on purpose. Then, in the repo's
 directory, execute exactly:
 
