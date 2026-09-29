@@ -1,6 +1,6 @@
 # Daily record (generated)
 
-Forecast days scored: 55. Resolved rows: 10456. Pending (logged, outcome not yet observed): 224.
+Forecast days scored: 56. Resolved rows: 10680. Pending (logged, outcome not yet observed): 192.
 
 Every row from an earlier run was committed to git before its target hour completed. Any exceptions and their reasons are listed below. Each run audits every earlier commit of the forecast log, so a day's rows are checked on the run after the one that committed them. The commit history is the timestamp evidence.
 
@@ -8,20 +8,20 @@ Every row from an earlier run was committed to git before its target hour comple
 
 | model                |   days |   pinball_mean |    mae |   cov50 |   cov90 |   skill_vs_persistence |   day_error |   day_skill |
 |:---------------------|-------:|---------------:|-------:|--------:|--------:|-----------------------:|------------:|------------:|
-| nhits                |     52 |         0.102  | 0.318  |  0.4953 |  0.8996 |                 0.2236 |      0.1867 |      0.3852 |
-| gbm                  |     55 |         0.1084 | 0.3338 |  0.4527 |  0.8403 |                 0.1806 |      0.1909 |      0.3523 |
-| sarima               |     55 |         0.1137 | 0.3502 |  0.5662 |  0.9118 |                 0.1404 |      0.2041 |      0.3076 |
-| har_seasonal         |     55 |         0.1244 | 0.3903 |  0.4477 |  0.8663 |                 0.058  |      0.2581 |      0.1243 |
-| har                  |     55 |         0.1272 | 0.3996 |  0.4773 |  0.8678 |                 0.0471 |      0.2659 |      0.0978 |
-| prophet              |     55 |         0.1338 | 0.4025 |  0.4772 |  0.8161 |                -0.0241 |      0.3303 |     -0.1207 |
-| persistence          |     55 |         0.135  | 0.4197 |  0.5424 |  0.9172 |                 0      |      0.2947 |      0      |
-| seasonal_persistence |     55 |         0.1565 | 0.4806 |  0.4756 |  0.8686 |                -0.1939 |      0.2975 |     -0.0094 |
+| nhits                |     53 |         0.1015 | 0.3166 |  0.4953 |  0.9002 |                 0.2239 |      0.1839 |      0.3828 |
+| gbm                  |     56 |         0.108  | 0.333  |  0.4546 |  0.8423 |                 0.1806 |      0.187  |      0.3544 |
+| sarima               |     56 |         0.1129 | 0.3475 |  0.5699 |  0.9137 |                 0.1422 |      0.2054 |      0.2908 |
+| har_seasonal         |     56 |         0.1237 | 0.3886 |  0.4487 |  0.8683 |                 0.0593 |      0.2564 |      0.1147 |
+| har                  |     56 |         0.1267 | 0.3983 |  0.4769 |  0.869  |                 0.0473 |      0.2649 |      0.0855 |
+| prophet              |     56 |         0.1325 | 0.3986 |  0.4799 |  0.8199 |                -0.018  |      0.321  |     -0.1085 |
+| persistence          |     56 |         0.1345 | 0.4181 |  0.5432 |  0.9182 |                 0      |      0.2896 |      0      |
+| seasonal_persistence |     56 |         0.1564 | 0.4803 |  0.4754 |  0.869  |                -0.1972 |      0.3029 |     -0.046  |
 
 The hourly columns score each of the 24 target hours. The day columns score the day's average volatility, which could be one input to a position size. day_error is the mean absolute log error of the 24 hourly median forecasts' average against the realized average, over fully resolved days, so lower is better. day_skill is one minus the ratio of that error to the persistence model's on the same days, so a positive value beats persistence and 1 would be a perfect forecast.
 
 The days column is each model's own count of scored days. Models that joined the loop later are averaged over fewer days, so the rows above are not sample-matched.
 
-Matched on the 51 fully resolved days that both nhits and persistence forecast, the skill of nhits over persistence is 0.25 on the hourly pinball loss (95% interval 0.16 to 0.35) and 0.39 on the day-level error (0.16 to 0.61). Pinball loss scores the whole low-to-high forecast band, not just its middle, and lower is better. The hourly figure pools the loss over those days, while the table's skill_vs_persistence averages the 24 per-hour skills, each model over its own days. Each interval comes from the day-to-day spread of the gap between the two models' daily scores and treats each day as independent of the last. An interval that stays above zero means that, on these days, the lead over persistence is larger than day-to-day noise would explain.
+Matched on the 53 fully resolved days that both nhits and persistence forecast, the skill of nhits over persistence is 0.25 on the hourly pinball loss (95% interval 0.16 to 0.35) and 0.38 on the day-level error (0.16 to 0.60). Pinball loss scores the whole low-to-high forecast band, not just its middle, and lower is better. The hourly figure pools the loss over those days, while the table's skill_vs_persistence averages the 24 per-hour skills, each model over its own days. Each interval comes from the day-to-day spread of the gap between the two models' daily scores and treats each day as independent of the last. An interval that stays above zero means that, on these days, the lead over persistence is larger than day-to-day noise would explain.
 
 The figure below is that day-level record for nhits, the current leader: its forecast of each day's average volatility, the average that realized, and the persistence model's own forecast of the same average.
 
