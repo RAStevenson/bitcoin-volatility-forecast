@@ -34,7 +34,8 @@ does not run. Any of these works:
   fresh session each day. The briefing arrives as that session's reply.
 - **Any other agent** that can run shell commands and read files, on
   its own scheduler, with the same text as its instructions.
-- **No agent.** Start the run with the first command below, wait for
+- **No agent.** Start the run with
+  `gh workflow run daily-run.yml -f dry_run=false`, wait for
   it, pull, and read `results/REVIEW.md`, `results/FORECAST.md`, and
   `results/LIVE.md` in that order. Step 3 is a reading order,
   not a computation.
@@ -45,17 +46,23 @@ with your clone's path.
 
 ---
 
-STEP 1 - START THE RUN. Read the clock in UTC with
-`(Get-Date).ToUniversalTime()`. If it is before 11:15 UTC, wait until
-11:15 UTC in sleeps of five minutes (`Start-Sleep -Seconds 300`). Run
-each sleep through the PowerShell tool with its timeout parameter set
-to at least 400000 milliseconds (400 seconds), because the default of
-two minutes would cut the sleep short. Size the last sleep to the
-seconds remaining so the wait ends at 11:15, not after it:
-`Start-Sleep -Seconds ([int]([datetime]::UtcNow.Date.AddHours(11).AddMinutes(15) - [datetime]::UtcNow).TotalSeconds)`.
-The origin hour closes at 11:00. A run started before
-then has nothing to forecast and fails on purpose. Then, in the repo's
-directory, execute exactly:
+STEP 1 - START THE RUN. Wait until 11:15 UTC with one background
+command, and do nothing until it exits. Through the Bash tool, with
+run_in_background set to true, execute exactly:
+
+```
+target=$(date -u -d "today 11:15" +%s); until [ "$(date -u +%s)" -ge "$target" ]; do sleep 5; done
+```
+
+The command exits at once when 11:15 UTC has already passed, and the
+session is notified when it exits. Every wait in this prompt is a
+background command, because Claude Code refuses a long sleep run in
+the foreground (it refused `Start-Sleep -Seconds 300` on 2026-09-30).
+An agent with no background mode runs the same commands in the
+foreground, with its tool timeout set longer than the wait.
+The origin hour closes at 11:00. A run started before then has nothing
+to forecast and fails on purpose. Then, in the repo's directory,
+execute exactly:
 
 ```
 gh workflow run daily-run.yml -f dry_run=false
@@ -66,7 +73,8 @@ day, from a retry, from a second session of this task, or from
 GitHub's own schedule, is harmless: the workflow checks the branch tip
 and skips once the day has committed.
 
-Then wait five minutes. The run takes about three and a half.
+Then wait five minutes with `sleep 300` as one background command,
+and continue when it exits. The run takes about three and a half.
 
 STEP 2 - CHECK THAT IT LANDED. Execute exactly:
 
@@ -87,8 +95,9 @@ gh run list --workflow daily-run.yml --limit 3
 
 and act on the newest run listed for today:
 
-- Queued or in progress: wait two minutes and repeat STEP 2, for up to
-  twenty minutes in all. After twenty minutes, report in one line that
+- Queued or in progress: wait two minutes (`sleep 120` as a background
+  command) and repeat STEP 2, at most ten times, twenty minutes in all.
+  After the tenth, report in one line that
   the run is still in progress and stop. GitHub's own schedule may also
   fire meanwhile; the workflow skips a second start once the day has
   committed.

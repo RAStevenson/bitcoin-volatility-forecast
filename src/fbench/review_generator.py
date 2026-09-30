@@ -59,8 +59,10 @@ def build_review(hourly=None):
     below = h["y_true"] < h["q05"]
 
     stats = day_stats(ev)
-    rank = int((stats["mae"] >= stats.loc[origin, "mae"]).sum())
+    day_err = stats.loc[origin, "mae"]
     n_days = len(stats)
+    place = _rank_phrase(int((stats["mae"] > day_err).sum()) + 1,
+                         int((stats["mae"] < day_err).sum()) + 1, n_days)
 
     per_model = day.assign(
         err=(day["y_true"] - day["q50"]).abs(),
@@ -92,10 +94,8 @@ def build_review(hourly=None):
         f"- {inside.sum()} of {len(h)} hours landed inside the 90% band "
         f"({above.sum()} above it, {below.sum()} below). A calibrated band "
         f"holds about {round(0.9 * len(h))} of {len(h)}.",
-        f"- Across all models this was the "
-        f"{'worst' if rank == 1 else _ordinal(rank) + ' worst'} of "
-        f"{n_days} scored days (mean log error {stats.loc[origin, 'mae']:.3f}, "
-        f"median day {stats['mae'].median():.3f}).",
+        f"- Across all models this was the {place} (mean log error "
+        f"{day_err:.3f}, median day {stats['mae'].median():.3f}).",
         f"- Best median that day: {best}; worst: {worst}."
         + (f" Every model forecast {side}, so the error traces to what "
            "was knowable that day rather than to any one model's choice."
@@ -116,6 +116,26 @@ def build_review(hourly=None):
     if hourly is not None:
         lines += record_lines(score_daily_forecast(ev, hourly))
     return "\n".join(lines)
+
+
+def _rank_phrase(from_worst, from_best, n_days):
+    """The day's place among the scored days by error, counted from
+    whichever end is nearer, so the lowest-error day on record reads as
+    "the best of 57 scored days" rather than "the 57th worst". from_worst
+    is one more than the count of days with a larger error, so 1 is the
+    worst day, and from_best one more than the count with a smaller
+    error, so 1 is the best; days tied on error share a place. A day
+    equally far from both ends is the middle day, and a lone day is
+    called that."""
+    if n_days == 1:
+        return "only scored day so far"
+    if from_best < from_worst:
+        rank = "best" if from_best == 1 else f"{_ordinal(from_best)} best"
+    elif from_worst < from_best:
+        rank = "worst" if from_worst == 1 else f"{_ordinal(from_worst)} worst"
+    else:
+        rank = "middle day"
+    return f"{rank} of {n_days} scored days"
 
 
 def _ordinal(n):

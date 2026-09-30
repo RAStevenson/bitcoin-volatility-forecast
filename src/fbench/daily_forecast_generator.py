@@ -244,17 +244,44 @@ def build_daily_forecast(hourly, last_price=None):
         high_line,
         f"- The loudest hours are expected around {', '.join(loud)} local "
         f"({LOCAL_TZ}); the calmest around {', '.join(calm)}.",
-        f"- Yesterday's realized average was {last24:.0%}, "
-        + (f"below the {q_thresh:.0%} quiet line, so yesterday was a "
-           f"quiet day by that line." if last24 < q_thresh else
-           f"above the {q_thresh:.0%} quiet line, so yesterday was not a "
-           f"quiet day."),
+        _quiet_line_sentence(last24, q_thresh),
         "",
         f"This forecast was produced by {model}, {model_why}. It is a "
         f"volatility forecast only and says nothing about price direction.",
         "",
     ]
     return "\n".join(lines)
+
+
+def distinct_percents(a, b, places=0, extra=2):
+    """Format two fractions as percents for a sentence that compares
+    them, starting at `places` decimals and adding up to `extra` more
+    only while the two would print the same. Returns the two strings
+    and whether they still print the same, which the caller words as a
+    tie. Rounding both sides to the same number and then calling one
+    larger is the fault this prevents."""
+    for p in range(places, places + extra + 1):
+        sa, sb = f"{a:.{p}%}", f"{b:.{p}%}"
+        if sa != sb:
+            return sa, sb, False
+    return sa, sb, True
+
+
+def _quiet_line_sentence(last24, q_thresh):
+    """The bullet comparing yesterday's realized average with the quiet
+    line. Both print as whole percents unless they round to the same
+    one, in which case a decimal place is added, then a second, so the
+    sentence never reads "30%, above the 30% quiet line". Values still
+    equal at two places are said to sit at the line, which does not
+    count as below it. The quiet-or-not clause is this sentence's own
+    strict comparison with the printed line; the regime word elsewhere
+    in the forecast is decided separately, by regime_of."""
+    a, b, tie = distinct_percents(last24, q_thresh)
+    where = "at" if tie else "below" if last24 < q_thresh else "above"
+    quiet = ("so yesterday was a quiet day by that line."
+             if where == "below" else "so yesterday was not a quiet day.")
+    return (f"- Yesterday's realized average was {a}, {where} the {b} "
+            f"quiet line, {quiet}")
 
 
 def write_daily_forecast(hourly, last_price=None):
