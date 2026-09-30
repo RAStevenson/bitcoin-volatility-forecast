@@ -17,6 +17,30 @@ def test_prob_above_interpolates_and_clamps():
     assert all(a >= b for a, b in zip(ps, ps[1:]))
 
 
+def test_quiet_line_sentence_never_prints_equal_numbers_as_above():
+    s = daily_forecast_generator._quiet_line_sentence
+    assert "was 45%, above the 30% quiet line" in s(0.45, 0.30)
+    assert "was 22%, below the 30% quiet line" in s(0.22, 0.30)
+    assert "quiet day by that line" in s(0.22, 0.30)
+    # both round to 30%: a decimal place shows the real gap
+    assert "was 30.4%, above the 29.6% quiet line" in s(0.304, 0.296)
+    assert "was 29.8%, below the 30.2% quiet line" in s(0.298, 0.302)
+    # an exact tie is at the line, and counts as not quiet
+    tie = s(0.30, 0.30)
+    assert "was 30.00%, at the 30.00% quiet line" in tie
+    assert "not a quiet day" in tie
+    # a gap too small to print is a tie too, never "at the line, so quiet"
+    assert "not a quiet day" in s(0.300001, 0.300004)
+
+
+def test_distinct_percents_adds_places_only_when_the_two_print_alike():
+    d = daily_forecast_generator.distinct_percents
+    assert d(0.45, 0.30) == ("45%", "30%", False)
+    assert d(0.0154, 0.0146, places=1) == ("1.54%", "1.46%", False)
+    assert d(0.015, 0.006, places=1) == ("1.5%", "0.6%", False)
+    assert d(0.30, 0.30) == ("30.00%", "30.00%", True)
+
+
 def test_daily_forecast_written_with_regime_words(tmp_path, monkeypatch):
     monkeypatch.setattr(daily_run, "FORECAST_LOG", tmp_path / "forecasts.csv")
     monkeypatch.setattr(daily_run, "EVAL_LOG", tmp_path / "evaluation.csv")

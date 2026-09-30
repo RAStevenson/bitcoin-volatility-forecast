@@ -38,7 +38,17 @@ def test_review_calls_a_large_miss_too_low(tmp_path, monkeypatch):
     _resolved_logs(tmp_path, monkeypatch, shock=4.0)
     text = review_generator.write_review().read_text()
     assert "too low" in text
-    assert "worst of 1 scored days" in text
+    assert "this was the only scored day so far" in text
+
+
+def test_rank_is_counted_from_the_nearer_end():
+    phrase = review_generator._rank_phrase
+    # the lowest error of 57: 57 days are at least as bad, 1 at most as bad
+    assert phrase(57, 1, 57) == "best of 57 scored days"
+    assert phrase(55, 3, 57) == "3rd best of 57 scored days"
+    assert phrase(1, 57, 57) == "worst of 57 scored days"
+    assert phrase(2, 56, 57) == "2nd worst of 57 scored days"
+    assert phrase(29, 29, 57) == "middle day of 57 scored days"
 
 
 def test_review_needs_no_resolved_rows(tmp_path, monkeypatch):

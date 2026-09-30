@@ -15,7 +15,8 @@ import pandas as pd
 
 from fbench.harness_config import ANNUALIZER, HORIZON, QCOLS
 from fbench.daily_forecast_generator import (N_NAMED_HOURS, REGIMES, claims, context,
-                                      leading_model_asof, realized_claims)
+                                      distinct_percents, leading_model_asof,
+                                      realized_claims)
 
 # Naming three of 24 hours at random would overlap the true three by
 # 3 x 3 / 24 hours on average; the record is read against that.
@@ -112,12 +113,13 @@ def record_lines(scored):
               f"{last['regime_fc']} and {last['trend_fc']}; it turned out "
               f"{last['regime_rz']} and {last['trend_rz']}."]
     if last["day_return"] is not None and not pd.isna(last["day_return"]):
+        move, ended, tie = distinct_percents(
+            last["day_move"], abs(last["day_return"]), places=1)
+        where = ("at" if tie else
+                 "inside" if last["day_move_hit"] else "outside")
         latest.append(
-            f"The one-standard-deviation day move was {last['day_move']:.1%} "
-            f"and the price ended {abs(last['day_return']):.1%} from where "
-            f"it started, "
-            f"{'inside' if last['day_move_hit'] else 'outside'} that "
-            f"distance.")
+            f"The one-standard-deviation day move was {move} and the price "
+            f"ended {ended} from where it started, {where} that distance.")
     latest.append(
         f"{last['loud_overlap']} of the {N_NAMED_HOURS} loudest hours named "
         f"were among the day's {N_NAMED_HOURS} loudest, and "
