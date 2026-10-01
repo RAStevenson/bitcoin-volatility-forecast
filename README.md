@@ -185,8 +185,8 @@ writing the backtest parquet. `run_vol_report.py` takes `--results`
 (default: the newest backtest parquet in results/backtest/). `run_daily.py` takes `--no-push`
 (commit the run's files locally and do not push) and `--no-commit`
 (write every file and commit nothing). Every volatility
-backtest run is also logged to MLflow, a local run-tracking tool
-(sqlite backend).
+backtest run that writes its report is also logged to MLflow, a local
+run-tracking tool (sqlite backend).
 Run `mlflow ui --backend-store-uri sqlite:///mlflow.db` to browse the
 runs.
 
@@ -222,8 +222,9 @@ packages, with the CPU-only build of PyTorch, and runs
 `github-actions[bot]` and pushes, so the commit times in the forecast
 log are GitHub's, not mine. The origin is the 10:00 UTC hour every day,
 whatever minute the run starts, so a run that starts late forecasts the
-window an on-time run would have and sees no data past that hour. That
-hour closes at 11:00, and its first target hour ends at 12:00 UTC, so a
+window an on-time run would have, and its models see no data past that
+hour. Only the dollar figures in FORECAST.md use the price at the time
+of the run. The origin hour closes at 11:00, and its first target hour ends at 12:00 UTC, so a
 run that starts on time and takes its usual three and a half minutes
 commits with about forty minutes to spare. A run that commits after
 that is listed in [results/LIVE.md](results/LIVE.md) by the audit, with
@@ -318,10 +319,10 @@ their average sits farther from 0.90, in either direction, than their
 own spread explains. A test rejects when it does, and the level is the
 false-alarm rate accepted per test, 5%. The check divides that 5% by
 the number of models tested (a Bonferroni correction), because eight
-tests at 5% each would raise a false alarm often. A model is reported
+tests at 5% each would raise a false alarm often. A model is flagged
 only after it rejects on three consecutive scored days, so a single
 noisy day cannot raise an alarm and a real departure still surfaces
-within days. Earlier results are recomputed from `evaluation.csv`, the
+within days. A shorter streak is reported as pending. Earlier results are recomputed from `evaluation.csv`, the
 log of every scored forecast, rather than stored, so the whole check is
 reproducible from that log with no state file that could drift out of
 step with the data.
@@ -329,17 +330,20 @@ step with the data.
 Replayed over every scored day, the check stayed silent through
 2026-08-30, and not by a wide margin. `gbm` rejected on 2026-08-26 and
 2026-08-27, `prophet` on 2026-08-27 and 2026-08-28, and each streak
-broke one day short of the report line. A fresh `gbm` streak began on
-2026-08-29. On 2026-08-31 the check reported a model for the first time.
+broke one day short of a flag. A fresh `gbm` streak began on
+2026-08-29. On 2026-08-31 the check flagged a model for the first time.
 It named `gbm`, whose coverage over its 28 scored days was 0.7932. The
 p-value is the chance of a gap that large, in either direction, arising
 from noise alone. For `gbm` it was 0.0058, under the corrected
 threshold of 0.0063, which is 5% divided by the eight models tested.
 `gbm` was the model
 nearest the line when the check was rebuilt, so the first flag landing
-on it reads as the check doing what it was rebuilt to do. Its bands
-stay as the model produces them, and the flag is the published record
-that they are too narrow.
+on it reads as the check doing what it was rebuilt to do. That flag
+lasted one run and cleared on 2026-09-01. `prophet` was then flagged
+from 2026-09-04 through 2026-09-07, and no model has been flagged
+since, as of 2026-10-01. The bands stay as each model produces them,
+and LIVE.md's git history is the published record of when they ran too
+narrow.
 
 The check stays silent in two cases on purpose. A model with fewer than
 10 scored days gets no result, because three clean quiet days once

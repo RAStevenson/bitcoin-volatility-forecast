@@ -337,10 +337,11 @@ def _figures(model, test_results):
 
 
 def calibration_lines(ev, days):
-    """Calibration result for the live report. Reports a model only
-    when the corrected test rejects it on CALIBRATION_PERSISTENCE_DAYS
-    consecutive scored days, so a single noisy day cannot raise an alarm
-    and a real departure still surfaces within days."""
+    """Calibration result for the live report. Flags a model only when
+    the corrected test rejects it on CALIBRATION_PERSISTENCE_DAYS
+    consecutive scored days, and names a shorter streak as pending, so
+    a single noisy day cannot raise an alarm and a real departure still
+    surfaces within days."""
     need = MIN_CALIBRATION_DAYS + CALIBRATION_PERSISTENCE_DAYS - 1
     if days < need:
         return [f"The calibration check stays inactive until {need} scored "

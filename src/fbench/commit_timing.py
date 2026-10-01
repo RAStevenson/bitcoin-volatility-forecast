@@ -88,7 +88,7 @@ _TRIGGER_WORDS = {
 def run_note(subject):
     """One sentence on what started the run that made a commit and when,
     read from the trigger and start time the daily run writes into its
-    commit subject since 2026-09-27, or None for a subject without them.
+    commit subject since 2026-09-28, or None for a subject without them.
     A late day with no entry in LATE_COMMIT_REASONS gets this sentence,
     so a delayed trigger explains itself in LIVE.md."""
     m = re.search(r"trigger (\S+), started (\d\d:\d\d) UTC", subject or "")

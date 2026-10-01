@@ -47,7 +47,7 @@ TRIGGER = os.environ.get("GITHUB_EVENT_NAME", "local")
 def step(name, fn):
     """Runs one named stage of the loop, printing the name first and
     exiting with a message naming that stage if it raises, so a failed
-    overnight run says where it stopped."""
+    run says where it stopped."""
     print(f"[daily] {name}", flush=True)
     try:
         return fn()
@@ -94,8 +94,10 @@ def _commit_push():
     pushing when an origin remote is configured and --no-push is not set;
     with --no-commit it returns before staging anything. Committing happens before the logged target
     hours close, which is what makes the forecast log pre-outcome
-    evidence. A second run on the same day finds nothing staged and
-    returns without committing."""
+    evidence. A second run on the same day would normally stage newly
+    resolved rows and a refreshed forecast file, so what stops one is
+    the workflow's skip guard, not this function; the nothing-staged
+    return below only covers a rerun with no new data."""
     if args.no_commit:
         print("  --no-commit: files written, nothing committed")
         return

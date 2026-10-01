@@ -27,7 +27,7 @@ QUANTILES = [0.05, 0.25, 0.50, 0.75, 0.95]
 QCOLS = ["q05", "q25", "q50", "q75", "q95"]
 
 HORIZON = 24                   # hourly steps per forecast
-TRAIN_DAYS = 365               # persistence, HAR, Prophet, GBM
+TRAIN_DAYS = 365               # persistence, HAR, Prophet, GBM, N-HiTS
 SARIMA_TRAIN_DAYS = 90         # SARIMAX cost grows fast with window
 TEST_DAYS = 365                # backtest span
 ORIGIN_STRIDE_DAYS = 2         # ~183 origins over TEST_DAYS
@@ -46,7 +46,8 @@ MIN_CALIBRATION_DAYS = 10
 COV90_TARGET = 0.90
 # The check compares each model's day-level coverage against the target
 # with a two-sided t-test, Bonferroni-corrected across the models tested,
-# and reports a model only after it rejects on consecutive days. A fixed
+# and flags a model only after it rejects on consecutive days, naming a
+# shorter streak as pending. A fixed
 # floor was tried first and could not separate a miscalibrated model from
 # a noisy one: at ~20 scored days the standard error of day-level
 # coverage is about 0.045, so a floor at 0.80 sat inside the noise. Its
