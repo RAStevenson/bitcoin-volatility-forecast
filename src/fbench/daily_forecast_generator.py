@@ -14,7 +14,7 @@ from fbench.daily_run import EVAL_LOG, FORECAST_LOG, _load
 from fbench.quantile_scoring import score
 
 LOCAL_TZ = "America/Chicago"
-FALLBACK_MODEL = "gbm"  # full-backtest winner, used until live scores exist
+FALLBACK_MODEL = "nhits"  # winner of the pinned backtest, used until live scores exist
 REGIMES = ["quiet", "normal", "elevated", "high"]
 N_NAMED_HOURS = 3  # the loudest and calmest hours the daily forecast names
 
