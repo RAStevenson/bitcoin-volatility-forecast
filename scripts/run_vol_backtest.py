@@ -25,8 +25,8 @@ from fbench.report_generator import write_report
 from fbench.quantile_scoring import add_skill, score
 from fbench.mlflow_tracking import log_backtest
 
-# Contender modules are imported as their plan tasks land; each import
-# registers its model class as a side effect.
+# Each model module is imported here because the import is what
+# registers its model class.
 for mod in ("har_model", "sarima_model", "prophet_model",
             "xgboost_model", "nhits_model"):
     try:
