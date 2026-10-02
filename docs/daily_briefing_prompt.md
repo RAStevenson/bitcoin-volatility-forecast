@@ -149,7 +149,7 @@ Then, briefly, system health:
   days; a pending model is worth one sentence, not a heading. Never apply a threshold to the raw cov90 column
   yourself. Its day-to-day noise is larger than the gaps between
   models. Reading the column as exact is the mistake the check was rebuilt on
-  2026-08-24 to stop making (see the README, The calibration check).
+  2026-08-24 to stop making (see docs/calibration_check_history.md).
 
 If a scoring anomaly or a failed step exists, it moves to the top,
 above the forecast.

@@ -18,7 +18,56 @@ N-HiTS, a neural network built for time series. They run side by side
 so the record shows which model families suit this series and which
 fail to beat the baseline.
 
-What they forecast is realized volatility, the fluctuation actually
+## The result so far
+
+The daily record, [results/LIVE.md](results/LIVE.md), holds the running
+scores of every forecast made since 2026-08-03. On the 46 days that both
+N-HiTS and persistence forecast, as of 2026-09-22, N-HiTS's error on
+each day's average volatility was 41% below persistence's.
+
+![day by day: forecast, realized, persistence](results/figures/fig_live_daily.png)
+
+The figure is that record day by day for the leading model: its
+forecast of each day's average volatility, the average that occurred,
+and the persistence model's own forecast of the same average. Every
+daily run redraws it, so it extends past the dated numbers in this
+section. The forecast tracks the level of ordinary days and misses the
+spikes on the day they arrive.
+
+The daily record scores each day's average volatility, the mean of a
+model's 24 hourly median forecasts against the mean of the 24 hourly
+values that occurred. The error is measured on the log scale, which makes it a
+ratio between forecast and realized value, so a forecast 20% off counts the same
+on a quiet day as on a spike day. A day is fully resolved once all 24
+of its hours have been observed. Over the 46 fully resolved days as of
+2026-09-22, N-HiTS, the leading model, had an average error of 0.19 on
+that scale. Persistence's average error was 0.31 over its 49 days. Lower
+is better. Persistence has three more days because N-HiTS joined the daily run
+three days after the others. The 41% above is measured on the 46 days
+that both models forecast. It is a day-level skill of 0.41, where skill is one minus the model's error over persistence's. A zero would 
+mean a model ties persistence and a value of one would be a perfect forecast. 
+The 95% interval on that skill is 0.18 to 0.64. That interval is the range the true
+skill could plausibly sit in given the day-to-day noise, computed as if
+each day were independent of the last. It stays above zero, indicating that on those
+days the lead over persistence is larger than day-to-day noise would
+explain. The error and skill are columns in LIVE.md's table, and the
+interval is stated under it.
+
+The daily record is the live test. The backtest is a one-time run over
+the 365 days of history before 2026-08-05. It is kept as the reference
+(pinned) rather than re-run. It used a forecast origin
+every second day, 183 origins in all. Its best model, N-HiTS, scored a
+mean pinball loss of 0.0959 on the log scale, averaged over forecast
+horizons of 1 to 24 hours ahead. The persistence baseline scored 0.1180
+on the same origins. Pinball loss scores the whole forecast band, and
+lower is better. It is defined under How it is scored. The skill score, averaged over the same horizons,
+is 0.186. A skill of 0.186 means N-HiTS's loss was 18.6% below persistence's.
+That backtest's results table, figures, and dataset summary are in
+[results/REPORT.md](results/REPORT.md) (generated, never hand-edited).
+
+## What is forecast
+
+What the models forecast is realized volatility, the fluctuation actually
 measured from the price, one value per hour. It is measured from
 minute-to-minute price changes because an hourly figure needs data
 finer than the hour, and one-minute candles are what the exchange
@@ -35,13 +84,13 @@ sit between the highest and lowest quantiles 90% of the time, the 90%
 band. The scoring counts how often the realized volatility lands within
 those bounds.
 
+## How it is scored
+
 Each day, a scheduled run commits every model's forecast to git before
 the first of its 24 target hours has ended, so the history proves each
 forecast was made before its outcome was known. Each daily
 run audits those commit times against the git history and lists the
-exceptions in [results/LIVE.md](results/LIVE.md). That file is the
-daily record, which holds the running scores of every forecast made
-since 2026-08-03.
+exceptions in the daily record.
 
 Scoring is rolling-origin validation. Each forecast is made from one
 point in time, its origin, using only data before it, and the origin
@@ -63,39 +112,6 @@ It is a least-squares regression model on the trailing day, week, and month aver
 of volatility. It is the published standard baseline for realized
 volatility. The skill column measures every model against persistence,
 and the table shows which models fail to beat it.
-
-The daily record scores each day's average volatility, the mean of a
-model's 24 hourly median forecasts against the mean of the 24 hourly
-values that occurred. The error is measured on the log scale, which makes it a
-ratio between forecast and truth, so a forecast 20% off counts the same
-on a quiet day as on a spike day. A day is fully resolved once all 24
-of its hours have been observed. Over the 46 fully resolved days as of
-2026-09-22, N-HiTS, the leading model, had an average error of 0.19 on
-that scale. Persistence's average error was 0.31 over its 49 days. Lower
-is better. Persistence has three more days because N-HiTS joined the daily run
-three days after the others. On the 46 days that both models forecast, N-HiTS's
-error was 41% below persistence's. That is a day-level skill of 0.41,
-where skill is one minus the model's error over persistence's. A zero would 
-mean a model ties persistence and a value of one would be a perfect forecast. 
-The 95% interval on that skill is 0.18 to 0.64. That interval is the range the true
-skill could plausibly sit in given the day-to-day noise, computed as if
-each day were independent of the last. It stays above zero, indicating that on those
-days the lead over persistence is larger than day-to-day noise would
-explain. Those columns and the day-by-day figure are recorded in
-[results/LIVE.md](results/LIVE.md), and the figure shows the pattern of
-the record. The forecast tracks the level of ordinary days and misses
-the spikes on the day they arrive.
-
-The daily record is the live test. The backtest is a one-time run over
-the 365 days of history before 2026-08-05. It is kept as the reference
-(pinned) rather than re-run. It used a forecast origin
-every second day, 183 origins in all. Its best model, N-HiTS, scored a
-mean pinball loss of 0.0959 on the log scale, averaged over forecast
-horizons of 1 to 24 hours ahead. The persistence baseline scored 0.1180
-on the same origins. The skill score, averaged over the same horizons,
-is 0.186. A skill of 0.186 means N-HiTS's loss was 18.6% below persistence's.
-That backtest's results table, figures, and dataset summary are in
-[results/REPORT.md](results/REPORT.md) (generated, never hand-edited).
 
 ## Why
 
@@ -288,35 +304,8 @@ realized value landed inside a model's 90% band. A calibrated model
 sits near 0.90, and a model that sits well below it is claiming more
 precision than it has.
 
-The first version of the check compared that column against a fixed
-floor of 0.80 and named anything underneath. The check also had a 0.98
-ceiling, which no model came near while it was active. From
-2026-08-16 to 2026-08-24 the check named `gbm` every day, and from 2026-08-20 on the list
-grew to three to five of the eight models. The list never emptied, so
-the check carried no information. A signal that is always on cannot
-tell you when something changed.
-
-The problem was that the floor sat inside the noise. Hours within a
-day move together, so 24 hourly rows carry about one day's worth of
-independent evidence, and the sample that matters is the number of
-scored days, not the row count. At 21 scored days, a typical model's
-day-level coverage has a standard error of about 0.045, the noise
-expected in that average from 21 days alone. The gap between the 0.80
-floor and the 0.90 target is roughly two standard errors wide. For a
-model whose true coverage sits anywhere in the 0.80s, which side of the
-floor its estimate lands on is decided by noise. The membership of the
-flagged list showed exactly that. On 2026-08-24, `seasonal_persistence`
-left the list at 0.8056 while `har_seasonal` stayed on it at 0.7956.
-Those two numbers are 0.01 apart, against a standard error of 0.045. The t
-statistic counts a model's shortfall below 0.90 in standard errors, so
-more negative is stronger evidence. Of the two, `seasonal_persistence`
-had the stronger evidence of coverage below target (t = -2.15 against
--1.89), because its day-to-day spread was tighter.
-`har` appeared for two days and left. `seasonal_persistence` appeared
-for four days and left. Nothing about those models had changed.
-
-Since 2026-08-24 the check tests the evidence instead of the bare
-average. It takes each model's coverage one day at a time and runs a
+Each daily run checks whether a model's coverage is farther from 0.90
+than noise would explain. The check takes each model's coverage one day at a time and runs a
 two-sided t-test of those daily figures against 0.90, asking whether
 their average sits farther from 0.90, in either direction, than their
 own spread explains. A test rejects when it does, and the level is the
@@ -330,40 +319,27 @@ log of every scored forecast, rather than stored, so the whole check is
 reproducible from that log with no state file that could drift out of
 step with the data.
 
-Replayed over every scored day, the check stayed silent through
-2026-08-30, and not by a wide margin. `gbm` rejected on 2026-08-26 and
-2026-08-27, `prophet` on 2026-08-27 and 2026-08-28, and each streak
-broke one day short of a flag. A fresh `gbm` streak began on
-2026-08-29. On 2026-08-31 the check flagged a model for the first time.
-It named `gbm`, whose coverage over its 28 scored days was 0.7932. The
-p-value is the chance of a gap that large, in either direction, arising
-from noise alone. For `gbm` it was 0.0058, under the corrected
-threshold of 0.0063, which is 5% divided by the eight models tested.
-`gbm` was the model
-nearest the line when the check was rebuilt, so the first flag landing
-on it reads as the check doing what it was rebuilt to do. That flag
-lasted one run and cleared on 2026-09-01. `prophet` was then flagged
-from 2026-09-04 through 2026-09-07, and no model has been flagged
-since, as of 2026-10-01. The bands stay as each model produces them,
-and LIVE.md's git history is the published record of when they ran too
-narrow.
-
 The check stays silent in two cases on purpose. A model with fewer than
 10 scored days gets no result, because three clean quiet days once
 produced a coverage of 1.0 from models the year-long backtest shows are
 calibrated. A model whose daily coverage has no spread at all also gets
 none, because the test would have no uncertainty to divide by, and
-inventing one would repeat the mistake the fixed floor made.
+inventing one would be a guess.
 
 Part of why some bands run narrow is visible in how they are built.
 HAR takes its band from the spread of the errors of the regression it
 has just fit, on the hours it was fit to. XGBoost fits each of its five
-levels to every row of its training window with nothing held back. A
+quantiles to every row of its training window with nothing held back. A
 band fitted to the hours a model has seen tends to understate the
 errors it makes on hours it has not. In LIVE.md's cov90 column both
 models' 90% bands cover fewer than 90% of hours, and so does Prophet's.
 The bands are left as each model produces them, because widening them
 by hand would hide what the coverage column exists to show.
+
+The check replaced an earlier version that named any model under 0.80
+coverage. How that version failed and which models the current one has
+flagged are recorded in
+[docs/calibration_check_history.md](docs/calibration_check_history.md).
 
 ## Limitations and next steps
 
@@ -387,15 +363,12 @@ dependence is unmodeled. If consecutive days move together, the check
 and the interval above are more confident than they should be. As of 2026-09-22, five of the eight
 models' coverage sits below 0.90 and the other three sit just above it.
 That mostly one-sided pattern is a weak signal that the bands are
-narrow, and no per-model test will settle it at this sample size. A
-pattern like that is why the check was rebuilt rather than removed.
+narrow, and no per-model test will settle it at this sample size.
 
 The 2026-08-19 forecast day shows the pattern of the whole record.
-Realized volatility ran 3.67 times the nhits median forecast, and on
-2026-08-21 the fixed-floor calibration check flagged five models below
-its 0.80 coverage floor, its widest list. The forecast tracks the level
-of ordinary days, and the rare day that breaks the
-pattern is not signaled by the hours before it.
+Realized volatility ran 3.67 times the nhits median forecast. The
+forecast tracks the level of ordinary days, and the rare day that
+breaks the pattern is not signaled by the hours before it.
 
 The backtest covers one asset, BTC-USD, a market that trades every
 hour of every day. Nothing here shows the ranking holds on other
