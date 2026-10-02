@@ -25,12 +25,15 @@ finer than the hour, and one-minute candles are what the exchange
 serves. The forecast is hourly because volatility follows a daily
 cycle. It runs 24 hours ahead so that one forecast covers a full day.
 
-Every forecast is a quantile band rather than a single number, because
-a single number hides how sure the model is. The band has five levels,
-the values the truth should fall below 5%, 25%, 50%, 75%, and 95% of
-the time. The middle level is therefore the median, and the outer pair
-should contain the truth nine times in ten. Whether it does is scored,
-which is what makes the band checkable.
+Every forecast is a quantile band rather than a single number. A single
+number hides how sure the model is but quantiles naturally represent
+model confidence. The band is five values for each hour, the 5%, 25%,
+50%, 75%, and 95% quantiles, with the 50% quantile representing the
+median. Each quantile is named for the probability that the realized
+volatility does not exceed it. The realized volatility should therefore
+sit between the highest and lowest quantiles 90% of the time, the 90%
+band. The scoring counts how often the realized volatility lands within
+those bounds.
 
 Each day, a scheduled run commits every model's forecast to git before
 the first of its 24 target hours has ended, so the history proves each
@@ -47,12 +50,12 @@ sample in time, the same position a live forecast is in.
 
 The band is scored two ways, pinball loss and calibration, because a model can be
 accurate with a band too narrow, or well-banded and inaccurate.
-Pinball loss scores accuracy. It measures each of the five levels by its
-distance from the truth and is lowest on average only when each level
-sits at its true value, so a model cannot improve it by hedging wide or
-narrow. Calibration scores whether the band's are sized correctly. It counts
-how often the truth landed inside the band, against the nine times in
-ten the outer pair claims.
+Pinball loss scores accuracy. It measures each of the five quantiles by its
+distance from the realized value and is lowest on average only when each
+quantile sits at its true value, so a model cannot improve it by hedging
+wide or narrow. Calibration scores whether the bands are sized correctly.
+It counts how often the realized value landed inside the 90% band,
+against the 90% it claims.
 
 Two baselines sit in the results tables beside the other six models.
 One is persistence. The other is a HAR model (heterogeneous autoregressive). 
