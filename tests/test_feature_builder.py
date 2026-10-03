@@ -29,6 +29,5 @@ def test_features_are_strictly_trailing():
 def test_har_d_matches_manual_mean():
     h = _hourly()
     f = build_features(h)
-    t = h.index[500]
-    manual = float(h["log_rv"].iloc[476:500].mean())  # 24 hours ending before t
-    assert abs(float(f.loc[t, "har_d"]) - manual) < 1e-12
+    manual = h["log_rv"].to_numpy()[476:500].mean()  # 24 hours ending before row 500
+    assert abs(f["har_d"].to_numpy()[500] - manual) < 1e-12
