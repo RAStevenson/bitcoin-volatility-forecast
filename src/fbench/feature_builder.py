@@ -30,8 +30,9 @@ def build_features(hourly):
     f["har_d"] = past.rolling(24, min_periods=18).mean()
     f["har_w"] = past.rolling(168, min_periods=120).mean()
     f["har_m"] = past.rolling(720, min_periods=500).mean()
-    hod = f.index.hour
-    dow = f.index.dayofweek
+    idx = pd.DatetimeIndex(f.index)
+    hod = idx.hour
+    dow = idx.dayofweek
     f["hod_sin"] = np.sin(2 * np.pi * hod / 24)
     f["hod_cos"] = np.cos(2 * np.pi * hod / 24)
     f["dow_sin"] = np.sin(2 * np.pi * dow / 7)

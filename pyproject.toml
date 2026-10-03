@@ -9,6 +9,19 @@ license = { text = "MIT" }
 # Install is optional by design: entry scripts in scripts/ bootstrap
 # src/ onto sys.path, so a fresh clone runs with no install step.
 
+[tool.pyright]
+# Type checking at the level a reader's editor runs by default (Pylance
+# in VS Code reads this section too), with pandas-stubs pinned in
+# requirements.txt so pandas calls resolve. A finding is fixed with
+# explicit code; an ignore comment is used only where a library's own
+# typing is wrong, and says so.
+include = ["src", "scripts", "tests"]
+extraPaths = ["src"]
+typeCheckingMode = "basic"
+pythonVersion = "3.11"
+venvPath = "."
+venv = ".venv"
+
 [tool.ruff.lint]
 # The rule set the repo is checked against, stated so a newer ruff on a
 # CI runner applies the same rules as the one on the development machine.

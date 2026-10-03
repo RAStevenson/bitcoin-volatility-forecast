@@ -40,4 +40,4 @@ def test_missing_hour_appears_as_nan_row():
     a = _minutes(61)
     b = _minutes(61, start="2026-01-01 03:00")
     out = hourly_realized_vol(pd.concat([a, b]))
-    assert np.isnan(out.loc["2026-01-01 01:00+00:00", "rv"])
+    assert pd.isna(out.loc["2026-01-01 01:00+00:00", "rv"])
