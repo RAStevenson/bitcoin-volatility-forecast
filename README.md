@@ -63,13 +63,14 @@ cycle. It runs 24 hours ahead so that one forecast covers a full day.
 
 Every forecast is a quantile band rather than a single number. A single
 number hides how sure the model is but quantiles naturally represent
-model confidence. The band is five values for each hour, the 5%, 25%,
-50%, 75%, and 95% quantiles, with the 50% quantile representing the
-median. Each quantile is named for the probability that the realized
-volatility does not exceed it. The realized volatility should therefore
-sit between the highest and lowest quantiles 90% of the time.
-The scoring counts how often the realized volatility lands within
-those bounds.
+model confidence. The width of the band is the model's own statement of
+how uncertain it is, wide when it is unsure and narrow when it is sure.
+The band is five values for each hour, the 5%, 25%, 50%, 75%, and 95%
+quantiles, with the 50% quantile representing the median. Each quantile
+is named for the probability that the realized volatility does not
+exceed it. The realized volatility should therefore sit between the
+highest and lowest quantiles 90% of the time. The scoring counts how
+often the realized volatility lands within those bounds.
 
 ## How it is scored
 
