@@ -44,6 +44,8 @@ The machine needs the GitHub CLI signed in to the repo and the
 project's virtual environment built. Replace "the repo's directory"
 with your clone's path.
 
+For agent scheduled task, use the below text as the prompt:
+
 ---
 
 STEP 1 - START THE RUN. Wait until 11:15 UTC with one background
