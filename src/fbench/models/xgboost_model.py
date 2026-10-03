@@ -4,12 +4,12 @@ the engineered feature columns."""
 import pandas as pd
 import xgboost as xgb
 
-from fbench.harness_config import HORIZON, QUANTILES
 from fbench.feature_builder import FEATURE_COLS
+from fbench.harness_config import HORIZON, QUANTILES
 from fbench.models.base_forecast_model import BaseForecastModel, quantile_frame, register
 
-PARAMS = dict(n_estimators=300, max_depth=4, learning_rate=0.05,
-              subsample=0.8, colsample_bytree=0.8, random_state=7)
+PARAMS = {"n_estimators": 300, "max_depth": 4, "learning_rate": 0.05,
+          "subsample": 0.8, "colsample_bytree": 0.8, "random_state": 7}
 
 
 @register

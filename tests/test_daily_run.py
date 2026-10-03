@@ -71,7 +71,7 @@ def test_day_level_scores_reward_the_right_day_average():
     idx = pd.date_range("2026-01-01 01:00", periods=48, freq="h", tz="UTC")
     origins = [idx[0] - pd.Timedelta(hours=1), idx[24] - pd.Timedelta(hours=1)]
     rows = []
-    for o, block in zip(origins, (idx[:24], idx[24:])):
+    for o, block in zip(origins, (idx[:24], idx[24:]), strict=True):
         y = np.linspace(-1.2, -0.8, 24)
         for model, offset in (("exact", 0.0), ("persistence", 0.3)):
             for k, t in enumerate(block):

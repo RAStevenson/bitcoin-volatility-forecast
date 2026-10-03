@@ -29,11 +29,11 @@ def score(results):
     # rows with no outcome yet; the per-group n makes the exclusion visible
     # rather than letting one bad fit erase a model's whole scorecard.
     rows = []
-    for (model, h), g in results.dropna(subset=["y_true"] + QCOLS).groupby(
+    for (model, h), g in results.dropna(subset=["y_true", *QCOLS]).groupby(
             ["model", "horizon"]):
         y = g["y_true"].to_numpy()
         pb = np.mean([pinball(y, g[c].to_numpy(), a)
-                      for c, a in zip(QCOLS, QUANTILES)])
+                      for c, a in zip(QCOLS, QUANTILES, strict=True)])
         e = y - g["q50"].to_numpy()
         rows.append({
             "model": model, "horizon": h, "pinball_mean": pb,

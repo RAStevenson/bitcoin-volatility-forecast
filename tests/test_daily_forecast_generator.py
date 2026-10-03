@@ -1,9 +1,11 @@
+import itertools
+
 import numpy as np
 import pandas as pd
 import pytest
 
 import fbench.models.persistence_model  # noqa: F401  (registers baselines)
-from fbench import daily_run, daily_forecast_generator
+from fbench import daily_forecast_generator, daily_run
 from fbench.feature_builder import build_features
 
 
@@ -14,7 +16,7 @@ def test_prob_above_interpolates_and_clamps():
     assert daily_forecast_generator.prob_above(q, 0.90) == pytest.approx(0.02)
     # monotone: higher threshold, lower exceedance probability
     ps = [daily_forecast_generator.prob_above(q, t) for t in np.linspace(0.05, 0.6, 12)]
-    assert all(a >= b for a, b in zip(ps, ps[1:]))
+    assert all(a >= b for a, b in itertools.pairwise(ps))
 
 
 def test_quiet_line_sentence_never_prints_equal_numbers_as_above():

@@ -9,8 +9,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import pandas as pd
 
-from fbench.harness_config import BITSTAMP_PAIR, RESULTS_DIR
 from fbench.data import bitstamp_client, minute_store
+from fbench.harness_config import BITSTAMP_PAIR, RESULTS_DIR
 
 m = minute_store.load_minutes()
 cb = (m.set_index("time")["close"].groupby(pd.Grouper(freq="h")).last()

@@ -1,23 +1,30 @@
 """The daily run over results/forecasts.csv and results/evaluation.csv:
 logs today's forecasts, scores the rows whose hours have passed, and
 builds results/LIVE.md, the published record of how each model is doing
-on hours none of them saw at fit time. Logged forecast rows are pre-outcome evidence, so nothing here ever
-rewrites one."""
+on hours none of them saw at fit time. Logged forecast rows are
+pre-outcome evidence, so nothing here ever rewrites one."""
 import numpy as np
 import pandas as pd
 from scipy import stats
 
-from fbench.harness_config import (CALIBRATION_ALPHA, CALIBRATION_PERSISTENCE_DAYS,
-                                   ORIGIN_HOUR_UTC,
-                           COV90_TARGET, HORIZON, MIN_CALIBRATION_DAYS,
-                           QCOLS, QUANTILES, RESULTS_DIR)
 from fbench.commit_timing import LATE_COMMIT_REASONS, run_note
+from fbench.harness_config import (
+    CALIBRATION_ALPHA,
+    CALIBRATION_PERSISTENCE_DAYS,
+    COV90_TARGET,
+    HORIZON,
+    MIN_CALIBRATION_DAYS,
+    ORIGIN_HOUR_UTC,
+    QCOLS,
+    QUANTILES,
+    RESULTS_DIR,
+)
 from fbench.models.base_forecast_model import REGISTRY
 from fbench.quantile_scoring import add_skill, score
 
 FORECAST_LOG = RESULTS_DIR / "forecasts.csv"
 EVAL_LOG = RESULTS_DIR / "evaluation.csv"
-LOG_COLS = ["origin", "target_time", "horizon", "model"] + QCOLS
+LOG_COLS = ["origin", "target_time", "horizon", "model", *QCOLS]
 
 
 def _load(path, cols):
@@ -106,8 +113,8 @@ def score_due(hourly, now=None):
     can place the clock."""
     now = pd.Timestamp.now(tz="UTC") if now is None else now
     fc = _load(FORECAST_LOG, LOG_COLS)
-    ev = _load(EVAL_LOG, LOG_COLS + ["y_true"])
-    seen = set(zip(ev["origin"], ev["target_time"], ev["model"]))
+    ev = _load(EVAL_LOG, [*LOG_COLS, "y_true"])
+    seen = set(zip(ev["origin"], ev["target_time"], ev["model"], strict=True))
     pend = fc[~fc.apply(lambda r: (r["origin"], r["target_time"],
                                    r["model"]) in seen, axis=1)].copy()
     # An hour counts as observed only once it has ended. The realized
@@ -163,7 +170,7 @@ def matched_skill(ev, model, base="persistence", min_days=MIN_CALIBRATION_DAYS):
     e = ev.dropna(subset=["y_true", *QCOLS]).copy()
     y = e["y_true"].to_numpy()
     loss = sum(np.maximum(a * (y - e[c].to_numpy()), (a - 1) * (y - e[c].to_numpy()))
-               for c, a in zip(QCOLS, QUANTILES)) / len(QUANTILES)
+               for c, a in zip(QCOLS, QUANTILES, strict=True)) / len(QUANTILES)
     e["pb"], e["fc"], e["rz"] = loss, np.exp(e["q50"]), np.exp(e["y_true"])
     d = e.groupby(["model", "origin"]).agg(n=("target_time", "nunique"),
                                            pb=("pb", "mean"), fc=("fc", "mean"),
@@ -217,7 +224,7 @@ def timing_lines(late):
             f"models), was first committed at "
             f"{g['committed']:%Y-%m-%d %H:%M} UTC, {delay} after its first "
             f"target hour completed. {why}")
-    return lines + [""]
+    return [*lines, ""]
 
 
 def _fig_daily(ev, model):
@@ -318,7 +325,7 @@ def rejection_streaks(ev, cap=CALIBRATION_PERSISTENCE_DAYS):
         rejected = {m for m, v in coverage_test_results(window).items()
                     if v["reject"]}
         if k == 0:
-            streaks = {m: 1 for m in rejected}
+            streaks = dict.fromkeys(rejected, 1)
         else:
             live = [m for m, n in streaks.items() if n == k]
             if not live:
@@ -412,7 +419,7 @@ def write_live_report(late=None):
     outcome, the leader's matched-day skill with its interval, and the
     calibration result. late is the timing audit's result, passed by the
     daily run; see timing_lines."""
-    ev = _load(EVAL_LOG, LOG_COLS + ["y_true"])
+    ev = _load(EVAL_LOG, [*LOG_COLS, "y_true"])
     fc = _load(FORECAST_LOG, LOG_COLS)
     lines = ["# Daily record (generated)", ""]
     if ev.empty:

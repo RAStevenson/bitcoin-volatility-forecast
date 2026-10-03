@@ -1,9 +1,9 @@
 import numpy as np
 import pandas as pd
 
-from fbench.rolling_backtest import make_origins, run_backtest
 from fbench.feature_builder import build_features
 from fbench.models.persistence_model import Persistence
+from fbench.rolling_backtest import make_origins, run_backtest
 
 
 def test_engine_never_shows_future_to_models(monkeypatch):
@@ -25,6 +25,6 @@ def test_engine_never_shows_future_to_models(monkeypatch):
     monkeypatch.setattr(Persistence, "fit", noting_fit)
     res = run_backtest(feats, ["persistence"], origins)
     assert len(last_seen) == len(origins)
-    for origin, seen in zip(origins, last_seen):
+    for origin, seen in zip(origins, last_seen, strict=True):
         assert seen <= origin
     assert (res["target_time"] > res["origin"]).all()
