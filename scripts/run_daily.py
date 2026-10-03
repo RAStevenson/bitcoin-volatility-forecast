@@ -15,15 +15,12 @@ import subprocess
 
 import pandas as pd
 
+# Import all model modules so the registry is complete for the daily fits.
 import fbench.models.har_model
-import fbench.models.nhits_model
-
-#   the 2026-08-05 full backtest)
+import fbench.models.nhits_model  # joined 2026-08-06 after leading the backtest
 import fbench.models.persistence_model
 import fbench.models.prophet_model
 import fbench.models.sarima_model
-
-# Import all model modules so the registry is complete for the daily fits.
 import fbench.models.xgboost_model  # noqa: F401
 from fbench import daily_run
 from fbench.commit_timing import first_commits, late_groups

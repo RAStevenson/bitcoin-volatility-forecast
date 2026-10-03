@@ -182,14 +182,14 @@ one being chosen in advance.
 
 The daily record is the live test. The backtest is a one-time run over
 the 365 days of history before 2026-08-05, kept as the reference
-(pinned) rather than re-run. It used a forecast origin every second
-day, 183 origins in all. Its winner, N-HiTS, is the model whose
-forecast the daily run published until the live scores could choose
-one. N-HiTS scored a mean pinball loss of 0.0959 on the log scale,
-averaged over forecast horizons of 1 to 24 hours ahead, against 0.1180
-for persistence on the same origins. That is a skill of 0.186, meaning
-its loss was 18.6% below persistence's. That backtest's results table,
-figures, and dataset summary are in
+(pinned) rather than re-run. It used a forecast origin every second day,
+183 origins in all. Its winner, N-HiTS, is the model the daily run falls
+back to while fewer than three days are scored. N-HiTS scored a mean
+pinball loss of 0.0959 on the log scale, averaged over forecast horizons
+of 1 to 24 hours ahead, against 0.1180 for persistence on the same
+origins. The skill score averaged over the same horizons is 0.186,
+meaning its loss was 18.6% below persistence's on an average horizon.
+That backtest's results table, figures, and dataset summary are in
 [results/REPORT.md](results/REPORT.md) (generated, never hand-edited).
 
 ## Setup and run
@@ -321,9 +321,9 @@ commit that day, and the gap is visible in the history.
 My machine starts the run because GitHub's documentation says a
 scheduled run can be delayed under load, and the first scheduled run of
 this workflow started 4 hours 26 minutes late. A run started on request
-begins within about a minute. The origin has been fixed at 10:00 since
-2026-09-27, the day of that late run. The five earlier days whose
-origin was not 10:00 are visible in the forecast log. Before the move
+begins within about a minute. The origin has been fixed at 10:00 from
+the day after that late run. The five days whose origin was not 10:00,
+that one included, are visible in the forecast log. Before the move
 to GitHub the run was triggered on my machine alone, and one unplanned
 restart of it cost a missed day, 2026-09-02, which is a gap in the
 history, and a late commit, which the audit lists.
