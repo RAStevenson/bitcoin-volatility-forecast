@@ -35,9 +35,10 @@ spikes on the day they arrive.
 
 The daily record scores each day's average volatility, the mean of a
 model's 24 hourly median forecasts against the mean of the 24 hourly
-values that occurred. The error is measured on the log scale, which makes it a
-ratio between forecast and realized value, so a forecast 20% off counts the same
-on a quiet day as on a spike day. A day is fully resolved once all 24
+values that occurred. The median forecast is the middle of the band of
+values a model gives for each hour. The error is the log of realized
+over forecast value, sign ignored, so a forecast 20% off counts the
+same on a quiet day as on a spike day. A day is fully resolved once all 24
 of its hours have been observed. Over the 46 fully resolved days as of
 2026-09-22, N-HiTS, the leading model, had an average error of 0.19 on
 that scale. Persistence's average error was 0.31 over its 49 days. Lower
@@ -54,8 +55,9 @@ interval is stated under it.
 
 The daily record is the live test. The backtest is a one-time run over
 the 365 days of history before 2026-08-05. It is kept as the reference
-(pinned) rather than re-run. It used a forecast origin
-every second day, 183 origins in all. Its best model, N-HiTS, scored a
+(pinned) rather than re-run. It used a forecast origin every second
+day, 183 origins in all. An origin is the point in time a forecast is
+made from. Its best model, N-HiTS, scored a
 mean pinball loss of 0.0959 on the log scale, averaged over forecast
 horizons of 1 to 24 hours ahead. The persistence baseline scored 0.1180
 on the same origins. Pinball loss scores the whole forecast band, and
@@ -87,27 +89,28 @@ those bounds.
 
 Each day, a scheduled run commits every model's forecast to git before
 the first of its 24 target hours has ended, so the history proves each
-forecast was made before its outcome was known. Each daily
-run audits those commit times against the git history and lists the
-exceptions in the daily record.
+forecast was made before its outcome was known. Each daily run audits
+those commit times against the git history and lists the days whose
+commit came late in the daily record. Those days stay in the scores,
+and the list records them.
 
-Scoring is rolling-origin validation. Each forecast is made from one
-point in time, its origin, using only data before it, and the origin
-steps forward for the next forecast. Every score is therefore out of
+Scoring is rolling-origin validation. Each forecast is made from its
+origin using only data before it, and the origin steps forward for the
+next forecast. Every score is therefore out of
 sample in time, the same position a live forecast is in.
 
 The band is scored two ways, pinball loss and calibration, because a model can be
 accurate with a band too narrow, or well-banded and inaccurate.
-Pinball loss scores accuracy. It measures each of the five quantiles by its
-distance from the realized value and is lowest on average only when each
-quantile sits at its true value, so a model cannot improve it by hedging
-wide or narrow. Calibration scores whether the bands are sized correctly.
+Pinball loss scores accuracy. It measures each of the five quantiles by
+its distance from the realized value. It is lowest on average only when
+each quantile sits at its true value, so a model cannot improve it by
+hedging wide or narrow. Calibration scores whether the bands are sized correctly.
 It counts how often the realized value landed inside the 90% band, the
 span between the 5% and 95% quantiles.
 
 Two baselines sit in the results tables beside the other six models.
 One is persistence. The other is a HAR model (heterogeneous autoregressive). 
-It is a least-squares regression model on the trailing day, week, and month averages
+It is a least-squares regression model on the last hour and the trailing day, week, and month averages
 of volatility. It is the published standard baseline for realized
 volatility. The skill column measures every model against persistence,
 and the table shows which models fail to beat it.
@@ -146,7 +149,7 @@ saved candle.
 | model | family |
 |---|---|
 | persistence, seasonal persistence | naive baselines, repeating the last hour or the same hour one day earlier |
-| HAR (plain and hour-of-day seasonal) | regression on the trailing day, week, and month averages (Corsi-style) |
+| HAR (plain and hour-of-day seasonal) | regression on the last hour and the trailing day, week, and month averages |
 | SARIMAX (1,0,1)(1,0,1,24) | classical autoregressive time-series model with a 24-hour seasonal cycle |
 | Prophet | trend plus daily and weekly cycles (Fourier seasonality) |
 | XGBoost | gradient-boosted trees, fit directly to each quantile level |
@@ -321,11 +324,11 @@ python -m pytest tests -q
 ```
 
 The suite checks the realized-volatility formula on a hand-built hour,
-proves features are strictly trailing (rewriting the future changes
-nothing in the past), enforces the adapter contract for every
-registered model, checks pinball loss against hand-computed values, and
-proves the backtest engine never hands a model data past its forecast
-origin. It also covers the calibration check described in the next
+checks that features are strictly trailing (rewriting the future
+changes nothing in the past), checks the fit-and-predict contract every
+registered model implements, checks pinball loss against hand-computed
+values, and confirms that the backtest engine never hands a model data
+past its forecast origin. It also covers the calibration check described in the next
 section: that a rejection streak shorter than three days is reported as
 pending rather than flagged, that the correction for testing several
 models at once scales with their number, and that a model whose daily
@@ -382,9 +385,9 @@ results table will stay noisy until the sample grows.
 
 The timing evidence for the forecast log is the commit history. Since
 2026-09-27 the commits are made by GitHub's runner on GitHub's clock.
-Before that they were made by a machine I control, with the GitHub
-push history as the independent record for those days. The audit in
-LIVE.md lists every exception.
+Before that they were made by a machine I control, and the audit reads
+commit times only, so those days depend on that machine's clock. The
+audit in LIVE.md lists every exception.
 
 The coverage columns in LIVE.md carry real uncertainty, because each day
 contributes about 24 dependent hourly rows. The calibration check above

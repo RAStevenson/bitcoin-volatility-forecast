@@ -262,6 +262,7 @@ def _fig_daily(ev, model):
     ax.yaxis.set_major_formatter(matplotlib.ticker.PercentFormatter(1.0, decimals=0))
     ax.grid(axis="y", lw=0.5)
     ax.legend(frameon=False, ncol=3, loc="upper left", fontsize=8)
+    fig.autofmt_xdate()  # dated ticks angled so they cannot overlap
     path = RESULTS_DIR / "figures" / "fig_live_daily.png"
     path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(path, dpi=120, bbox_inches="tight")
@@ -399,9 +400,8 @@ def calibration_lines(ev, days):
                     f"rejects {parts}, short of the "
                     f"{CALIBRATION_PERSISTENCE_DAYS} consecutive days needed "
                     f"to flag it. {method}", ""]
-        return [f"The calibration check passes. {method} No model's "
-                f"average coverage sits farther from {target} than its "
-                f"day-to-day spread would explain.", ""]
+        return [f"The calibration check passes. {method} No model crossed "
+                f"that threshold.", ""]
 
     parts = "; ".join(_figures(m, test_results) for m in sorted(flagged))
     return [f"The calibration check flags these models, whose average "
