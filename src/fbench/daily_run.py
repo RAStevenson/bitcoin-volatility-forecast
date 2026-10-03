@@ -228,6 +228,7 @@ def _fig_daily(ev, model):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
+    import matplotlib.ticker
 
     e = ev.dropna(subset=["y_true", "q50"])
 
