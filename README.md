@@ -372,9 +372,10 @@ in either direction, than noise would explain, taking each model's
 coverage one day at a time, with a correction for testing eight models
 at once. A model is flagged only after it sits farther from 0.90 than
 noise explains on three consecutive scored days, and a shorter streak
-is reported as pending. Each day's LIVE.md states the test in full. Earlier results are
-recomputed from `evaluation.csv`, the log of every scored forecast,
-rather than stored, so the whole check is reproducible from that log.
+is reported as pending. Each day's LIVE.md states the test in full.
+Earlier results are recomputed from `evaluation.csv`, the log of every
+scored forecast, rather than stored, so the whole check is reproducible
+from that log.
 
 The check stays silent in two cases on purpose. A model with fewer than
 10 scored days gets no result, because three clean quiet days once
