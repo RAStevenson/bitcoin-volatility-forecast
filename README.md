@@ -11,12 +11,11 @@ from whichever model is scoring best so far, in plain language, in
 [results/FORECAST.md](results/FORECAST.md). That file gives the
 expected move in dollars and percent, where the day sits against the
 past year, and which hours are expected to fluctuate most. The
-simplest of the eight is
-persistence, the naive baseline whose forecast is that each of the next
-24 hours will look like the last hour observed. At the other end is
-N-HiTS, a neural network built for time series. They run side by side
-so the record shows which model families suit this series and which
-fail to beat the baseline.
+simplest of the eight is persistence, the naive baseline whose forecast 
+is that each of the next 24 hours will look like the last hour observed. 
+The most complex is N-HiTS, a neural network built for time series. 
+They run side by side so the record shows which model families suit 
+this series and which fail to beat the baseline.
 
 ## The result so far
 
@@ -80,8 +79,8 @@ model confidence. The band is five values for each hour, the 5%, 25%,
 50%, 75%, and 95% quantiles, with the 50% quantile representing the
 median. Each quantile is named for the probability that the realized
 volatility does not exceed it. The realized volatility should therefore
-sit between the highest and lowest quantiles 90% of the time, the 90%
-band. The scoring counts how often the realized volatility lands within
+sit between the highest and lowest quantiles 90% of the time. 
+The scoring counts how often the realized volatility lands within
 those bounds.
 
 ## How it is scored
@@ -103,8 +102,8 @@ Pinball loss scores accuracy. It measures each of the five quantiles by its
 distance from the realized value and is lowest on average only when each
 quantile sits at its true value, so a model cannot improve it by hedging
 wide or narrow. Calibration scores whether the bands are sized correctly.
-It counts how often the realized value landed inside the 90% band,
-against the 90% it claims.
+It counts how often the realized value landed inside the 90% band, the
+span between the 5% and 95% quantiles.
 
 Two baselines sit in the results tables beside the other six models.
 One is persistence. The other is a HAR model (heterogeneous autoregressive). 
@@ -165,11 +164,47 @@ one being chosen in advance.
 
 ## Setup and run
 
-```
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
+Requires git and Python 3.11 or later. No GPU is needed.
 
+In a terminal, run the following commands.
+
+1. Clone the repository:
+
+   ```
+   git clone https://github.com/RAStevenson/bitcoin-volatility-forecast.git
+   ```
+
+2. Navigate to the root directory:
+
+   ```
+   cd bitcoin-volatility-forecast
+   ```
+
+3. Create a new environment and activate it (on Mac or Linux the second
+   line is `source .venv/bin/activate`):
+
+   ```
+   python -m venv .venv
+   .venv\Scripts\activate
+   ```
+
+4. Install PyTorch from its CPU-only index, then the rest of the
+   dependencies:
+
+   ```
+   pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cpu
+   pip install -r requirements.txt
+   ```
+
+   PyTorch installs without a GPU either way. The first line matters on
+   Linux, where the default PyTorch package also downloads large CUDA
+   libraries that these models never use. On Windows
+   the default package is already CPU-only. The pinned versions in
+   `requirements.txt` are the ones the daily run installs.
+
+The scripts, in the order a rebuild from scratch would run them:
+
+```
 # The first three commands rebuild the data from scratch for the
 # backtest. The daily run does not need them; it starts from the
 # committed hourly series.
@@ -243,26 +278,25 @@ log are GitHub's, not mine. The origin is the 10:00 UTC hour every day,
 whatever minute the run starts, so a run that starts late forecasts the
 window an on-time run would have, and its models see no data past that
 hour. Only the dollar figures in FORECAST.md use the price at the time
-of the run. The origin hour closes at 11:00, and its first target hour ends at 12:00 UTC, so a
+of the run. The 10:00 hour is 5:00 in the morning in Chicago, 4:00 once
+daylight saving ends, so the forecast and its briefing land before the
+US stock market opens at 8:30 Central, and the 24 hours it covers
+include that session. The origin hour closes at 11:00, and its first target hour ends at 12:00 UTC, so a
 run that starts on time and takes its usual three and a half minutes
 commits with about forty minutes to spare. A run that commits after
 that is listed in [results/LIVE.md](results/LIVE.md) by the audit, with
 what started it and when, read from its commit message. A run that
 fails leaves no commit that day, and the gap is visible in the history.
 
-My machine starts the run alongside GitHub's schedule because GitHub's
-documentation says a scheduled run can be delayed under load, and the
-first scheduled run, on 2026-09-27, started at 15:38 UTC, 4 hours 26
-minutes after that day's 11:12 schedule. A run started on request
-begins within about a minute. That first run forecast from the 14:00
-hour, one of five days in the record off the 10:00 origin. The other
-four, 2026-08-03, 08-04, 09-09, and 09-16, were late starts on my
-machine. The origin was fixed to the clock the same day. Until
-2026-09-26 the run was triggered on my machine alone, at 06:30 local
-time and then 06:05 in its last week. The missed day on 2026-09-02 and
-the late commit on 2026-09-03 came from an unplanned restart of that
-machine. With GitHub's schedule as the fallback, a restart now delays
-the run rather than losing it.
+My machine starts the run because GitHub's documentation says a
+scheduled run can be delayed under load, and the first scheduled run of
+this workflow started 4 hours 26 minutes late. A run started on request
+begins within about a minute. The origin has been fixed at 10:00 since
+2026-09-27, the day of that late run. The five earlier days whose
+origin was not 10:00 are visible in the forecast log. Before the move
+to GitHub the run was triggered on my machine alone, and one unplanned
+restart of it cost a missed day, 2026-09-02, which is a gap in the
+history, and a late commit, which the audit lists.
 
 The same task then pulls the repo, checks that the day's commit has
 landed, and briefs me from
@@ -346,14 +380,11 @@ flagged are recorded in
 The daily record is 49 scored days as of 2026-09-22, and the LIVE.md
 results table will stay noisy until the sample grows.
 
-The timing evidence for the forecast log is the commit history. From
-2026-09-27 the commits are scheduled to be made by GitHub's runner on
-GitHub's clock. Before that they were made by a machine I control, with
-the GitHub push history as the independent record for those days. The daily run missed
-2026-09-02 entirely after an unplanned restart, and the 2026-09-03
-forecast was committed late, which LIVE.md lists. GitHub's scheduler
-can start a run hours late, which is why the run is also started from
-my machine. A day on which both start late is listed by the audit.
+The timing evidence for the forecast log is the commit history. Since
+2026-09-27 the commits are made by GitHub's runner on GitHub's clock.
+Before that they were made by a machine I control, with the GitHub
+push history as the independent record for those days. The audit in
+LIVE.md lists every exception.
 
 The coverage columns in LIVE.md carry real uncertainty, because each day
 contributes about 24 dependent hourly rows. The calibration check above
