@@ -48,20 +48,24 @@ For agent scheduled task, use the below text as the prompt:
 
 ---
 
-STEP 1 - START THE RUN. Wait until 11:15 UTC with one background
-command, and do nothing until it exits. Through the Bash tool, with
-run_in_background set to true, execute exactly:
+STEP 1 - START THE RUN. Wait until 11:15 UTC in background commands
+of at most ten minutes each, and do nothing between them. Through the
+Bash tool, with run_in_background set to true and timeout set to
+600000, execute exactly:
 
 ```
-target=$(date -u -d "today 11:15" +%s); until [ "$(date -u +%s)" -ge "$target" ]; do sleep 5; done
+target=$(date -u -d "today 11:15" +%s); end=$(( $(date -u +%s) + 590 )); until [ "$(date -u +%s)" -ge "$target" ] || [ "$(date -u +%s)" -ge "$end" ]; do sleep 5; done; date -u +%H:%M
 ```
 
-The command exits at once when 11:15 UTC has already passed, and the
-session is notified when it exits. Every wait in this prompt is a
-background command, because Claude Code refuses a long sleep run in
-the foreground (it refused `Start-Sleep -Seconds 300` on 2026-09-30).
-An agent with no background mode runs the same commands in the
-foreground, with its tool timeout set longer than the wait.
+The command exits after at most ten minutes, or at once if 11:15 UTC
+has passed, and prints the time in UTC. The session is notified when
+it exits. If the printed time is before 11:15, run the same command
+again. Repeat until it prints 11:15 or later; from a 5:15 Chicago
+start that is at most six runs. A single wait longer than ten minutes
+is stopped by Claude Code before it finishes, which is what lost the
+2026-10-02 start, and a long sleep in the foreground is refused
+outright. An agent with no background mode runs the same command in
+the foreground, with its tool timeout set longer than ten minutes.
 The origin hour closes at 11:00. A run started before then has nothing
 to forecast and fails on purpose. Then, in the repo's directory,
 execute exactly:
@@ -75,8 +79,8 @@ day, from a retry, from a second session of this task, or from
 GitHub's own schedule, is harmless: the workflow checks the branch tip
 and skips once the day has committed.
 
-Then wait five minutes with `sleep 300` as one background command,
-and continue when it exits. The run takes about three and a half.
+Then wait five minutes with `sleep 300` as one background command
+with timeout 600000, and continue when it exits. The run takes about three and a half.
 
 STEP 2 - CHECK THAT IT LANDED. Execute exactly:
 
