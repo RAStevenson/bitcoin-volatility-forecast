@@ -30,5 +30,5 @@ def test_har_d_matches_manual_mean():
     h = _hourly()
     f = build_features(h)
     t = h.index[500]
-    manual = h["log_rv"].iloc[476:500].mean()  # 24 hours ending before t
-    assert abs(f.loc[t, "har_d"] - manual) < 1e-12
+    manual = float(h["log_rv"].iloc[476:500].mean())  # 24 hours ending before t
+    assert abs(float(f.loc[t, "har_d"]) - manual) < 1e-12
