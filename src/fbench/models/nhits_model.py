@@ -2,6 +2,7 @@
 torch stack is imported only when this model actually runs."""
 
 import warnings
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -56,9 +57,11 @@ class NHits(BaseForecastModel):
             time_varying_unknown_reals=["y"],
             target_normalizer="auto",
         )
-        self.model_ = NHiTS.from_dataset(
+        # from_dataset is declared as returning the Lightning base class;
+        # it builds an NHiTS, which is what predict is called on below.
+        self.model_ = cast(NHiTS, NHiTS.from_dataset(
             ds, loss=QuantileLoss(quantiles=QUANTILES),
-            hidden_size=64, learning_rate=1e-3, log_interval=-1)
+            hidden_size=64, learning_rate=1e-3, log_interval=-1))
         trainer = pl.Trainer(
             max_epochs=3, accelerator="cpu", logger=False,
             enable_progress_bar=False, enable_checkpointing=False,

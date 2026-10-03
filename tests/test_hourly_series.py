@@ -60,6 +60,6 @@ def test_update_with_no_new_minutes_returns_stored(tmp_path, monkeypatch):
 def test_load_round_trips_index_and_columns(tmp_path, monkeypatch):
     _stored(tmp_path, monkeypatch)
     df = hourly_series.load_hourly()
-    assert str(df.index.tz) == "UTC"
+    assert str(pd.DatetimeIndex(df.index).tz) == "UTC"
     assert list(df.columns) == hourly_series.COLUMNS
     assert df.index[0] == pd.Timestamp("2026-01-01 00:00", tz="UTC")

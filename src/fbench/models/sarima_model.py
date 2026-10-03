@@ -1,8 +1,10 @@
 """The SARIMAX model, a seasonal state space ARMA on log RV with a
 24-hour seasonal period."""
 
+from typing import cast
+
 from scipy.stats import norm
-from statsmodels.tsa.statespace.sarimax import SARIMAX
+from statsmodels.tsa.statespace.sarimax import SARIMAX, SARIMAXResults
 
 from fbench.harness_config import QUANTILES, SARIMA_TRAIN_DAYS
 from fbench.models.base_forecast_model import BaseForecastModel, quantile_frame, register
@@ -25,9 +27,10 @@ class Sarima(BaseForecastModel):
         # NaN observations natively); asfreq re-attaches the frequency
         # that .loc slicing drops, so forecasts carry real timestamps.
         y = train["log_rv"].asfreq("h")
-        self.res_ = SARIMAX(y, order=(1, 0, 1),
-                            seasonal_order=(1, 0, 1, 24),
-                            trend="c").fit(disp=False, maxiter=200)
+        self.res_ = cast(SARIMAXResults,
+                         SARIMAX(y, order=(1, 0, 1),
+                                 seasonal_order=(1, 0, 1, 24),
+                                 trend="c").fit(disp=False, maxiter=200))
 
     def predict(self, index):
         """Returns the five quantile columns built from the forecast

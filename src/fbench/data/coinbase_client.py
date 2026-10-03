@@ -13,9 +13,8 @@ MAX_CANDLES = 300  # API cap per request
 def _get(url, params, attempts=4):
     """Send one GET to the Coinbase public API and return the decoded JSON
     body, backing off exponentially on an HTTP 429 or a transport error.
-    Every attempt coming back 429 returns None instead of raising, so a
-    caller that indexes the result fails well after the real cause.
-    """
+    Raises after the last attempt, so a run of rate-limit replies fails
+    here with its cause rather than later in a caller."""
     for i in range(attempts):
         try:
             r = requests.get(url, params=params, timeout=30)
@@ -28,6 +27,7 @@ def _get(url, params, attempts=4):
             if i == attempts - 1:
                 raise
             time.sleep(2 ** i)
+    raise requests.HTTPError(f"{url}: rate limited on all {attempts} attempts")
 
 
 def fetch_candles(product, start, end, granularity):

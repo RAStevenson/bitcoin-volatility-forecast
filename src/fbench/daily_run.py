@@ -177,7 +177,7 @@ def matched_skill(ev, model, base="persistence", min_days=MIN_CALIBRATION_DAYS):
     if n < min_days:
         return None
     t = float(stats.t.ppf(0.975, n - 1))
-    out = {"days": n}
+    out: dict = {"days": n}
     for key, col in (("hourly", "pb"), ("day", "err")):
         diff = both[f"{col}_b"] - both[f"{col}_m"]
         scale = float(both[f"{col}_b"].mean())

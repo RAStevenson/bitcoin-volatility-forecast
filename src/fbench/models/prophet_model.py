@@ -23,8 +23,12 @@ class ProphetModel(BaseForecastModel):
         df = train["log_rv"].dropna().reset_index()
         df.columns = ["ds", "y"]
         df["ds"] = df["ds"].dt.tz_localize(None)  # Prophet requires naive
-        self.m_ = Prophet(daily_seasonality=True, weekly_seasonality=True,
-                          yearly_seasonality=False, uncertainty_samples=300)
+        # Prophet ships no type hints; the checker reads its "auto" string
+        # defaults as the parameter type, and its docstring accepts bools.
+        self.m_ = Prophet(daily_seasonality=True,  # pyright: ignore[reportArgumentType]
+                          weekly_seasonality=True,  # pyright: ignore[reportArgumentType]
+                          yearly_seasonality=False,  # pyright: ignore[reportArgumentType]
+                          uncertainty_samples=300)
         self.m_.fit(df)
 
     def predict(self, index):
