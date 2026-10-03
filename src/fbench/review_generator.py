@@ -6,10 +6,10 @@ committed files."""
 import numpy as np
 import pandas as pd
 
-from fbench.harness_config import QCOLS, RESULTS_DIR
-from fbench.daily_run import EVAL_LOG, _load
 from fbench.daily_forecast_generator import LOCAL_TZ, leading_model_asof
 from fbench.daily_forecast_scoring import record_lines, score_daily_forecast
+from fbench.daily_run import EVAL_LOG, _load
+from fbench.harness_config import QCOLS, RESULTS_DIR
 
 # Realized-to-forecast ratio of the day's average. Inside the band the
 # day counts as on target; outside, the forecast was too low or too high.
@@ -46,7 +46,7 @@ def build_review(hourly=None):
     day = ev[ev["origin"] == origin]
     model = leading_model_asof(ev, origin)
     h = day[day["model"] == model].sort_values("target_time").copy()
-    for c in QCOLS + ["y_true"]:
+    for c in [*QCOLS, "y_true"]:
         h[c] = np.exp(h[c])  # log RV -> annualized vol
 
     fc_avg = float(h["q50"].mean())

@@ -13,10 +13,16 @@ binds on the sentences as much as on the hourly bands."""
 import numpy as np
 import pandas as pd
 
+from fbench.daily_forecast_generator import (
+    N_NAMED_HOURS,
+    REGIMES,
+    claims,
+    context,
+    distinct_percents,
+    leading_model_asof,
+    realized_claims,
+)
 from fbench.harness_config import ANNUALIZER, HORIZON, QCOLS
-from fbench.daily_forecast_generator import (N_NAMED_HOURS, REGIMES, claims, context,
-                                      distinct_percents, leading_model_asof,
-                                      realized_claims)
 
 # Naming three of 24 hours at random would overlap the true three by
 # 3 x 3 / 24 hours on average; the record is read against that.
@@ -49,7 +55,7 @@ def score_daily_forecast(ev, hourly):
     carries no close column."""
     counts = ev.groupby("origin")["target_time"].nunique()
     full = sorted(counts[counts == HORIZON].index)
-    close = hourly["close"] if "close" in hourly else None
+    close = hourly.get("close")
     rows = []
     for origin in full:
         model = leading_model_asof(ev, origin)

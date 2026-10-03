@@ -2,14 +2,14 @@ import numpy as np
 import pandas as pd
 import pytest
 
+import fbench.models.har_model
+import fbench.models.nhits_model
+import fbench.models.persistence_model
+import fbench.models.prophet_model
+import fbench.models.sarima_model
 import fbench.models.xgboost_model  # noqa: F401  (registers)
-import fbench.models.nhits_model  # noqa: F401
-import fbench.models.har_model  # noqa: F401
-import fbench.models.prophet_model  # noqa: F401
-import fbench.models.persistence_model  # noqa: F401
-import fbench.models.sarima_model  # noqa: F401
-from fbench.harness_config import HORIZON, QCOLS
 from fbench.feature_builder import build_features
+from fbench.harness_config import HORIZON, QCOLS
 from fbench.models.base_forecast_model import REGISTRY
 
 

@@ -1,6 +1,8 @@
 """The HAR models, least squares on trailing daily, weekly and monthly
 means of log RV, in a plain form and a seasonal one."""
 
+from typing import ClassVar
+
 import numpy as np
 
 from fbench.harness_config import HORIZON, QUANTILES
@@ -15,7 +17,7 @@ class _HarCore(BaseForecastModel):
     constant across the 24 predicted hours; the per-horizon regressions
     learn offsets FROM that anchor, which is why x_last_ is reused
     across horizons rather than recomputed."""
-    cols = BASE_COLS
+    cols: ClassVar[list[str]] = BASE_COLS
 
     def fit(self, train):
         """Solves one least squares regression per horizon on the
@@ -61,4 +63,4 @@ class SeasonalHar(_HarCore):
     """HAR with the hour-of-day sine and cosine added to the regressors,
     so each horizon can learn an offset from the origin hour."""
     name = "har_seasonal"
-    cols = BASE_COLS + ["hod_sin", "hod_cos"]
+    cols: ClassVar[list[str]] = [*BASE_COLS, "hod_sin", "hod_cos"]

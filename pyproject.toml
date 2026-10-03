@@ -22,7 +22,13 @@ pythonVersion = "3.11"
 venvPath = "."
 venv = ".venv"
 
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
 [tool.ruff.lint]
-# The rule set the repo is checked against, stated so a newer ruff on a
-# CI runner applies the same rules as the one on the development machine.
-select = ["E4", "E7", "E9", "F"]
+# The rule set the repo is checked against, the same one as Robert's
+# other Python repos, stated so a newer ruff on a CI runner applies the
+# same rules as the one on the development machine.
+select = ["E", "F", "I", "UP", "B", "SIM", "C4", "RUF"]

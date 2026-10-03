@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 import fbench.models.persistence_model  # noqa: F401  (registers baselines)
-from fbench import daily_run, daily_forecast_generator, daily_forecast_scoring, review_generator
+from fbench import daily_forecast_generator, daily_forecast_scoring, daily_run, review_generator
 from fbench.feature_builder import build_features
 from fbench.harness_config import HORIZON
 

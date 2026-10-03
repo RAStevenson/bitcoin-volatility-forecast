@@ -15,19 +15,21 @@ import subprocess
 
 import pandas as pd
 
+import fbench.models.har_model
+import fbench.models.nhits_model
+
+#   the 2026-08-05 full backtest)
+import fbench.models.persistence_model
+import fbench.models.prophet_model
+import fbench.models.sarima_model
+
 # Import all model modules so the registry is complete for the daily fits.
 import fbench.models.xgboost_model  # noqa: F401
-import fbench.models.har_model  # noqa: F401
-import fbench.models.nhits_model  # noqa: F401  (added 2026-08-06 after it led
-#   the 2026-08-05 full backtest)
-import fbench.models.persistence_model  # noqa: F401
-import fbench.models.prophet_model  # noqa: F401
-import fbench.models.sarima_model  # noqa: F401
 from fbench import daily_run
-from fbench.harness_config import ROOT
 from fbench.commit_timing import first_commits, late_groups
 from fbench.data.hourly_series import update_hourly
 from fbench.feature_builder import build_features
+from fbench.harness_config import ROOT
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--no-push", action="store_true",
@@ -75,7 +77,7 @@ def _audit():
     day's forecast."""
     try:
         return late_groups(first_commits(ROOT))
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         print(f"  timing audit skipped: {e}")
         return None
 
@@ -84,8 +86,10 @@ late = step("timing audit", _audit)
 print(f"  late forecast days: {'not audited' if late is None else len(late)}")
 step("live report", lambda: daily_run.write_live_report(late=late))
 from fbench.daily_forecast_generator import write_daily_forecast  # noqa: E402
+
 step("daily forecast", lambda: write_daily_forecast(hourly, last_price=last_close))
 from fbench.review_generator import write_review  # noqa: E402
+
 step("review", lambda: write_review(hourly))
 
 

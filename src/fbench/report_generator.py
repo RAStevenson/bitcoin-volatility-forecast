@@ -3,6 +3,7 @@ reader compares models on before any live scores exist. Tables and
 figures are rendered from a run's scored rows, and the Dataset section is
 pinned to the snapshot that run recorded rather than to today's data."""
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np

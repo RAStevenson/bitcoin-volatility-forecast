@@ -9,30 +9,28 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import argparse
+import contextlib
 import json
 import time
 
 import pandas as pd
 
 import fbench.models.persistence_model  # noqa: F401  (registers baselines)
-from fbench.rolling_backtest import make_origins, run_backtest
-from fbench.harness_config import (HORIZON, ORIGIN_STRIDE_DAYS, RESULTS_DIR,
-                           TEST_DAYS)
 from fbench.data.hourly_series import load_hourly
 from fbench.feature_builder import build_features
-from fbench.models.base_forecast_model import REGISTRY
-from fbench.report_generator import write_report
-from fbench.quantile_scoring import add_skill, score
+from fbench.harness_config import HORIZON, ORIGIN_STRIDE_DAYS, RESULTS_DIR, TEST_DAYS
 from fbench.mlflow_tracking import log_backtest
+from fbench.models.base_forecast_model import REGISTRY
+from fbench.quantile_scoring import add_skill, score
+from fbench.report_generator import write_report
+from fbench.rolling_backtest import make_origins, run_backtest
 
 # Each model module is imported here because the import is what
 # registers its model class.
 for mod in ("har_model", "sarima_model", "prophet_model",
             "xgboost_model", "nhits_model"):
-    try:
+    with contextlib.suppress(ImportError):
         __import__(f"fbench.models.{mod}")
-    except ImportError:
-        pass
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--models", default=",".join(sorted(REGISTRY)))
