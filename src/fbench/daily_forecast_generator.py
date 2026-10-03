@@ -260,6 +260,7 @@ def distinct_percents(a, b, places=0, extra=2):
     and whether they still print the same, which the caller words as a
     tie. Rounding both sides to the same number and then calling one
     larger is the fault this prevents."""
+    sa, sb = f"{a:.{places}%}", f"{b:.{places}%}"
     for p in range(places, places + extra + 1):
         sa, sb = f"{a:.{p}%}", f"{b:.{p}%}"
         if sa != sb:

@@ -107,6 +107,7 @@ def _matched_log(days=12, seed=0):
 
 def test_matched_skill_brackets_its_point_and_beats_persistence():
     m = daily_run.matched_skill(_matched_log(), "good")
+    assert m is not None
     assert m["days"] == 12
     for key in ("hourly", "day"):
         point, lo, hi = m[key]
