@@ -10,7 +10,9 @@ on:
 
 jobs:
   pytest:
-    runs-on: ubuntu-latest
+    # Pinned rather than ubuntu-latest, which GitHub moves to Ubuntu 26
+    # from 2026-10-19; a new image is adopted on purpose, not by surprise.
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4

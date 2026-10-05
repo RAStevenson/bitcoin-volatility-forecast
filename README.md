@@ -81,7 +81,7 @@ those commit times against the git history and lists the days whose
 commit came late in the daily record. Those days stay in the scores,
 and the list records them.
 
-Scoring is rolling-origin validation. Each forecast is made from one
+Scoring is rolling-origin evaluation. Each forecast is made from one
 point in time, its origin, using only data before it, and the origin
 steps forward for the next forecast. Every score is therefore out of
 sample in time, the same position a live forecast is in.
