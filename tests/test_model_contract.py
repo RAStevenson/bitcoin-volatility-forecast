@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -11,6 +13,18 @@ import fbench.models.xgboost_model  # noqa: F401  (registers)
 from fbench.feature_builder import build_features
 from fbench.harness_config import HORIZON, QCOLS
 from fbench.models.base_forecast_model import REGISTRY
+from fbench.models.nhits_model import _block_listed_warnings
+
+
+def test_nhits_blocks_only_its_listed_warnings():
+    with warnings.catch_warnings(record=True) as seen:
+        warnings.simplefilter("always")
+        with warnings.catch_warnings():
+            _block_listed_warnings()
+            warnings.warn("The 'train_dataloader' does not have many workers "
+                          "which may be a bottleneck.", UserWarning, stacklevel=1)
+            warnings.warn("the loss is NaN", UserWarning, stacklevel=1)
+    assert [str(w.message) for w in seen] == ["the loss is NaN"]
 
 
 def _train(n=24 * 400, seed=1):

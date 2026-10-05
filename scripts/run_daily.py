@@ -12,8 +12,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 import argparse
 import os
 import subprocess
+import traceback
 
 import pandas as pd
+import requests
 
 # Import all model modules so the registry is complete for the daily fits.
 import fbench.models.har_model
@@ -43,59 +45,74 @@ STARTED = pd.Timestamp.now(tz="UTC")
 TRIGGER = os.environ.get("GITHUB_EVENT_NAME", "local")
 
 
-def step(name, fn):
-    """Runs one named stage of the loop, printing the name first and
-    exiting with a message naming that stage if it raises, so a failed
-    run says where it stopped."""
-    print(f"[daily] {name}", flush=True)
-    try:
-        return fn()
-    except Exception as e:
-        sys.exit(f"[daily] FAILED at step '{name}': {e}")
-
-
-hourly, last_close, fetched = step("update hourly series",
-                                   lambda: update_hourly())
+print("[daily] updating the hourly series from Coinbase", flush=True)
+try:
+    hourly, last_close, fetched = update_hourly()
+except requests.RequestException:
+    traceback.print_exc()
+    sys.exit("[daily] The Coinbase request failed after its retries (full "
+             "error above). Nothing was written or committed.")
 print(f"  minutes fetched: {fetched}; series through {hourly.index[-1]}")
-resolved = step("score due", lambda: daily_run.score_due(hourly))
+print("[daily] scoring earlier forecasts whose hours have ended", flush=True)
+resolved = daily_run.score_due(hourly)
 print(f"  rows resolved: {resolved}")
 
 feats = build_features(hourly)
 # The origin is the same clock hour every day (see fixed_origin), never
 # the hour the run happens to start in, so a late start changes nothing
 # about which data the models see.
-origin = step("choose origin", lambda: daily_run.fixed_origin(hourly))
-logged = step("log forecasts", lambda: daily_run.log_forecasts(feats, origin))
+print("[daily] choosing the origin hour", flush=True)
+origin = daily_run.fixed_origin(hourly)
+print("[daily] fitting every model and logging its 24-hour forecast", flush=True)
+logged = daily_run.log_forecasts(feats, origin)
 print(f"  forecast rows logged: {logged} (origin {origin})")
+
+
 def _audit():
-    """Runs the commit-timing audit over the forecast log's history,
-    returning the late forecast days, or None if git fails, so a broken
-    audit costs LIVE.md its timing claim rather than stopping the
-    day's forecast."""
+    """Runs the commit-timing audit over the forecast log's history and
+    returns the late forecast days. If the audit fails it prints the
+    full error and returns None, and the run carries on: the day's
+    forecast matters more than the audit, which the next run repeats,
+    and LIVE.md then points to scripts/run_verify_timing.py instead of
+    stating a result."""
     try:
         return late_groups(first_commits(ROOT))
     except Exception as e:
-        print(f"  timing audit skipped: {e}")
+        traceback.print_exc()
+        # first_commits captures git's output, so git's own message has
+        # to be printed here or it is lost.
+        if isinstance(e, subprocess.CalledProcessError) and e.stderr:
+            print(e.stderr.strip(), file=sys.stderr)
+        print("[daily] The timing audit failed (full error above). The run "
+              "continues, and LIVE.md will point to "
+              "scripts/run_verify_timing.py instead of stating the audit's "
+              "result.", file=sys.stderr, flush=True)
         return None
 
 
-late = step("timing audit", _audit)
+print("[daily] auditing the commit timing of earlier forecasts", flush=True)
+late = _audit()
 print(f"  late forecast days: {'not audited' if late is None else len(late)}")
-step("live report", lambda: daily_run.write_live_report(late=late))
+print("[daily] writing LIVE.md", flush=True)
+daily_run.write_live_report(late=late)
 from fbench.daily_forecast_generator import write_daily_forecast  # noqa: E402
 
-step("daily forecast", lambda: write_daily_forecast(hourly, last_price=last_close))
+print("[daily] writing FORECAST.md", flush=True)
+write_daily_forecast(hourly, last_price=last_close)
 from fbench.review_generator import write_review  # noqa: E402
 
-step("review", lambda: write_review(hourly))
+print("[daily] writing REVIEW.md", flush=True)
+write_review(hourly)
 
 
 def _commit_push():
-    """Commits the extended hourly series, the logs and the reports,
-    pushing when an origin remote is configured and --no-push is not set;
-    with --no-commit it returns before staging anything. Committing happens before the logged target
-    hours close, which is what makes the forecast log pre-outcome
-    evidence. A second run on the same day would normally stage newly
+    """Commits the extended hourly series, the logs, the reports and
+    the live figure, pushing when an origin remote is configured and
+    --no-push is not set; with --no-commit it returns before staging
+    anything. A failed push stops the run with a message saying the
+    commit was made but GitHub does not have it. Committing happens
+    before the logged target hours close, which is what makes the
+    forecast log pre-outcome evidence. A second run on the same day would normally stage newly
     resolved rows and a refreshed forecast file, so what stops one is
     the workflow's skip guard, not this function; the nothing-staged
     return below only covers a rerun with no new data."""
@@ -121,8 +138,14 @@ def _commit_push():
     remotes = subprocess.run(["git", "remote"], cwd=ROOT,
                              capture_output=True, text=True).stdout.split()
     if "origin" in remotes and not args.no_push:
-        subprocess.run(["git", "push", "origin", "HEAD"], cwd=ROOT,
-                       check=True)
+        try:
+            subprocess.run(["git", "push", "origin", "HEAD"], cwd=ROOT,
+                           check=True)
+        except subprocess.CalledProcessError:
+            traceback.print_exc()
+            sys.exit("[daily] The day's commit was made but the push failed "
+                     "(git's message is above), so GitHub does not have "
+                     "today's forecast.")
         print("  committed and pushed")
     elif args.no_push:
         print("  committed; push skipped (--no-push)")
@@ -130,5 +153,6 @@ def _commit_push():
         print("  committed; no remote configured, push skipped")
 
 
-step("commit and push", _commit_push)
+print("[daily] committing and pushing", flush=True)
+_commit_push()
 print("[daily] done")
