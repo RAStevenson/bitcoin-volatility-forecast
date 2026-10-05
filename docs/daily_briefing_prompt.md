@@ -118,7 +118,9 @@ and act on the newest run listed for today:
 The script commits and pushes for itself. If it commits after 12:00
 UTC, the next run's audit lists the day in results/LIVE.md with what
 started it and when; do not try to hide or repair that. If the local
-run fails too, report its failing step in one line and stop.
+run fails too, report in one line the stage it stopped at (the last
+line starting with [daily] before the error) and the error's final
+line, and stop.
 
 Report in one line how the run landed: from GitHub started by this
 task, from GitHub's own schedule, or locally, with the start time. Both

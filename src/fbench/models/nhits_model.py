@@ -12,6 +12,45 @@ from fbench.models.base_forecast_model import BaseForecastModel, quantile_frame,
 
 ENCODER_HOURS = 168  # one week of context per forecast
 
+# The only warnings this module blocks, each matched by the start of its
+# message so that any other warning still prints. All five are raised on
+# every call to fit, and the last two again on every call to predict.
+# Each has a reason it does not apply here.
+BLOCKED_WARNINGS = (
+    # Advice on what to leave out of a checkpoint file. This model
+    # writes no checkpoints (enable_checkpointing=False in fit).
+    (r"Attribute '(loss|logging_metrics)' is an instance of `nn\.Module` "
+     r"and is already saved during checkpointing", UserWarning),
+    # The network trains for a fixed three epochs on the whole training
+    # window with no validation set, so there is no validation loop to
+    # run.
+    (r"You defined a `validation_step` but have no `val_dataloader`",
+     UserWarning),
+    # The library attaches a scheduler that lowers the learning rate
+    # when the validation loss stops improving. With no validation set
+    # it has nothing to read, so the rate stays at the 1e-3 set in fit
+    # for all three epochs, which is the training intended.
+    (r"ReduceLROnPlateau conditioned on metric val_loss which is not "
+     r"available", RuntimeWarning),
+    # The data loaders run in the main process on purpose
+    # (num_workers=0): the training data is one series of about 8,800
+    # hourly values already in memory.
+    (r"The '(train|predict)_dataloader' does not have many workers",
+     UserWarning),
+    # Raised inside Lightning about its own call into torch, not about
+    # code in this repo. Both versions are pinned in requirements.txt;
+    # delete this entry when a newer Lightning stops raising it.
+    (r"`isinstance\(treespec, LeafSpec\)` is deprecated", FutureWarning),
+)
+
+
+def _block_listed_warnings():
+    """Adds an ignore filter for each entry of BLOCKED_WARNINGS to the
+    enclosing warnings.catch_warnings block, leaving every other warning
+    to print."""
+    for message, category in BLOCKED_WARNINGS:
+        warnings.filterwarnings("ignore", message=message, category=category)
+
 
 @register
 class NHits(BaseForecastModel):
@@ -57,17 +96,18 @@ class NHits(BaseForecastModel):
             time_varying_unknown_reals=["y"],
             target_normalizer="auto",
         )
-        # from_dataset is declared as returning the Lightning base class;
-        # it builds an NHiTS, which is what predict is called on below.
-        self.model_ = cast(NHiTS, NHiTS.from_dataset(
-            ds, loss=QuantileLoss(quantiles=QUANTILES),
-            hidden_size=64, learning_rate=1e-3, log_interval=-1))
-        trainer = pl.Trainer(
-            max_epochs=3, accelerator="cpu", logger=False,
-            enable_progress_bar=False, enable_checkpointing=False,
-            enable_model_summary=False, deterministic=True)
         with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
+            _block_listed_warnings()
+            # from_dataset is declared as returning the Lightning base
+            # class; it builds an NHiTS, which is what predict is called
+            # on below.
+            self.model_ = cast(NHiTS, NHiTS.from_dataset(
+                ds, loss=QuantileLoss(quantiles=QUANTILES),
+                hidden_size=64, learning_rate=1e-3, log_interval=-1))
+            trainer = pl.Trainer(
+                max_epochs=3, accelerator="cpu", logger=False,
+                enable_progress_bar=False, enable_checkpointing=False,
+                enable_model_summary=False, deterministic=True)
             trainer.fit(self.model_,
                         ds.to_dataloader(train=True, batch_size=128,
                                          num_workers=0))
@@ -93,7 +133,7 @@ class NHits(BaseForecastModel):
         pred_ds = TimeSeriesDataSet.from_dataset(
             self.ds_, frame, predict=True, stop_randomization=True)
         with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
+            _block_listed_warnings()
             out = self.model_.predict(
                 pred_ds.to_dataloader(train=False, batch_size=1,
                                       num_workers=0),
