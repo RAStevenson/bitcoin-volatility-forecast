@@ -8,6 +8,8 @@ from prophet import Prophet
 from fbench.harness_config import QUANTILES
 from fbench.models.base_forecast_model import BaseForecastModel, quantile_frame, register
 
+SAMPLE_SEED = 7  # the same seed N-HiTS uses
+
 
 @register
 class ProphetModel(BaseForecastModel):
@@ -36,6 +38,16 @@ class ProphetModel(BaseForecastModel):
         their empirical quantiles, so the band comes from the sample
         spread rather than Prophet's fixed-width interval API."""
         future = pd.DataFrame({"ds": index.tz_localize(None)})
-        samples = self.m_.predictive_samples(future)["yhat"]
+        # predictive_samples draws from numpy's global random generator
+        # and takes no seed. Seed it here, and put the generator back
+        # afterwards, so the band no longer depends on which model ran
+        # before this one (until 2026-10-05 it was repeatable only
+        # because N-HiTS, which runs first, seeds the generator).
+        state = np.random.get_state()
+        np.random.seed(SAMPLE_SEED)
+        try:
+            samples = self.m_.predictive_samples(future)["yhat"]
+        finally:
+            np.random.set_state(state)
         qs = np.quantile(samples, QUANTILES, axis=1).T
         return quantile_frame(qs, index)
