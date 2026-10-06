@@ -21,9 +21,12 @@ def log_backtest(scores, results_path, run_config):
         model_scores = scores.xs(model_name)
         with mlflow.start_run(run_name=model_name):
             mlflow.log_params({"model": model_name, **run_config})
-            for col in ("pinball_mean", "mae", "cov50", "cov90",
-                        "skill_vs_persistence"):
-                mlflow.log_metric(col, float(model_scores[col].mean()))
-                mlflow.log_metric(f"{col}_h1", float(model_scores.loc[1, col]))
-                mlflow.log_metric(f"{col}_h24", float(model_scores.loc[24, col]))
+            for metric_name in ("pinball_mean", "mae", "cov50", "cov90",
+                                "skill_vs_persistence"):
+                mlflow.log_metric(metric_name,
+                                  float(model_scores[metric_name].mean()))
+                mlflow.log_metric(f"{metric_name}_h1",
+                                  float(model_scores.loc[1, metric_name]))
+                mlflow.log_metric(f"{metric_name}_h24",
+                                  float(model_scores.loc[24, metric_name]))
             mlflow.log_artifact(str(results_path))

@@ -18,11 +18,11 @@ class ProphetModel(BaseForecastModel):
     get all five quantiles from one fit."""
     name = "prophet"
 
-    def fit(self, train):
+    def fit(self, training_rows):
         """Fits Prophet on the non-missing log RV rows with daily and
         weekly seasonality, no yearly term, and 300 uncertainty draws
         retained for predict."""
-        history = train["log_rv"].dropna().reset_index()
+        history = training_rows["log_rv"].dropna().reset_index()
         history.columns = ["ds", "y"]
         history["ds"] = history["ds"].dt.tz_localize(None)  # Prophet requires naive
         # Prophet ships no type hints; the checker reads its "auto" string
@@ -33,21 +33,21 @@ class ProphetModel(BaseForecastModel):
                                 uncertainty_samples=300)
         self.prophet_.fit(history)
 
-    def predict(self, index):
+    def predict(self, target_times):
         """Draws predictive samples at the target timestamps and returns
         their empirical quantiles, so the band comes from the sample
         spread rather than Prophet's fixed-width interval API."""
-        future = pd.DataFrame({"ds": index.tz_localize(None)})
+        future = pd.DataFrame({"ds": target_times.tz_localize(None)})
         # predictive_samples draws from numpy's global random generator
         # and takes no seed. Seed it here, and put the generator back
         # afterwards, so the band no longer depends on which model ran
         # before this one (until 2026-10-05 it was repeatable only
         # because N-HiTS, which runs first, seeds the generator).
-        state = np.random.get_state()
+        saved_random_state = np.random.get_state()
         np.random.seed(SAMPLE_SEED)
         try:
             samples = self.prophet_.predictive_samples(future)["yhat"]
         finally:
-            np.random.set_state(state)
+            np.random.set_state(saved_random_state)
         quantile_values = np.quantile(samples, QUANTILES, axis=1).T
-        return quantile_frame(quantile_values, index)
+        return quantile_frame(quantile_values, target_times)

@@ -8,33 +8,36 @@ from fbench.harness_config import HORIZON
 
 
 def _hourly(n_hours=24 * 400, seed=5, with_close=True):
-    idx = pd.date_range("2025-01-01", periods=n_hours, freq="h", tz="UTC")
-    rng = np.random.default_rng(seed)
-    log_realized_vol = pd.Series(rng.normal(-1, 0.3, n_hours), index=idx).rolling(3).mean()
+    timestamps = pd.date_range("2025-01-01", periods=n_hours, freq="h", tz="UTC")
+    random_generator = np.random.default_rng(seed)
+    log_realized_vol = pd.Series(random_generator.normal(-1, 0.3, n_hours),
+                                 index=timestamps).rolling(3).mean()
     hourly = pd.DataFrame({"log_rv": log_realized_vol, "rv": np.exp(log_realized_vol)},
-                          index=idx)
+                          index=timestamps)
     if with_close:
-        hourly["close"] = 100.0 * np.exp(rng.normal(0, 0.001, n_hours).cumsum())
+        hourly["close"] = 100.0 * np.exp(
+            random_generator.normal(0, 0.001, n_hours).cumsum())
     return hourly
 
 
 def test_claims_and_realized_agree_when_the_median_is_exact():
     hourly = _hourly()
     origin = hourly.index[-25]
-    ctx = daily_forecast_generator.context(hourly["rv"].loc[:origin])
+    comparison_context = daily_forecast_generator.context(hourly["rv"].loc[:origin])
     target_hours = pd.date_range(origin + pd.Timedelta(hours=1), periods=HORIZON,
                                  freq="h", tz="UTC")
-    order = np.random.default_rng(1).permutation(HORIZON)
-    median = np.linspace(0.3, 0.6, HORIZON)[order]
-    vol = np.column_stack([median * 0.6, median * 0.8, median, median * 1.2,
-                           median * 1.6])
-    forecast_claims = daily_forecast_generator.claims(vol, target_hours, ctx)
-    realized = daily_forecast_generator.realized_claims(
-        pd.Series(median, index=target_hours), ctx)
-    assert forecast_claims["regime"] == realized["regime"]
-    assert forecast_claims["trend"] == realized["trend"]
-    assert set(forecast_claims["loud"]) == set(realized["loud"])
-    assert set(forecast_claims["calm"]) == set(realized["calm"])
+    shuffled_positions = np.random.default_rng(1).permutation(HORIZON)
+    median = np.linspace(0.3, 0.6, HORIZON)[shuffled_positions]
+    annualized_quantiles = np.column_stack([median * 0.6, median * 0.8, median,
+                                            median * 1.2, median * 1.6])
+    forecast_claims = daily_forecast_generator.claims(annualized_quantiles, target_hours,
+                                                      comparison_context)
+    realized_day_claims = daily_forecast_generator.realized_claims(
+        pd.Series(median, index=target_hours), comparison_context)
+    assert forecast_claims["regime"] == realized_day_claims["regime"]
+    assert forecast_claims["trend"] == realized_day_claims["trend"]
+    assert set(forecast_claims["loud"]) == set(realized_day_claims["loud"])
+    assert set(forecast_claims["calm"]) == set(realized_day_claims["calm"])
     assert forecast_claims["regime"] in daily_forecast_generator.REGIMES
 
 
@@ -63,12 +66,12 @@ def test_day_move_hit_is_close_to_close():
     evaluations, hourly_inside = _one_day_log(hourly, origin, end_price=100.0)
     scored = daily_forecast_scoring.score_daily_forecast(evaluations, hourly_inside)
     assert len(scored) == 1
-    move = float(scored["day_move"].iloc[0])
-    assert 0 < move < 0.2
+    day_move = float(scored["day_move"].iloc[0])
+    assert 0 < day_move < 0.2
     assert bool(scored["day_move_hit"].iloc[0]) is True
     # a day that moved twice the stated distance is a miss
     evaluations, hourly_outside = _one_day_log(hourly, origin,
-                                               end_price=100.0 * (1 + 2 * move))
+                                               end_price=100.0 * (1 + 2 * day_move))
     scored = daily_forecast_scoring.score_daily_forecast(evaluations, hourly_outside)
     assert bool(scored["day_move_hit"].iloc[0]) is False
     # the exact-median day matches on every word and names every hour
@@ -77,8 +80,8 @@ def test_day_move_hit_is_close_to_close():
     assert scored["loud_overlap"].iloc[0] == 3
     assert scored["calm_overlap"].iloc[0] == 3
     # the yesterday baseline is scored on the same day in the same terms
-    for col in ("base_regime_hit", "base_trend_hit", "base_day_move_hit"):
-        assert scored[col].iloc[0] in (True, False)
+    for column in ("base_regime_hit", "base_trend_hit", "base_day_move_hit"):
+        assert scored[column].iloc[0] in (True, False)
     assert 0 <= scored["base_loud_overlap"].iloc[0] <= 3
     assert scored["base_high_hours"].iloc[0] >= 0
 

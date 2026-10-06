@@ -26,10 +26,10 @@ def build_features(hourly):
     features["log_rv"] = log_realized_vol
     for lag in (1, 2, 3, 24, 48, 168):
         features[f"lag_{lag}"] = log_realized_vol.shift(lag)
-    past = log_realized_vol.shift(1)
-    features["har_d"] = past.rolling(24, min_periods=18).mean()
-    features["har_w"] = past.rolling(168, min_periods=120).mean()
-    features["har_m"] = past.rolling(720, min_periods=500).mean()
+    previous_hour = log_realized_vol.shift(1)
+    features["har_d"] = previous_hour.rolling(24, min_periods=18).mean()
+    features["har_w"] = previous_hour.rolling(168, min_periods=120).mean()
+    features["har_m"] = previous_hour.rolling(720, min_periods=500).mean()
     timestamps = pd.DatetimeIndex(features.index)
     hour_of_day = timestamps.hour
     day_of_week = timestamps.dayofweek

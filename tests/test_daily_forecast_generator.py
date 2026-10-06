@@ -55,11 +55,12 @@ def test_daily_forecast_written_with_regime_words(tmp_path, monkeypatch):
     monkeypatch.setattr(daily_forecast_generator, "RESULTS_DIR", tmp_path)
     monkeypatch.setattr(daily_forecast_generator, "FALLBACK_MODEL", "persistence")
 
-    idx = pd.date_range("2025-01-01", periods=24 * 400, freq="h", tz="UTC")
-    rng = np.random.default_rng(5)
-    log_realized_vol = pd.Series(rng.normal(-1, 0.3, len(idx)), index=idx).rolling(3).mean()
+    timestamps = pd.date_range("2025-01-01", periods=24 * 400, freq="h", tz="UTC")
+    random_generator = np.random.default_rng(5)
+    log_realized_vol = pd.Series(random_generator.normal(-1, 0.3, len(timestamps)),
+                                 index=timestamps).rolling(3).mean()
     hourly = pd.DataFrame({"log_rv": log_realized_vol, "rv": np.exp(log_realized_vol)},
-                          index=idx)
+                          index=timestamps)
 
     daily_run.log_forecasts(build_features(hourly), hourly.index[-25])
     path = daily_forecast_generator.write_daily_forecast(hourly)
@@ -73,6 +74,6 @@ def test_daily_forecast_written_with_regime_words(tmp_path, monkeypatch):
     assert "typical hour is expected to move" in text
     assert "$" not in text
     # with a price, the same layer adds dollar translations of the moves
-    text2 = daily_forecast_generator.write_daily_forecast(
+    text_with_price = daily_forecast_generator.write_daily_forecast(
         hourly, last_price=50_000.0).read_text()
-    assert "$50,000" in text2
+    assert "$50,000" in text_with_price

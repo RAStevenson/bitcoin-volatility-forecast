@@ -47,15 +47,15 @@ TRIGGER = os.environ.get("GITHUB_EVENT_NAME", "local")
 
 print("[daily] updating the hourly series from Coinbase", flush=True)
 try:
-    hourly, last_close, fetched = update_hourly()
+    hourly, last_close, n_minutes_fetched = update_hourly()
 except requests.RequestException:
     traceback.print_exc()
     sys.exit("[daily] The Coinbase request failed after its retries (full "
              "error above). Nothing was written or committed.")
-print(f"  minutes fetched: {fetched}; series through {hourly.index[-1]}")
+print(f"  minutes fetched: {n_minutes_fetched}; series through {hourly.index[-1]}")
 print("[daily] scoring earlier forecasts whose hours have ended", flush=True)
-resolved = daily_run.score_due(hourly)
-print(f"  rows resolved: {resolved}")
+n_rows_resolved = daily_run.score_due(hourly)
+print(f"  rows resolved: {n_rows_resolved}")
 
 features = build_features(hourly)
 # The origin is the same clock hour every day (see fixed_origin), never
@@ -64,8 +64,8 @@ features = build_features(hourly)
 print("[daily] choosing the origin hour", flush=True)
 origin = daily_run.fixed_origin(hourly)
 print("[daily] fitting every model and logging its 24-hour forecast", flush=True)
-logged = daily_run.log_forecasts(features, origin)
-print(f"  forecast rows logged: {logged} (origin {origin})")
+n_rows_logged = daily_run.log_forecasts(features, origin)
+print(f"  forecast rows logged: {n_rows_logged} (origin {origin})")
 
 
 def _audit():
@@ -91,10 +91,10 @@ def _audit():
 
 
 print("[daily] auditing the commit timing of earlier forecasts", flush=True)
-late = _audit()
-print(f"  late forecast days: {'not audited' if late is None else len(late)}")
+late_days = _audit()
+print(f"  late forecast days: {'not audited' if late_days is None else len(late_days)}")
 print("[daily] writing LIVE.md", flush=True)
-daily_run.write_live_report(late=late)
+daily_run.write_live_report(late=late_days)
 from fbench.daily_forecast_generator import write_daily_forecast  # noqa: E402
 
 print("[daily] writing FORECAST.md", flush=True)
@@ -120,19 +120,20 @@ def _commit_push():
         print("  --no-commit: files written, nothing committed")
         return
     day = pd.Timestamp.now(tz="UTC").date()
-    tracked = [path for path in ("data/hourly_rv.csv",
-                                 "results/forecasts.csv", "results/evaluation.csv",
-                                 "results/LIVE.md", "results/FORECAST.md",
-                                 "results/REVIEW.md", "results/figures/fig_live_daily.png")
-               if (ROOT / path).exists()]
-    subprocess.run(["git", "add", *tracked], cwd=ROOT, check=True)
-    diff = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=ROOT)
-    if diff.returncode == 0:
+    tracked_paths = [path for path in ("data/hourly_rv.csv",
+                                       "results/forecasts.csv", "results/evaluation.csv",
+                                       "results/LIVE.md", "results/FORECAST.md",
+                                       "results/REVIEW.md",
+                                       "results/figures/fig_live_daily.png")
+                     if (ROOT / path).exists()]
+    subprocess.run(["git", "add", *tracked_paths], cwd=ROOT, check=True)
+    staged_check = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=ROOT)
+    if staged_check.returncode == 0:
         print("  nothing new to commit (already ran today)")
         return
     subprocess.run(["git", "commit", "-m",
-                    f"Daily run {day}: {logged} forecast rows logged, "
-                    f"{resolved} resolved; origin {origin:%H:%M} UTC; "
+                    f"Daily run {day}: {n_rows_logged} forecast rows logged, "
+                    f"{n_rows_resolved} resolved; origin {origin:%H:%M} UTC; "
                     f"trigger {TRIGGER}, started {STARTED:%H:%M} UTC"],
                    cwd=ROOT, check=True)
     remotes = subprocess.run(["git", "remote"], cwd=ROOT,

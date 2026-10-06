@@ -14,16 +14,18 @@ from fbench.harness_config import BITSTAMP_PAIR, RESULTS_DIR
 
 minutes = minute_store.load_minutes()
 coinbase_close = (minutes.set_index("time")["close"].groupby(pd.Grouper(freq="h")).last()
-                  .rename("cb_close").dropna())
+                  .rename("coinbase_close").dropna())
 print(f"fetching Bitstamp hourly {coinbase_close.index.min()} -> "
       f"{coinbase_close.index.max()}", flush=True)
 bitstamp_hourly = bitstamp_client.fetch_hourly(BITSTAMP_PAIR, coinbase_close.index.min(),
                                                coinbase_close.index.max())
-both_venues = bitstamp_hourly.set_index("time").join(coinbase_close, how="inner")
-relative_difference = ((both_venues["cb_close"] - both_venues["close"]).abs()
-                       / both_venues["close"])
+bitstamp_with_coinbase = bitstamp_hourly.set_index("time").join(coinbase_close,
+                                                                how="inner")
+relative_difference = ((bitstamp_with_coinbase["coinbase_close"]
+                        - bitstamp_with_coinbase["close"]).abs()
+                       / bitstamp_with_coinbase["close"])
 lines = [
-    f"hours compared: {len(both_venues)}",
+    f"hours compared: {len(bitstamp_with_coinbase)}",
     f"median abs pct diff: {relative_difference.median():.5%}",
     f"p99 abs pct diff: {relative_difference.quantile(0.99):.5%}",
     f"hours over 0.5% divergence: {(relative_difference > 0.005).sum()}",

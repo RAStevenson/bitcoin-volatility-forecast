@@ -66,7 +66,7 @@ class NHits(BaseForecastModel):
     name = "nhits"
     train_days = TRAIN_DAYS
 
-    def fit(self, train):
+    def fit(self, training_rows):
         """Trains one small N-HiTS network for three CPU epochs on the
         gap-interpolated log RV series, with a one-week encoder window
         and a quantile loss covering all five levels at once. Seeds are
@@ -83,7 +83,7 @@ class NHits(BaseForecastModel):
         torch.manual_seed(7)
         pl.seed_everything(7, workers=True, verbose=False)
 
-        y = train["log_rv"].interpolate(limit=6).dropna()
+        y = training_rows["log_rv"].interpolate(limit=6).dropna()
         series_frame = pd.DataFrame({
             "y": y.to_numpy(dtype="float32"),
             "time_idx": range(len(y)),
@@ -111,30 +111,30 @@ class NHits(BaseForecastModel):
             trainer.fit(self.model_,
                         dataset.to_dataloader(train=True, batch_size=128,
                                               num_workers=0))
-        self.tail_ = series_frame.tail(ENCODER_HOURS + HORIZON).copy()
+        self.series_tail_ = series_frame.tail(ENCODER_HOURS + HORIZON).copy()
         self.dataset_ = dataset
 
-    def predict(self, index):
+    def predict(self, target_times):
         """Returns the quantile frame from a single forward pass over
         the encoder tail stored at fit time, trimmed to the first
-        len(index) of the network's HORIZON decoder steps."""
+        len(target_times) of the network's HORIZON decoder steps."""
         from pytorch_forecasting import TimeSeriesDataSet
 
         # Prediction window: the last encoder span plus HORIZON dummy
         # future rows the dataset needs to shape the decoder; the dummy
         # target values are never used as inputs for the future steps.
-        last_idx = int(self.tail_["time_idx"].max())
+        last_time_step = int(self.series_tail_["time_idx"].max())
         future = pd.DataFrame({
-            "y": np.float32(self.tail_["y"].iloc[-1]),
-            "time_idx": range(last_idx + 1, last_idx + 1 + HORIZON),
+            "y": np.float32(self.series_tail_["y"].iloc[-1]),
+            "time_idx": range(last_time_step + 1, last_time_step + 1 + HORIZON),
             "group": "series",
         })
-        frame = pd.concat([self.tail_, future], ignore_index=True)
+        prediction_frame = pd.concat([self.series_tail_, future], ignore_index=True)
         prediction_dataset = TimeSeriesDataSet.from_dataset(
-            self.dataset_, frame, predict=True, stop_randomization=True)
+            self.dataset_, prediction_frame, predict=True, stop_randomization=True)
         with warnings.catch_warnings():
             _block_listed_warnings()
-            out = self.model_.predict(
+            network_quantiles = self.model_.predict(
                 prediction_dataset.to_dataloader(train=False, batch_size=1,
                                                  num_workers=0),
                 mode="quantiles",
@@ -143,5 +143,5 @@ class NHits(BaseForecastModel):
                 trainer_kwargs={"logger": False, "accelerator": "cpu",
                                 "enable_progress_bar": False,
                                 "enable_model_summary": False})
-        quantile_values = out[0].cpu().numpy()[:len(index), :]
-        return quantile_frame(quantile_values, index)
+        quantile_values = network_quantiles[0].cpu().numpy()[:len(target_times), :]
+        return quantile_frame(quantile_values, target_times)

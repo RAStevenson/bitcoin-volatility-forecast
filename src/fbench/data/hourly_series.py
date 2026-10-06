@@ -62,16 +62,16 @@ def update_hourly(now=None, fetch=None):
     now = pd.Timestamp.now(tz="UTC") if now is None else now
     fetch = coinbase_client.fetch_candles if fetch is None else fetch
     stored = load_hourly()
-    cut = stored.index[-1]
-    minutes = fetch(PRODUCT, cut - pd.Timedelta(minutes=1), now.floor("min"),
-                    MINUTE_SECONDS)
+    last_stored_hour = stored.index[-1]
+    minutes = fetch(PRODUCT, last_stored_hour - pd.Timedelta(minutes=1),
+                    now.floor("min"), MINUTE_SECONDS)
     if minutes.empty:
         return stored, float(stored["close"].dropna().iloc[-1]), 0
-    fresh = hourly_realized_vol(minutes.set_index("time")["close"])
-    fresh = complete_hours(fresh[fresh.index >= cut], now)
-    merged = pd.concat([stored[stored.index < cut], fresh])
-    grid = pd.date_range(merged.index.min(), merged.index.max(), freq="h",
-                         tz="UTC")
-    merged = merged.reindex(grid)
+    rebuilt = hourly_realized_vol(minutes.set_index("time")["close"])
+    rebuilt = complete_hours(rebuilt[rebuilt.index >= last_stored_hour], now)
+    merged = pd.concat([stored[stored.index < last_stored_hour], rebuilt])
+    hour_grid = pd.date_range(merged.index.min(), merged.index.max(), freq="h",
+                              tz="UTC")
+    merged = merged.reindex(hour_grid)
     save_hourly(merged)
     return merged, float(minutes["close"].iloc[-1]), len(minutes)
