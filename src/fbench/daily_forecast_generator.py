@@ -79,10 +79,10 @@ def context(realized_vol_to_origin):
     # The quiet/normal boundary compares a 24-hour average to the
     # distribution of rolling 24h averages, so the printed threshold must
     # come from the same distribution or it is not the deciding line.
-    return {"year": year, "daily_avg": daily_averages,
-            "hi_thresh": float(year.quantile(0.90)),
-            "q_thresh": float(daily_averages.quantile(0.30)),
-            "last24": float(realized_vol.iloc[-24:].mean())}
+    return {"year": year, "daily_averages": daily_averages,
+            "high_line": float(year.quantile(0.90)),
+            "quiet_line": float(daily_averages.quantile(0.30)),
+            "previous_day_average": float(realized_vol.iloc[-24:].mean())}
 
 
 def regime_of(day_average, daily_averages):
@@ -119,19 +119,19 @@ def claims(annualized_quantiles, target_times, comparison_context):
     # hourly variances, a one-sigma close-to-close move rather than a
     # range; averaging the hourly sigmas first would understate it
     # whenever vol varies across the day.
-    regime, percentile = regime_of(forecast_average, comparison_context["daily_avg"])
-    high_probabilities = [prob_above(hour_quantiles, comparison_context["hi_thresh"])
+    regime, percentile = regime_of(forecast_average, comparison_context["daily_averages"])
+    high_probabilities = [prob_above(hour_quantiles, comparison_context["high_line"])
                           for hour_quantiles in annualized_quantiles]
     positions_by_median = np.argsort(median_path)
     target_hours = pd.DatetimeIndex(target_times)
     return {
-        "fc_avg": forecast_average, "med_path": median_path,
-        "hr_move": forecast_average / ANNUALIZER,
+        "forecast_average": forecast_average, "median_path": median_path,
+        "hourly_move": forecast_average / ANNUALIZER,
         "day_move": float(np.sqrt(np.sum((median_path / ANNUALIZER) ** 2))),
-        "regime": regime, "pct": percentile,
-        "trend": trend_of(forecast_average, comparison_context["last24"]),
-        "p_high": high_probabilities,
-        "exp_high_hours": float(np.sum(high_probabilities)),
+        "regime": regime, "percentile": percentile,
+        "trend": trend_of(forecast_average, comparison_context["previous_day_average"]),
+        "high_probabilities": high_probabilities,
+        "expected_high_hours": float(np.sum(high_probabilities)),
         "likely_high": int(np.sum(np.array(high_probabilities) > 0.5)),
         # prob_above clamps at 0.02 beyond the fitted quantiles, so when
         # every hour sits at the clamp the sum is a floor (24 x 0.02), not
@@ -153,13 +153,13 @@ def realized_claims(target_realized_vol, comparison_context):
     target hour."""
     realized_vol = target_realized_vol.dropna()
     realized_average = float(realized_vol.mean())
-    regime, percentile = regime_of(realized_average, comparison_context["daily_avg"])
+    regime, percentile = regime_of(realized_average, comparison_context["daily_averages"])
     positions_by_realized = np.argsort(realized_vol.to_numpy())
-    return {"rz_avg": realized_average, "regime": regime, "pct": percentile,
-            "trend": trend_of(realized_average, comparison_context["last24"]),
+    return {"realized_average": realized_average, "regime": regime, "percentile": percentile,
+            "trend": trend_of(realized_average, comparison_context["previous_day_average"]),
             "loud": realized_vol.index[positions_by_realized[-N_NAMED_HOURS:]],
             "calm": realized_vol.index[positions_by_realized[:N_NAMED_HOURS]],
-            "high_hours": int((realized_vol > comparison_context["hi_thresh"]).sum())}
+            "high_hours": int((realized_vol > comparison_context["high_line"]).sum())}
 
 
 def build_daily_forecast(hourly, last_price=None):
@@ -183,12 +183,12 @@ def build_daily_forecast(hourly, last_price=None):
     comparison_context = context(hourly["rv"].loc[:origin])
     forecast_claims = claims(annualized_quantiles, todays_forecasts["target_time"],
                              comparison_context)
-    median_path = forecast_claims["med_path"]
-    forecast_average = forecast_claims["fc_avg"]
-    hourly_move, day_move = forecast_claims["hr_move"], forecast_claims["day_move"]
-    high_threshold = comparison_context["hi_thresh"]
-    quiet_threshold = comparison_context["q_thresh"]
-    previous_day_average = comparison_context["last24"]
+    median_path = forecast_claims["median_path"]
+    forecast_average = forecast_claims["forecast_average"]
+    hourly_move, day_move = forecast_claims["hourly_move"], forecast_claims["day_move"]
+    high_threshold = comparison_context["high_line"]
+    quiet_threshold = comparison_context["quiet_line"]
+    previous_day_average = comparison_context["previous_day_average"]
 
     high_hourly_move = high_threshold / ANNUALIZER
     if forecast_claims["all_at_floor"]:
@@ -199,7 +199,7 @@ def build_daily_forecast(hourly, last_price=None):
                      f"band sits well below that line.")
     else:
         high_line = (f"- The next 24 hours are expected to include about "
-                     f"{forecast_claims['exp_high_hours']:.1f} hours running "
+                     f"{forecast_claims['expected_high_hours']:.1f} hours running "
                      f"high, above "
                      f"{high_threshold:.0%} annualized (an hourly move over "
                      f"{high_hourly_move:.2%}), higher than 90% of individual "
@@ -248,7 +248,7 @@ def build_daily_forecast(hourly, last_price=None):
         f"{forecast_claims['trend']}.** {move_line}",
         "",
         f"That forecast sits {percentile_phrase} (the "
-        f"{forecast_claims['pct']:.0f}th percentile of "
+        f"{forecast_claims['percentile']:.0f}th percentile of "
         f"the past year's rolling 24-hour averages) and works out to about "
         f"{forecast_average:.0%} in annualized units, the per-year convention "
         f"volatility is quoted in. The hourly figures above are that same "

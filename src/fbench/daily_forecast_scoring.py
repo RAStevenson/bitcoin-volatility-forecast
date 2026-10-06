@@ -95,30 +95,30 @@ def score_daily_forecast(evaluations, hourly):
             "day_move_hit": (None if close_to_close_return is None
                              else abs(close_to_close_return)
                              <= forecast_claims["day_move"]),
-            "base_day_move_hit": (None if close_to_close_return is None
+            "yesterday_day_move_hit": (None if close_to_close_return is None
                                   else abs(close_to_close_return) <= yesterday_day_move),
-            "regime_fc": forecast_claims["regime"],
-            "regime_rz": realized_day_claims["regime"],
+            "regime_forecast": forecast_claims["regime"],
+            "regime_realized": realized_day_claims["regime"],
             "regime_gap": abs(REGIMES.index(forecast_claims["regime"])
                               - REGIMES.index(realized_day_claims["regime"])),
-            "base_regime_hit": (yesterday_claims["regime"]
+            "yesterday_regime_hit": (yesterday_claims["regime"]
                                 == realized_day_claims["regime"]),
-            "trend_fc": forecast_claims["trend"],
-            "trend_rz": realized_day_claims["trend"],
-            "base_trend_hit": realized_day_claims["trend"] == "steady",
+            "trend_forecast": forecast_claims["trend"],
+            "trend_realized": realized_day_claims["trend"],
+            "yesterday_trend_hit": realized_day_claims["trend"] == "steady",
             "loud_overlap": len(set(forecast_claims["loud"]) & realized_loud),
             "calm_overlap": len(set(forecast_claims["calm"]) & realized_calm),
-            "base_loud_overlap": len({hour + one_day for hour in yesterday_claims["loud"]}
+            "yesterday_loud_overlap": len({hour + one_day for hour in yesterday_claims["loud"]}
                                      & realized_loud),
-            "base_calm_overlap": len({hour + one_day for hour in yesterday_claims["calm"]}
+            "yesterday_calm_overlap": len({hour + one_day for hour in yesterday_claims["calm"]}
                                      & realized_calm),
             # On a day when every hour sits at the probability floor the
             # daily forecast prints "no meaningful chance" rather than a count,
             # so the claim it made, and the one scored, is zero hours.
-            "exp_high_hours": (0.0 if forecast_claims["all_at_floor"]
-                               else forecast_claims["exp_high_hours"]),
+            "expected_high_hours": (0.0 if forecast_claims["all_at_floor"]
+                               else forecast_claims["expected_high_hours"]),
             "high_hours": realized_day_claims["high_hours"],
-            "base_high_hours": yesterday_claims["high_hours"],
+            "yesterday_high_hours": yesterday_claims["high_hours"],
         })
     return pd.DataFrame(rows)
 
@@ -136,8 +136,8 @@ def record_lines(scored):
 
     latest_sentences = [
         f"On the most recent resolved day the daily forecast called the day "
-        f"{latest_day['regime_fc']} and {latest_day['trend_fc']}; it turned out "
-        f"{latest_day['regime_rz']} and {latest_day['trend_rz']}."]
+        f"{latest_day['regime_forecast']} and {latest_day['trend_forecast']}; it turned out "
+        f"{latest_day['regime_realized']} and {latest_day['trend_realized']}."]
     if latest_day["day_return"] is not None and not pd.isna(latest_day["day_return"]):
         move_text, ended_text, tie = distinct_percents(
             latest_day["day_move"], abs(latest_day["day_return"]), places=1)
@@ -151,7 +151,7 @@ def record_lines(scored):
         f"{latest_day['loud_overlap']} of the {N_NAMED_HOURS} loudest hours named "
         f"were among the day's {N_NAMED_HOURS} loudest, and "
         f"{latest_day['calm_overlap']} of the {N_NAMED_HOURS} calmest. "
-        f"{latest_day['exp_high_hours']:.1f} hours were expected to run high and "
+        f"{latest_day['expected_high_hours']:.1f} hours were expected to run high and "
         f"{latest_day['high_hours']} did.")
     lines += [" ".join(latest_sentences), ""]
 
@@ -161,7 +161,7 @@ def record_lines(scored):
     lines.append("")
     if len(days_with_price):
         move_hits = int(days_with_price["day_move_hit"].sum())
-        yesterday_move_hits = int(days_with_price["base_day_move_hit"].sum())
+        yesterday_move_hits = int(days_with_price["yesterday_day_move_hit"].sum())
         n_priced_days = len(days_with_price)
         lines.append(
             f"- The price ended inside the one-standard-deviation day move "
@@ -179,25 +179,25 @@ def record_lines(scored):
         f"off on {one_step_off_days}, and two or more steps off on "
         f"{far_off_days}. Repeating "
         f"yesterday's word would have matched on "
-        f"{int(scored['base_regime_hit'].sum())}.")
-    trend_hits = int((scored["trend_fc"] == scored["trend_rz"]).sum())
+        f"{int(scored['yesterday_regime_hit'].sum())}.")
+    trend_hits = int((scored["trend_forecast"] == scored["trend_realized"]).sum())
     lines.append(
         f"- The trend word (rising, steady, falling) matched on "
         f"{trend_hits} of {n_days} days. Always saying steady would have "
-        f"matched on {int(scored['base_trend_hit'].sum())}.")
+        f"matched on {int(scored['yesterday_trend_hit'].sum())}.")
     lines.append(
         f"- Of the {N_NAMED_HOURS} loudest hours named each day, "
         f"{scored['loud_overlap'].mean():.1f} on average were among the "
         f"day's {N_NAMED_HOURS} loudest, and "
         f"{scored['calm_overlap'].mean():.1f} of the {N_NAMED_HOURS} "
         f"calmest. Naming yesterday's loudest and calmest hours again "
-        f"would have scored {scored['base_loud_overlap'].mean():.1f} and "
-        f"{scored['base_calm_overlap'].mean():.1f}; naming "
+        f"would have scored {scored['yesterday_loud_overlap'].mean():.1f} and "
+        f"{scored['yesterday_calm_overlap'].mean():.1f}; naming "
         f"{N_NAMED_HOURS} hours at random, {CHANCE_OVERLAP:.1f}.")
     lines.append(
-        f"- {scored['exp_high_hours'].sum():.0f} hours were expected to run "
+        f"- {scored['expected_high_hours'].sum():.0f} hours were expected to run "
         f"high across those days and {int(scored['high_hours'].sum())} did. "
         f"Yesterday's count, carried forward, would have expected "
-        f"{int(scored['base_high_hours'].sum())}.")
+        f"{int(scored['yesterday_high_hours'].sum())}.")
     lines.append("")
     return lines

@@ -76,14 +76,14 @@ def test_day_move_hit_is_close_to_close():
     assert bool(scored["day_move_hit"].iloc[0]) is False
     # the exact-median day matches on every word and names every hour
     assert scored["regime_gap"].iloc[0] == 0
-    assert scored["trend_fc"].iloc[0] == scored["trend_rz"].iloc[0]
+    assert scored["trend_forecast"].iloc[0] == scored["trend_realized"].iloc[0]
     assert scored["loud_overlap"].iloc[0] == 3
     assert scored["calm_overlap"].iloc[0] == 3
     # the yesterday baseline is scored on the same day in the same terms
-    for column in ("base_regime_hit", "base_trend_hit", "base_day_move_hit"):
+    for column in ("yesterday_regime_hit", "yesterday_trend_hit", "yesterday_day_move_hit"):
         assert scored[column].iloc[0] in (True, False)
-    assert 0 <= scored["base_loud_overlap"].iloc[0] <= 3
-    assert scored["base_high_hours"].iloc[0] >= 0
+    assert 0 <= scored["yesterday_loud_overlap"].iloc[0] <= 3
+    assert scored["yesterday_high_hours"].iloc[0] >= 0
 
 
 def test_day_move_is_skipped_without_close():
