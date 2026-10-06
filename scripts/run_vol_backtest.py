@@ -9,13 +9,20 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import argparse
-import contextlib
 import json
 import time
 
 import pandas as pd
 
-import fbench.models.persistence_model  # noqa: F401  (registers baselines)
+# Import every model module so the registry is complete; importing a
+# module is what registers its model class. A failed import stops the
+# backtest rather than leaving a model silently out of it.
+import fbench.models.har_model
+import fbench.models.nhits_model
+import fbench.models.persistence_model
+import fbench.models.prophet_model
+import fbench.models.sarima_model
+import fbench.models.xgboost_model  # noqa: F401
 from fbench.data.hourly_series import load_hourly
 from fbench.feature_builder import build_features
 from fbench.harness_config import HORIZON, ORIGIN_STRIDE_DAYS, RESULTS_DIR, TEST_DAYS
@@ -30,13 +37,6 @@ def main():
     """Runs every requested model over the rolling origins, saves the
     backtest parquet and its json sidecar, and unless --no-report scores
     it, writes REPORT.md and its figures, and logs it to MLflow."""
-    # Each model module is imported here because the import is what
-    # registers its model class.
-    for module_name in ("har_model", "sarima_model", "prophet_model",
-                        "xgboost_model", "nhits_model"):
-        with contextlib.suppress(ImportError):
-            __import__(f"fbench.models.{module_name}")
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--models", default=",".join(sorted(REGISTRY)))
     parser.add_argument("--stride", type=int, default=ORIGIN_STRIDE_DAYS)
