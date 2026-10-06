@@ -68,11 +68,11 @@ def late_groups(first):
         grouped.setdefault((origin, sha, committed, subject), 0)
         grouped[(origin, sha, committed, subject)] += 1
     late = []
-    for (origin, sha, committed, subject), n in sorted(grouped.items()):
+    for (origin, sha, committed, subject), n_models in sorted(grouped.items()):
         deadline = pd.Timestamp(origin) + pd.Timedelta(hours=2)
         if committed >= deadline:
             late.append({"origin": pd.Timestamp(origin), "sha": sha,
-                         "committed": committed, "models": n,
+                         "committed": committed, "models": n_models,
                          "minutes_late": (committed - deadline).total_seconds() / 60,
                          "subject": subject})
     return late
@@ -91,8 +91,8 @@ def run_note(subject):
     commit subject since 2026-09-28, or None for a subject without them.
     A late day with no entry in LATE_COMMIT_REASONS gets this sentence,
     so a delayed trigger explains itself in LIVE.md."""
-    m = re.search(r"trigger (\S+), started (\d\d:\d\d) UTC", subject or "")
-    if not m:
+    match = re.search(r"trigger (\S+), started (\d\d:\d\d) UTC", subject or "")
+    if not match:
         return None
-    what = _TRIGGER_WORDS.get(m.group(1), m.group(1))
-    return f"The run that committed it was started by {what} at {m.group(2)} UTC."
+    what = _TRIGGER_WORDS.get(match.group(1), match.group(1))
+    return f"The run that committed it was started by {what} at {match.group(2)} UTC."

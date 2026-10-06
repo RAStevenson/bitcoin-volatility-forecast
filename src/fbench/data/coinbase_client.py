@@ -17,12 +17,12 @@ def _get(url, params, attempts=4):
     here with its cause rather than later in a caller."""
     for i in range(attempts):
         try:
-            r = requests.get(url, params=params, timeout=30)
-            if r.status_code == 429:
+            response = requests.get(url, params=params, timeout=30)
+            if response.status_code == 429:
                 time.sleep(2 ** i)
                 continue
-            r.raise_for_status()
-            return r.json()
+            response.raise_for_status()
+            return response.json()
         except requests.RequestException:
             if i == attempts - 1:
                 raise
@@ -43,10 +43,10 @@ def fetch_candles(product, start, end, granularity):
         out.extend(rows)
         cur = chunk_end
         time.sleep(0.15)  # stay far inside the public rate limit
-    df = pd.DataFrame(out, columns=["ts", "low", "high", "open", "close",
-                                    "volume"])
-    if df.empty:
-        return df
-    df["time"] = pd.to_datetime(df["ts"], unit="s", utc=True)
-    return (df.drop(columns="ts").drop_duplicates("time")
+    candles = pd.DataFrame(out, columns=["ts", "low", "high", "open", "close",
+                                         "volume"])
+    if candles.empty:
+        return candles
+    candles["time"] = pd.to_datetime(candles["ts"], unit="s", utc=True)
+    return (candles.drop(columns="ts").drop_duplicates("time")
               .sort_values("time").reset_index(drop=True))

@@ -24,24 +24,25 @@ def test_nhits_blocks_only_its_listed_warnings():
             warnings.warn("The 'train_dataloader' does not have many workers "
                           "which may be a bottleneck.", UserWarning, stacklevel=1)
             warnings.warn("the loss is NaN", UserWarning, stacklevel=1)
-    assert [str(w.message) for w in seen] == ["the loss is NaN"]
+    assert [str(warning.message) for warning in seen] == ["the loss is NaN"]
 
 
-def _train(n=24 * 400, seed=1):
-    idx = pd.date_range("2025-01-01", periods=n, freq="h", tz="UTC")
+def _train(n_hours=24 * 400, seed=1):
+    timestamps = pd.date_range("2025-01-01", periods=n_hours, freq="h", tz="UTC")
     rng = np.random.default_rng(seed)
-    lr = pd.Series(rng.normal(0, 0.3, n), index=idx).rolling(3).mean()
-    return build_features(pd.DataFrame({"log_rv": lr}))
+    log_realized_vol = pd.Series(rng.normal(0, 0.3, n_hours),
+                                 index=timestamps).rolling(3).mean()
+    return build_features(pd.DataFrame({"log_rv": log_realized_vol}))
 
 
-@pytest.mark.parametrize("name", sorted(REGISTRY))
-def test_contract(name):
+@pytest.mark.parametrize("model_name", sorted(REGISTRY))
+def test_contract(model_name):
     train = _train()
     future = pd.date_range(train.index[-1] + pd.Timedelta(hours=1),
                            periods=HORIZON, freq="h", tz="UTC")
-    m = REGISTRY[name]()
-    m.fit(train)
-    out = m.predict(future)
+    model = REGISTRY[model_name]()
+    model.fit(train)
+    out = model.predict(future)
     assert list(out.columns) == QCOLS
     assert out.index.equals(future)
     assert out.notna().all().all()

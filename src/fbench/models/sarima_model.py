@@ -36,9 +36,9 @@ class Sarima(BaseForecastModel):
         """Returns the five quantile columns built from the forecast
         mean and its standard error under a normal law, so the bands
         are symmetric in log RV and widen with the horizon."""
-        fc = self.res_.get_forecast(len(index))
-        mean = fc.predicted_mean.to_numpy()
-        se = fc.se_mean.to_numpy()
-        z = norm.ppf(QUANTILES)
-        return quantile_frame(mean[:, None] + se[:, None] * z[None, :],
-                              index)
+        forecast = self.res_.get_forecast(len(index))
+        mean = forecast.predicted_mean.to_numpy()
+        standard_error = forecast.se_mean.to_numpy()
+        normal_quantiles = norm.ppf(QUANTILES)
+        bands = mean[:, None] + standard_error[:, None] * normal_quantiles[None, :]
+        return quantile_frame(bands, index)

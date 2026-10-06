@@ -14,10 +14,10 @@ from fbench.data import minute_store
 from fbench.data.hourly_series import complete_hours, save_hourly
 from fbench.realized_volatility import hourly_realized_vol
 
-m = minute_store.load_minutes()
-s = m.set_index("time")["close"]
-out = complete_hours(hourly_realized_vol(s), pd.Timestamp.now(tz="UTC"))
-save_hourly(out)
-print("hours:", len(out))
-print("nan hours:", int(out["rv"].isna().sum()))
-print(out["rv"].describe())
+minutes = minute_store.load_minutes()
+minute_close = minutes.set_index("time")["close"]
+hourly = complete_hours(hourly_realized_vol(minute_close), pd.Timestamp.now(tz="UTC"))
+save_hourly(hourly)
+print("hours:", len(hourly))
+print("nan hours:", int(hourly["rv"].isna().sum()))
+print(hourly["rv"].describe())

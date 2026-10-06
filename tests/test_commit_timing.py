@@ -35,12 +35,12 @@ def test_first_commit_wins_and_removed_lines_are_ignored():
 def test_only_the_day_committed_after_its_first_target_hour_is_late():
     late = commit_timing.late_groups(commit_timing.parse_log(LOG))
     assert len(late) == 1
-    g = late[0]
-    assert g["origin"] == pd.Timestamp("2026-01-02 10:00:00+00:00")
-    assert g["models"] == 1
+    late_day = late[0]
+    assert late_day["origin"] == pd.Timestamp("2026-01-02 10:00:00+00:00")
+    assert late_day["models"] == 1
     # deadline is origin + 2h = 12:00 on the 2nd; committed 05:00 on the 3rd
-    assert g["minutes_late"] == 17 * 60
-    assert g["subject"].startswith("Daily run 2026-01-02")
+    assert late_day["minutes_late"] == 17 * 60
+    assert late_day["subject"].startswith("Daily run 2026-01-02")
 
 
 def test_run_note_reads_the_trigger_from_the_subject():

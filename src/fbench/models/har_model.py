@@ -22,22 +22,23 @@ class _HarCore(BaseForecastModel):
     def fit(self, train):
         """Solves one least squares regression per horizon on the
         subclass cols, and stores each regression's empirical residual
-        quantiles, which is where this model's intervals come from. The
-        final h rows are excluded at horizon h because their targets
-        fall past the end of the training window."""
+        quantiles, which is where this model's intervals come from. At
+        each horizon the final rows, as many as the horizon is long, are
+        excluded because their targets fall past the end of the training
+        window."""
         X = train[self.cols].to_numpy()
         y = train["log_rv"].to_numpy()
         ones = np.ones((len(X), 1))
         self.beta_, self.res_q_ = {}, {}
-        for h in range(1, HORIZON + 1):
-            yh = np.roll(y, -h)
-            ok = (~np.isnan(X).any(axis=1)) & ~np.isnan(yh)
-            ok[-h:] = False
-            A = np.hstack([ones[ok], X[ok]])
-            beta, *_ = np.linalg.lstsq(A, yh[ok], rcond=None)
-            resid = yh[ok] - A @ beta
-            self.beta_[h] = beta
-            self.res_q_[h] = np.quantile(resid, QUANTILES)
+        for horizon in range(1, HORIZON + 1):
+            target = np.roll(y, -horizon)
+            usable = (~np.isnan(X).any(axis=1)) & ~np.isnan(target)
+            usable[-horizon:] = False
+            design_matrix = np.hstack([ones[usable], X[usable]])
+            beta, *_ = np.linalg.lstsq(design_matrix, target[usable], rcond=None)
+            residuals = target[usable] - design_matrix @ beta
+            self.beta_[horizon] = beta
+            self.res_q_[horizon] = np.quantile(residuals, QUANTILES)
         self.x_last_ = train[self.cols].iloc[-1].to_numpy()
 
     def predict(self, index):
@@ -45,9 +46,9 @@ class _HarCore(BaseForecastModel):
         stored residual quantiles to the point forecast that horizon's
         regression gives for the single stored origin feature row."""
         rows = []
-        for h in range(1, len(index) + 1):
-            point = self.beta_[h] @ np.concatenate([[1.0], self.x_last_])
-            rows.append(point + self.res_q_[h])
+        for horizon in range(1, len(index) + 1):
+            point = self.beta_[horizon] @ np.concatenate([[1.0], self.x_last_])
+            rows.append(point + self.res_q_[horizon])
         return quantile_frame(rows, index)
 
 

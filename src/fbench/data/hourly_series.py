@@ -25,28 +25,29 @@ def load_hourly():
     # round_trip parsing: the default C parser can land a float one unit
     # in the last place away from what was written, and a rewritten row
     # would then differ from the committed one.
-    df = pd.read_csv(HOURLY_PATH, index_col="time", parse_dates=["time"],
-                     float_precision="round_trip")
-    idx = pd.DatetimeIndex(df.index)
-    df.index = idx.tz_localize("UTC") if idx.tz is None else idx.tz_convert("UTC")
-    return df[COLUMNS]
+    hourly = pd.read_csv(HOURLY_PATH, index_col="time", parse_dates=["time"],
+                         float_precision="round_trip")
+    hour_index = pd.DatetimeIndex(hourly.index)
+    hourly.index = (hour_index.tz_localize("UTC") if hour_index.tz is None
+                    else hour_index.tz_convert("UTC"))
+    return hourly[COLUMNS]
 
 
-def save_hourly(df):
-    """Write the frame to data/hourly_rv.csv with the index labeled time,
+def save_hourly(hourly):
+    """Write the hourly frame to data/hourly_rv.csv with the index labeled time,
     creating data/ if needed, and return the path. Rows already on disk
     are rewritten with identical text, since pandas writes floats by
     their shortest exact representation, so git sees only the appended
     lines change."""
     HOURLY_PATH.parent.mkdir(exist_ok=True)
-    df[COLUMNS].rename_axis("time").to_csv(HOURLY_PATH, lineterminator="\n")
+    hourly[COLUMNS].rename_axis("time").to_csv(HOURLY_PATH, lineterminator="\n")
     return HOURLY_PATH
 
 
-def complete_hours(df, now):
-    """The rows of df whose hour had ended by now, so a partial hour in
+def complete_hours(hourly, now):
+    """The rows of hourly whose hour had ended by now, so a partial hour in
     progress is never stored as if it were finished."""
-    return df[df.index + pd.Timedelta(hours=1) <= now]
+    return hourly[hourly.index + pd.Timedelta(hours=1) <= now]
 
 
 def update_hourly(now=None, fetch=None):

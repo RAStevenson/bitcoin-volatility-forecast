@@ -15,15 +15,16 @@ def _resolved_logs(tmp_path, monkeypatch, shock=1.0):
 
     idx = pd.date_range("2025-01-01", periods=24 * 400, freq="h", tz="UTC")
     rng = np.random.default_rng(5)
-    lr = pd.Series(rng.normal(-1, 0.3, len(idx)), index=idx).rolling(3).mean()
-    h = pd.DataFrame({"log_rv": lr, "rv": np.exp(lr)}, index=idx)
-    origin = h.index[-25]
-    daily_run.log_forecasts(build_features(h), origin)
+    log_realized_vol = pd.Series(rng.normal(-1, 0.3, len(idx)), index=idx).rolling(3).mean()
+    hourly = pd.DataFrame({"log_rv": log_realized_vol, "rv": np.exp(log_realized_vol)},
+                          index=idx)
+    origin = hourly.index[-25]
+    daily_run.log_forecasts(build_features(hourly), origin)
     # The forecast is fit on data to origin; the actuals for the 24 target
     # hours are then scaled so the test controls how wrong it was.
-    h.loc[h.index > origin, "log_rv"] += np.log(shock)
-    daily_run.score_due(h)
-    return h
+    hourly.loc[hourly.index > origin, "log_rv"] += np.log(shock)
+    daily_run.score_due(hourly)
+    return hourly
 
 
 def test_review_on_target_for_ordinary_day(tmp_path, monkeypatch):

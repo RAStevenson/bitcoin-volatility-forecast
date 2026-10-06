@@ -17,13 +17,13 @@ def log_backtest(scores, results_path, run_config):
     # supported zero-server backend.
     mlflow.set_tracking_uri(f"sqlite:///{(ROOT / 'mlflow.db').as_posix()}")
     mlflow.set_experiment("backtest")
-    for model in scores.index.get_level_values("model").unique():
-        s = scores.xs(model)
-        with mlflow.start_run(run_name=model):
-            mlflow.log_params({"model": model, **run_config})
+    for model_name in scores.index.get_level_values("model").unique():
+        model_scores = scores.xs(model_name)
+        with mlflow.start_run(run_name=model_name):
+            mlflow.log_params({"model": model_name, **run_config})
             for col in ("pinball_mean", "mae", "cov50", "cov90",
                         "skill_vs_persistence"):
-                mlflow.log_metric(col, float(s[col].mean()))
-                mlflow.log_metric(f"{col}_h1", float(s.loc[1, col]))
-                mlflow.log_metric(f"{col}_h24", float(s.loc[24, col]))
+                mlflow.log_metric(col, float(model_scores[col].mean()))
+                mlflow.log_metric(f"{col}_h1", float(model_scores.loc[1, col]))
+                mlflow.log_metric(f"{col}_h24", float(model_scores.loc[24, col]))
             mlflow.log_artifact(str(results_path))
