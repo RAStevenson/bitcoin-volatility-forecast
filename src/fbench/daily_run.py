@@ -325,7 +325,7 @@ def coverage_test_results(evaluations):
         t_statistic = (mean_coverage - COV90_TARGET) / standard_error
         p_value = float(2 * stats.t.sf(abs(t_statistic), n_days - 1))
         test_results[model_name] = {"cov90": mean_coverage, "days": n_days,
-                                    "t": t_statistic, "p": p_value, "alpha": alpha,
+                                    "t_statistic": t_statistic, "p_value": p_value, "alpha": alpha,
                                     "reject": p_value < alpha}
     return test_results
 
@@ -363,7 +363,7 @@ def _figures(model, test_results):
     calibration sentences splice in, so a flagged model and a pending one
     read the same way."""
     result = test_results[model]
-    return f"{model}, coverage {result['cov90']:.4f}, p-value {result['p']:.4f}"
+    return f"{model}, coverage {result['cov90']:.4f}, p-value {result['p_value']:.4f}"
 
 
 def calibration_lines(evaluations, days):
