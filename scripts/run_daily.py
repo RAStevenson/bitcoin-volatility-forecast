@@ -26,46 +26,17 @@ import fbench.models.sarima_model
 import fbench.models.xgboost_model  # noqa: F401
 from fbench import daily_run
 from fbench.commit_timing import first_commits, late_groups
+from fbench.daily_forecast_generator import write_daily_forecast
 from fbench.data.hourly_series import update_hourly
 from fbench.feature_builder import build_features
 from fbench.harness_config import ROOT
+from fbench.review_generator import write_review
 
-parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("--no-push", action="store_true",
-                    help="commit the run's files locally and do not push")
-parser.add_argument("--no-commit", action="store_true",
-                    help="write every file and commit nothing (implies --no-push)")
-args = parser.parse_args()
-
-# Recorded in the day's commit message so the timing audit can say what
-# started a late run and when. GitHub sets GITHUB_EVENT_NAME to
-# "schedule" or "workflow_dispatch"; a run on a person's machine has
-# neither and is recorded as local.
-STARTED = pd.Timestamp.now(tz="UTC")
-TRIGGER = os.environ.get("GITHUB_EVENT_NAME", "local")
-
-
-print("[daily] updating the hourly series from Coinbase", flush=True)
-try:
-    hourly, last_close, n_minutes_fetched = update_hourly()
-except requests.RequestException:
-    traceback.print_exc()
-    sys.exit("[daily] The Coinbase request failed after its retries (full "
-             "error above). Nothing was written or committed.")
-print(f"  minutes fetched: {n_minutes_fetched}; series through {hourly.index[-1]}")
-print("[daily] scoring earlier forecasts whose hours have ended", flush=True)
-n_rows_resolved = daily_run.score_due(hourly)
-print(f"  rows resolved: {n_rows_resolved}")
-
-features = build_features(hourly)
-# The origin is the same clock hour every day (see fixed_origin), never
-# the hour the run happens to start in, so a late start changes nothing
-# about which data the models see.
-print("[daily] choosing the origin hour", flush=True)
-origin = daily_run.fixed_origin(hourly)
-print("[daily] fitting every model and logging its 24-hour forecast", flush=True)
-n_rows_logged = daily_run.log_forecasts(features, origin)
-print(f"  forecast rows logged: {n_rows_logged} (origin {origin})")
+TRACKED_PATHS = ("data/hourly_rv.csv",
+                 "results/forecasts.csv", "results/evaluation.csv",
+                 "results/LIVE.md", "results/FORECAST.md",
+                 "results/REVIEW.md",
+                 "results/figures/fig_live_daily.png")
 
 
 def _audit():
@@ -90,55 +61,31 @@ def _audit():
         return None
 
 
-print("[daily] auditing the commit timing of earlier forecasts", flush=True)
-late_days = _audit()
-print(f"  late forecast days: {'not audited' if late_days is None else len(late_days)}")
-print("[daily] writing LIVE.md", flush=True)
-daily_run.write_live_report(late=late_days)
-from fbench.daily_forecast_generator import write_daily_forecast  # noqa: E402
-
-print("[daily] writing FORECAST.md", flush=True)
-write_daily_forecast(hourly, last_price=last_close)
-from fbench.review_generator import write_review  # noqa: E402
-
-print("[daily] writing REVIEW.md", flush=True)
-write_review(hourly)
-
-
-def _commit_push():
+def _commit_push(commit_message, no_commit, no_push):
     """Commits the extended hourly series, the logs, the reports and
-    the live figure, pushing when an origin remote is configured and
-    --no-push is not set; with --no-commit it returns before staging
-    anything. A failed push stops the run with a message saying the
-    commit was made but GitHub does not have it. Committing happens
+    the live figure with commit_message, pushing when an origin remote
+    is configured and no_push is false; with no_commit it returns before
+    staging anything. A failed push stops the run with a message saying
+    the commit was made but GitHub does not have it. Committing happens
     before the logged target hours close, which is what makes the
-    forecast log pre-outcome evidence. A second run on the same day would normally stage newly
-    resolved rows and a refreshed forecast file, so what stops one is
-    the workflow's skip guard, not this function; the nothing-staged
-    return below only covers a rerun with no new data."""
-    if args.no_commit:
+    forecast log pre-outcome evidence. A second run on the same day
+    would normally stage newly resolved rows and a refreshed forecast
+    file, so what stops one is the workflow's skip guard, not this
+    function; the nothing-staged return below only covers a rerun with
+    no new data."""
+    if no_commit:
         print("  --no-commit: files written, nothing committed")
         return
-    day = pd.Timestamp.now(tz="UTC").date()
-    tracked_paths = [path for path in ("data/hourly_rv.csv",
-                                       "results/forecasts.csv", "results/evaluation.csv",
-                                       "results/LIVE.md", "results/FORECAST.md",
-                                       "results/REVIEW.md",
-                                       "results/figures/fig_live_daily.png")
-                     if (ROOT / path).exists()]
+    tracked_paths = [path for path in TRACKED_PATHS if (ROOT / path).exists()]
     subprocess.run(["git", "add", *tracked_paths], cwd=ROOT, check=True)
     staged_check = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=ROOT)
     if staged_check.returncode == 0:
         print("  nothing new to commit (already ran today)")
         return
-    subprocess.run(["git", "commit", "-m",
-                    f"Daily run {day}: {n_rows_logged} forecast rows logged, "
-                    f"{n_rows_resolved} resolved; origin {origin:%H:%M} UTC; "
-                    f"trigger {TRIGGER}, started {STARTED:%H:%M} UTC"],
-                   cwd=ROOT, check=True)
+    subprocess.run(["git", "commit", "-m", commit_message], cwd=ROOT, check=True)
     remotes = subprocess.run(["git", "remote"], cwd=ROOT,
                              capture_output=True, text=True).stdout.split()
-    if "origin" in remotes and not args.no_push:
+    if "origin" in remotes and not no_push:
         try:
             subprocess.run(["git", "push", "origin", "HEAD"], cwd=ROOT,
                            check=True)
@@ -148,12 +95,69 @@ def _commit_push():
                      "(git's message is above), so GitHub does not have "
                      "today's forecast.")
         print("  committed and pushed")
-    elif args.no_push:
+    elif no_push:
         print("  committed; push skipped (--no-push)")
     else:
         print("  committed; no remote configured, push skipped")
 
 
-print("[daily] committing and pushing", flush=True)
-_commit_push()
-print("[daily] done")
+def main():
+    """Runs every stage of the daily loop in order, printing a plain line
+    before each, and commits and pushes the result unless told not to."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--no-push", action="store_true",
+                        help="commit the run's files locally and do not push")
+    parser.add_argument("--no-commit", action="store_true",
+                        help="write every file and commit nothing (implies --no-push)")
+    args = parser.parse_args()
+
+    # Recorded in the day's commit message so the timing audit can say
+    # what started a late run and when. GitHub sets GITHUB_EVENT_NAME to
+    # "schedule" or "workflow_dispatch"; a run on a person's machine has
+    # neither and is recorded as local.
+    started = pd.Timestamp.now(tz="UTC")
+    trigger = os.environ.get("GITHUB_EVENT_NAME", "local")
+
+    print("[daily] updating the hourly series from Coinbase", flush=True)
+    try:
+        hourly, last_close, n_minutes_fetched = update_hourly()
+    except requests.RequestException:
+        traceback.print_exc()
+        sys.exit("[daily] The Coinbase request failed after its retries (full "
+                 "error above). Nothing was written or committed.")
+    print(f"  minutes fetched: {n_minutes_fetched}; series through {hourly.index[-1]}")
+    print("[daily] scoring earlier forecasts whose hours have ended", flush=True)
+    n_rows_resolved = daily_run.score_due(hourly)
+    print(f"  rows resolved: {n_rows_resolved}")
+
+    features = build_features(hourly)
+    # The origin is the same clock hour every day (see fixed_origin),
+    # never the hour the run happens to start in, so a late start changes
+    # nothing about which data the models see.
+    print("[daily] choosing the origin hour", flush=True)
+    origin = daily_run.fixed_origin(hourly)
+    print("[daily] fitting every model and logging its 24-hour forecast", flush=True)
+    n_rows_logged = daily_run.log_forecasts(features, origin)
+    print(f"  forecast rows logged: {n_rows_logged} (origin {origin})")
+
+    print("[daily] auditing the commit timing of earlier forecasts", flush=True)
+    late_days = _audit()
+    print(f"  late forecast days: {'not audited' if late_days is None else len(late_days)}")
+    print("[daily] writing LIVE.md", flush=True)
+    daily_run.write_live_report(late=late_days)
+    print("[daily] writing FORECAST.md", flush=True)
+    write_daily_forecast(hourly, last_price=last_close)
+    print("[daily] writing REVIEW.md", flush=True)
+    write_review(hourly)
+
+    print("[daily] committing and pushing", flush=True)
+    day = pd.Timestamp.now(tz="UTC").date()
+    commit_message = (f"Daily run {day}: {n_rows_logged} forecast rows logged, "
+                      f"{n_rows_resolved} resolved; origin {origin:%H:%M} UTC; "
+                      f"trigger {trigger}, started {started:%H:%M} UTC")
+    _commit_push(commit_message, args.no_commit, args.no_push)
+    print("[daily] done")
+
+
+if __name__ == "__main__":
+    main()
