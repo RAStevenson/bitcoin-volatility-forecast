@@ -6,8 +6,8 @@ import time
 import pandas as pd
 import requests
 
-BASE = "https://www.bitstamp.net/api/v2/ohlc"
-LIMIT = 1000
+BASE_URL = "https://www.bitstamp.net/api/v2/ohlc"
+MAX_CANDLES = 1000  # API cap per request
 
 
 def fetch_hourly(pair, start, end):
@@ -17,21 +17,22 @@ def fetch_hourly(pair, start, end):
     KeyError rather than returning an empty frame, because the column cast
     runs on an empty result.
     """
-    out = []
-    cur = int(start.timestamp())
-    end_s = int(end.timestamp())
-    while cur < end_s:
-        response = requests.get(f"{BASE}/{pair}/",
-                                params={"step": 3600, "limit": LIMIT, "start": cur},
+    candle_rows = []
+    page_start_seconds = int(start.timestamp())
+    end_seconds = int(end.timestamp())
+    while page_start_seconds < end_seconds:
+        response = requests.get(f"{BASE_URL}/{pair}/",
+                                params={"step": 3600, "limit": MAX_CANDLES,
+                                        "start": page_start_seconds},
                                 timeout=30)
         response.raise_for_status()
         rows = response.json()["data"]["ohlc"]
         if not rows:
             break
-        out.extend(rows)
-        cur = int(rows[-1]["timestamp"]) + 3600
+        candle_rows.extend(rows)
+        page_start_seconds = int(rows[-1]["timestamp"]) + 3600
         time.sleep(0.2)
-    candles = pd.DataFrame(out)
+    candles = pd.DataFrame(candle_rows)
     candles["time"] = pd.to_datetime(candles["timestamp"].astype(int), unit="s",
                                      utc=True)
     candles["close"] = candles["close"].astype(float)

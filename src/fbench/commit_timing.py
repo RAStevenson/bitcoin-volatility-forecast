@@ -31,51 +31,57 @@ def parse_log(text):
     changed rather than with the size of the file. A group re-added by a
     later commit (the log was rewritten whole before 2026-09-10) keeps
     its first commit."""
-    first, current = {}, None
-    for raw in text.splitlines():
-        line = raw.rstrip("\r")
+    first_commit_by_group, current_commit = {}, None
+    for raw_line in text.splitlines():
+        line = raw_line.rstrip("\r")
         if line.startswith(COMMIT_MARK):
-            sha, stamp, *subject = line[len(COMMIT_MARK):].split(maxsplit=2)
-            current = (sha[:9], pd.Timestamp(stamp).tz_convert("UTC"),
-                       subject[0] if subject else "")
-        elif (current and line.startswith("+") and not line.startswith("+++")
+            commit_hash, commit_time, *subject_part = (
+                line[len(COMMIT_MARK):].split(maxsplit=2))
+            current_commit = (commit_hash[:9],
+                              pd.Timestamp(commit_time).tz_convert("UTC"),
+                              subject_part[0] if subject_part else "")
+        elif (current_commit and line.startswith("+") and not line.startswith("+++")
               and not line.startswith("+origin,")):
-            parts = line[1:].split(",")
-            if len(parts) >= 4:
-                first.setdefault((parts[0], parts[3]), current)
-    return first
+            csv_fields = line[1:].split(",")
+            if len(csv_fields) >= 4:
+                first_commit_by_group.setdefault((csv_fields[0], csv_fields[3]),
+                                                 current_commit)
+    return first_commit_by_group
 
 
 def first_commits(root, path=FORECAST_LOG):
     """Run git in root and return parse_log's mapping for the forecast log
     at path, covering every commit that touched it."""
-    out = subprocess.run(
+    git_log = subprocess.run(
         ["git", "log", "--reverse", f"--format={COMMIT_MARK}%H %cI %s", "-p",
          "--unified=0", "--", path],
         cwd=root, capture_output=True, text=True, check=True)
-    return parse_log(out.stdout)
+    return parse_log(git_log.stdout)
 
 
-def late_groups(first):
+def late_groups(first_commit_by_group):
     """The forecast days whose rows were first committed after their first
     target hour completed, one dict per (origin, commit) with the minutes
     late and the number of models, oldest first. The first target hour
     starts an hour after the origin and completes an hour later, so the
     deadline is the origin plus two hours; a group committed before it
     was committed before every one of its target hours completed."""
-    grouped = {}
-    for (origin, _model), (sha, committed, subject) in first.items():
-        grouped.setdefault((origin, sha, committed, subject), 0)
-        grouped[(origin, sha, committed, subject)] += 1
-    late = []
-    for (origin, sha, committed, subject), n_models in sorted(grouped.items()):
+    models_per_commit = {}
+    for (origin, _model), (commit_hash, commit_time, subject) in (
+            first_commit_by_group.items()):
+        models_per_commit.setdefault((origin, commit_hash, commit_time, subject), 0)
+        models_per_commit[(origin, commit_hash, commit_time, subject)] += 1
+    late_days = []
+    for (origin, commit_hash, commit_time, subject), n_models in sorted(
+            models_per_commit.items()):
         deadline = pd.Timestamp(origin) + pd.Timedelta(hours=2)
-        if committed >= deadline:
-            late.append({"origin": pd.Timestamp(origin), "sha": sha,
-                         "committed": committed, "models": n_models,
-                         "minutes_late": (committed - deadline).total_seconds() / 60,
-                         "subject": subject})
-    return late
+        if commit_time >= deadline:
+            late_days.append({
+                "origin": pd.Timestamp(origin), "sha": commit_hash,
+                "committed": commit_time, "models": n_models,
+                "minutes_late": (commit_time - deadline).total_seconds() / 60,
+                "subject": subject})
+    return late_days
 
 
 _TRIGGER_WORDS = {
@@ -94,5 +100,6 @@ def run_note(subject):
     match = re.search(r"trigger (\S+), started (\d\d:\d\d) UTC", subject or "")
     if not match:
         return None
-    what = _TRIGGER_WORDS.get(match.group(1), match.group(1))
-    return f"The run that committed it was started by {what} at {match.group(2)} UTC."
+    trigger_description = _TRIGGER_WORDS.get(match.group(1), match.group(1))
+    return (f"The run that committed it was started by {trigger_description} "
+            f"at {match.group(2)} UTC.")

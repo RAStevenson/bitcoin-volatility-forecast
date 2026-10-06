@@ -18,7 +18,7 @@ class Sarima(BaseForecastModel):
     name = "sarima"
     train_days = SARIMA_TRAIN_DAYS
 
-    def fit(self, train):
+    def fit(self, training_rows):
         """Fits the SARIMAX state space model on the training window
         and stores the fitted result on the instance. Fitting is
         capped at 200 iterations, so a window that has not converged
@@ -26,19 +26,19 @@ class Sarima(BaseForecastModel):
         # Keep the regular hourly index (SARIMAX's Kalman filter handles
         # NaN observations natively); asfreq re-attaches the frequency
         # that .loc slicing drops, so forecasts carry real timestamps.
-        y = train["log_rv"].asfreq("h")
-        self.res_ = cast(SARIMAXResults,
-                         SARIMAX(y, order=(1, 0, 1),
-                                 seasonal_order=(1, 0, 1, 24),
-                                 trend="c").fit(disp=False, maxiter=200))
+        y = training_rows["log_rv"].asfreq("h")
+        self.fitted_results_ = cast(SARIMAXResults,
+                                    SARIMAX(y, order=(1, 0, 1),
+                                            seasonal_order=(1, 0, 1, 24),
+                                            trend="c").fit(disp=False, maxiter=200))
 
-    def predict(self, index):
+    def predict(self, target_times):
         """Returns the five quantile columns built from the forecast
         mean and its standard error under a normal law, so the bands
         are symmetric in log RV and widen with the horizon."""
-        forecast = self.res_.get_forecast(len(index))
+        forecast = self.fitted_results_.get_forecast(len(target_times))
         mean = forecast.predicted_mean.to_numpy()
         standard_error = forecast.se_mean.to_numpy()
         normal_quantiles = norm.ppf(QUANTILES)
         bands = mean[:, None] + standard_error[:, None] * normal_quantiles[None, :]
-        return quantile_frame(bands, index)
+        return quantile_frame(bands, target_times)

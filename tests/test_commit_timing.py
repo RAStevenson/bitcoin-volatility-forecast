@@ -9,7 +9,7 @@ def _row(origin, model):
     return f"+{origin},2026-01-01 11:00:00+00:00,1,{model},1,2,3,4,5"
 
 
-LOG = "\n".join([
+GIT_LOG = "\n".join([
     "@@commit aaaaaaaaaaaa 2026-01-01T10:30:00+00:00 Daily run 2026-01-01",
     "+++ b/results/forecasts.csv",
     HEADER,
@@ -26,16 +26,16 @@ LOG = "\n".join([
 
 
 def test_first_commit_wins_and_removed_lines_are_ignored():
-    first = commit_timing.parse_log(LOG)
-    assert len(first) == 3
-    assert first[("2026-01-01 10:00:00+00:00", "gbm")][0] == "aaaaaaaaa"
-    assert first[("2026-01-02 10:00:00+00:00", "gbm")][0] == "bbbbbbbbb"
+    first_commit_by_group = commit_timing.parse_log(GIT_LOG)
+    assert len(first_commit_by_group) == 3
+    assert first_commit_by_group[("2026-01-01 10:00:00+00:00", "gbm")][0] == "aaaaaaaaa"
+    assert first_commit_by_group[("2026-01-02 10:00:00+00:00", "gbm")][0] == "bbbbbbbbb"
 
 
 def test_only_the_day_committed_after_its_first_target_hour_is_late():
-    late = commit_timing.late_groups(commit_timing.parse_log(LOG))
-    assert len(late) == 1
-    late_day = late[0]
+    late_days = commit_timing.late_groups(commit_timing.parse_log(GIT_LOG))
+    assert len(late_days) == 1
+    late_day = late_days[0]
     assert late_day["origin"] == pd.Timestamp("2026-01-02 10:00:00+00:00")
     assert late_day["models"] == 1
     # deadline is origin + 2h = 12:00 on the 2nd; committed 05:00 on the 3rd

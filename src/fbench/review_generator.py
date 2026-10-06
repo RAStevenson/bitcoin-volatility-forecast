@@ -14,17 +14,17 @@ from fbench.harness_config import QCOLS, RESULTS_DIR
 # Realized-to-forecast ratio of the day's average. Inside the band the
 # day counts as on target; outside, the forecast was too low or too high.
 ON_TARGET = (1 / 1.5, 1.5)
-LOG_COLS = ["origin", "target_time", "horizon", "model", *QCOLS, "y_true"]
+EVAL_LOG_COLUMNS = ["origin", "target_time", "horizon", "model", *QCOLS, "y_true"]
 
 
 def day_stats(evaluations):
     """Per-origin severity across every model: mean absolute log error of
     the median and share of truths inside the 90% band."""
-    abs_err = (evaluations["y_true"] - evaluations["q50"]).abs()
-    inside = ((evaluations["q05"] <= evaluations["y_true"])
-              & (evaluations["y_true"] <= evaluations["q95"]))
-    return pd.DataFrame({"mae": abs_err.groupby(evaluations["origin"]).mean(),
-                         "cov90": inside.groupby(evaluations["origin"]).mean()})
+    abs_log_error = (evaluations["y_true"] - evaluations["q50"]).abs()
+    inside_band = ((evaluations["q05"] <= evaluations["y_true"])
+                   & (evaluations["y_true"] <= evaluations["q95"]))
+    return pd.DataFrame({"mae": abs_log_error.groupby(evaluations["origin"]).mean(),
+                         "cov90": inside_band.groupby(evaluations["origin"]).mean()})
 
 
 def build_review(hourly=None):
@@ -36,72 +36,82 @@ def build_review(hourly=None):
     hourly realized series, the review closes with the daily forecast's own
     claims scored over every resolved day; without it that section is
     omitted."""
-    evaluations = _load(EVAL_LOG, LOG_COLS)
+    evaluations = _load(EVAL_LOG, EVAL_LOG_COLUMNS)
     if evaluations.empty:
         return "# Yesterday in review (generated)\n\nNo resolved forecasts yet.\n"
     # Only fully resolved days: a partially scored origin would compare
     # the forecast with a fraction of its hours.
-    counts = evaluations.groupby("origin")["target_time"].nunique()
-    full = counts[counts == counts.max()].index
-    origin = full.max()
-    day = evaluations[evaluations["origin"] == origin]
+    target_hours_per_origin = evaluations.groupby("origin")["target_time"].nunique()
+    full_origins = target_hours_per_origin[
+        target_hours_per_origin == target_hours_per_origin.max()].index
+    origin = full_origins.max()
+    day_evaluations = evaluations[evaluations["origin"] == origin]
     model = leading_model_asof(evaluations, origin)
-    hours = day[day["model"] == model].sort_values("target_time").copy()
+    model_hours = (day_evaluations[day_evaluations["model"] == model]
+                   .sort_values("target_time").copy())
     for column in [*QCOLS, "y_true"]:
-        hours[column] = np.exp(hours[column])  # log RV -> annualized vol
+        model_hours[column] = np.exp(model_hours[column])  # log RV -> annualized vol
 
-    fc_avg = float(hours["q50"].mean())
-    rz_avg = float(hours["y_true"].mean())
-    ratio = rz_avg / fc_avg
+    forecast_average = float(model_hours["q50"].mean())
+    realized_average = float(model_hours["y_true"].mean())
+    ratio = realized_average / forecast_average
     outcome = ("on target" if ON_TARGET[0] <= ratio <= ON_TARGET[1]
                else "too low" if ratio > ON_TARGET[1] else "too high")
-    inside = ((hours["q05"] <= hours["y_true"]) & (hours["y_true"] <= hours["q95"]))
-    above = hours["y_true"] > hours["q95"]
-    below = hours["y_true"] < hours["q05"]
+    inside_band = ((model_hours["q05"] <= model_hours["y_true"])
+                   & (model_hours["y_true"] <= model_hours["q95"]))
+    above_band = model_hours["y_true"] > model_hours["q95"]
+    below_band = model_hours["y_true"] < model_hours["q05"]
 
-    stats = day_stats(evaluations)
-    day_err = stats.loc[origin, "mae"]
-    n_days = len(stats)
-    place = _rank_phrase(int((stats["mae"] > day_err).sum()) + 1,
-                         int((stats["mae"] < day_err).sum()) + 1, n_days)
+    scores_by_day = day_stats(evaluations)
+    day_abs_log_error = scores_by_day.loc[origin, "mae"]
+    n_days = len(scores_by_day)
+    rank_text = _rank_phrase(
+        int((scores_by_day["mae"] > day_abs_log_error).sum()) + 1,
+        int((scores_by_day["mae"] < day_abs_log_error).sum()) + 1, n_days)
 
-    per_model = day.assign(
-        err=(day["y_true"] - day["q50"]).abs(),
-        inside=(day["q05"] <= day["y_true"]) & (day["y_true"] <= day["q95"]),
-        fc=np.exp(day["q50"]),
-    ).groupby("model").agg(err=("err", "mean"), cov90=("inside", "mean"),
-                           fc=("fc", "mean"))
-    best, worst = per_model["err"].idxmin(), per_model["err"].idxmax()
-    side = ("too low" if (per_model["fc"] < rz_avg).all()
-            else "too high" if (per_model["fc"] > rz_avg).all() else None)
+    per_model = day_evaluations.assign(
+        abs_log_error=(day_evaluations["y_true"] - day_evaluations["q50"]).abs(),
+        inside_band=((day_evaluations["q05"] <= day_evaluations["y_true"])
+                     & (day_evaluations["y_true"] <= day_evaluations["q95"])),
+        forecast_vol=np.exp(day_evaluations["q50"]),
+    ).groupby("model").agg(abs_log_error=("abs_log_error", "mean"),
+                           cov90=("inside_band", "mean"),
+                           forecast_vol=("forecast_vol", "mean"))
+    best = per_model["abs_log_error"].idxmin()
+    worst = per_model["abs_log_error"].idxmax()
+    shared_direction = (
+        "too low" if (per_model["forecast_vol"] < realized_average).all()
+        else "too high" if (per_model["forecast_vol"] > realized_average).all()
+        else None)
 
-    local = hours["target_time"].dt.tz_convert(LOCAL_TZ)
-    miss = (hours["y_true"] / hours["q50"]).to_numpy()
-    worst_ix = np.argsort(-np.abs(np.log(miss)))[:3]
+    local_times = model_hours["target_time"].dt.tz_convert(LOCAL_TZ)
+    realized_to_forecast = (model_hours["y_true"] / model_hours["q50"]).to_numpy()
+    worst_hour_positions = np.argsort(-np.abs(np.log(realized_to_forecast)))[:3]
     worst_lines = [
-        f"| {local.iloc[i].strftime('%Y-%m-%d %H:00')} | "
-        f"{hours['q50'].iloc[i]:.0%} | "
-        f"{hours['q05'].iloc[i]:.0%}-{hours['q95'].iloc[i]:.0%} | "
-        f"{hours['y_true'].iloc[i]:.0%} | {miss[i]:.1f}x |"
-        for i in worst_ix]
+        f"| {local_times.iloc[i].strftime('%Y-%m-%d %H:00')} | "
+        f"{model_hours['q50'].iloc[i]:.0%} | "
+        f"{model_hours['q05'].iloc[i]:.0%}-{model_hours['q95'].iloc[i]:.0%} | "
+        f"{model_hours['y_true'].iloc[i]:.0%} | {realized_to_forecast[i]:.1f}x |"
+        for i in worst_hour_positions]
 
-    day_local = origin.tz_convert(LOCAL_TZ).date()
+    issue_date = origin.tz_convert(LOCAL_TZ).date()
+    n_hours = len(model_hours)
     lines = [
-        f"# Yesterday in review - forecast issued {day_local} (generated)",
+        f"# Yesterday in review - forecast issued {issue_date} (generated)",
         "",
         f"**The forecast was {outcome}.** The {model} median averaged "
-        f"{fc_avg:.0%} annualized volatility over the 24 hours; realized "
-        f"averaged {rz_avg:.0%}, {ratio:.2f}x the forecast.",
+        f"{forecast_average:.0%} annualized volatility over the 24 hours; realized "
+        f"averaged {realized_average:.0%}, {ratio:.2f}x the forecast.",
         "",
-        f"- {inside.sum()} of {len(hours)} hours landed inside the 90% band "
-        f"({above.sum()} above it, {below.sum()} below). A calibrated band "
-        f"holds about {round(0.9 * len(hours))} of {len(hours)}.",
-        f"- Across all models this was the {place} (mean log error "
-        f"{day_err:.3f}, median day {stats['mae'].median():.3f}).",
+        f"- {inside_band.sum()} of {n_hours} hours landed inside the 90% band "
+        f"({above_band.sum()} above it, {below_band.sum()} below). A calibrated band "
+        f"holds about {round(0.9 * n_hours)} of {n_hours}.",
+        f"- Across all models this was the {rank_text} (mean log error "
+        f"{day_abs_log_error:.3f}, median day {scores_by_day['mae'].median():.3f}).",
         f"- Best median that day: {best}; worst: {worst}."
-        + (f" Every model forecast {side}, so the error traces to what "
+        + (f" Every model forecast {shared_direction}, so the error traces to what "
            "was knowable that day rather than to any one model's choice."
-           if side else
+           if shared_direction else
            " Some models forecast too high and others too low."),
         "",
         "Largest hourly errors (local time, " + LOCAL_TZ + "):",

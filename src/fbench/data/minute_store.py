@@ -39,9 +39,9 @@ def save_minutes(minutes):
 
 def gap_report(bars, granularity_seconds):
     """Count and locate missing bars against a complete regular grid."""
-    full = pd.date_range(bars["time"].min(), bars["time"].max(),
-                         freq=f"{granularity_seconds}s", tz="UTC")
-    missing = full.difference(pd.DatetimeIndex(bars["time"]))
-    return {"expected": len(full), "present": len(bars),
-            "missing": len(missing),
-            "missing_sample": list(missing[:10].astype(str))}
+    expected_times = pd.date_range(bars["time"].min(), bars["time"].max(),
+                                   freq=f"{granularity_seconds}s", tz="UTC")
+    missing_times = expected_times.difference(pd.DatetimeIndex(bars["time"]))
+    return {"expected": len(expected_times), "present": len(bars),
+            "missing": len(missing_times),
+            "missing_sample": list(missing_times[:10].astype(str))}

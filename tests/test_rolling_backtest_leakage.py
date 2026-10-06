@@ -11,20 +11,20 @@ def test_engine_never_shows_future_to_models(monkeypatch):
     Persistence's fit is wrapped to note the last timestamp it was given
     at each origin, and every one must be at or before that origin."""
     timestamps = pd.date_range("2025-01-01", periods=24 * 200, freq="h", tz="UTC")
-    rng = np.random.default_rng(0)
-    feats = build_features(
-        pd.DataFrame({"log_rv": rng.normal(size=len(timestamps))}, index=timestamps))
-    origins = make_origins(feats.index, test_days=20, stride_days=5)
+    random_generator = np.random.default_rng(0)
+    features = build_features(pd.DataFrame(
+        {"log_rv": random_generator.normal(size=len(timestamps))}, index=timestamps))
+    origins = make_origins(features.index, test_days=20, stride_days=5)
     last_seen = []
     original_fit = Persistence.fit
 
-    def noting_fit(self, train):
-        last_seen.append(train.index.max())
-        return original_fit(self, train)
+    def noting_fit(self, training_rows):
+        last_seen.append(training_rows.index.max())
+        return original_fit(self, training_rows)
 
     monkeypatch.setattr(Persistence, "fit", noting_fit)
-    results = run_backtest(feats, ["persistence"], origins)
+    forecasts = run_backtest(features, ["persistence"], origins)
     assert len(last_seen) == len(origins)
-    for origin, seen in zip(origins, last_seen, strict=True):
-        assert seen <= origin
-    assert (results["target_time"] > results["origin"]).all()
+    for origin, last_seen_time in zip(origins, last_seen, strict=True):
+        assert last_seen_time <= origin
+    assert (forecasts["target_time"] > forecasts["origin"]).all()

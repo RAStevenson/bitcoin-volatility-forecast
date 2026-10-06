@@ -6,23 +6,24 @@ from fbench import daily_run, review_generator
 from fbench.feature_builder import build_features
 
 
-def _resolved_logs(tmp_path, monkeypatch, shock=1.0):
+def _resolved_logs(tmp_path, monkeypatch, realized_multiplier=1.0):
     monkeypatch.setattr(daily_run, "FORECAST_LOG", tmp_path / "forecasts.csv")
     monkeypatch.setattr(daily_run, "EVAL_LOG", tmp_path / "evaluation.csv")
     monkeypatch.setattr(daily_run, "RESULTS_DIR", tmp_path)
     monkeypatch.setattr(review_generator, "EVAL_LOG", daily_run.EVAL_LOG)
     monkeypatch.setattr(review_generator, "RESULTS_DIR", tmp_path)
 
-    idx = pd.date_range("2025-01-01", periods=24 * 400, freq="h", tz="UTC")
-    rng = np.random.default_rng(5)
-    log_realized_vol = pd.Series(rng.normal(-1, 0.3, len(idx)), index=idx).rolling(3).mean()
+    timestamps = pd.date_range("2025-01-01", periods=24 * 400, freq="h", tz="UTC")
+    random_generator = np.random.default_rng(5)
+    log_realized_vol = pd.Series(random_generator.normal(-1, 0.3, len(timestamps)),
+                                 index=timestamps).rolling(3).mean()
     hourly = pd.DataFrame({"log_rv": log_realized_vol, "rv": np.exp(log_realized_vol)},
-                          index=idx)
+                          index=timestamps)
     origin = hourly.index[-25]
     daily_run.log_forecasts(build_features(hourly), origin)
     # The forecast is fit on data to origin; the actuals for the 24 target
     # hours are then scaled so the test controls how wrong it was.
-    hourly.loc[hourly.index > origin, "log_rv"] += np.log(shock)
+    hourly.loc[hourly.index > origin, "log_rv"] += np.log(realized_multiplier)
     daily_run.score_due(hourly)
     return hourly
 
@@ -36,7 +37,7 @@ def test_review_on_target_for_ordinary_day(tmp_path, monkeypatch):
 
 
 def test_review_calls_a_large_miss_too_low(tmp_path, monkeypatch):
-    _resolved_logs(tmp_path, monkeypatch, shock=4.0)
+    _resolved_logs(tmp_path, monkeypatch, realized_multiplier=4.0)
     text = review_generator.write_review().read_text()
     assert "too low" in text
     assert "this was the only scored day so far" in text

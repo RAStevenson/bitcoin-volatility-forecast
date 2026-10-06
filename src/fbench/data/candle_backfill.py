@@ -8,13 +8,13 @@ from fbench.harness_config import HISTORY_START, MINUTE_SECONDS, PRODUCT
 
 # Fetch and persist in monthly chunks so an interrupted run loses at most
 # one chunk; the watermark then resumes from what was saved.
-CHUNK = pd.Timedelta(days=30)
+CHUNK_SPAN = pd.Timedelta(days=30)
 
 
 def backfill(verbose=True):
     """Bring the minute store up to now. Returns rows added."""
     end = pd.Timestamp.now(tz="UTC").floor("min")
-    added = 0
+    rows_added = 0
     while True:
         existing = minute_store.load_minutes()
         if existing.empty:
@@ -24,16 +24,16 @@ def backfill(verbose=True):
                 seconds=MINUTE_SECONDS)
         if start >= end:
             break
-        chunk_end = min(start + CHUNK, end)
+        chunk_end = min(start + CHUNK_SPAN, end)
         if verbose:
             print(f"backfilling {PRODUCT}: {start} -> {chunk_end}",
                   flush=True)
-        new = coinbase_client.fetch_candles(PRODUCT, start, chunk_end,
-                                     MINUTE_SECONDS)
-        merged = (pd.concat([existing, new]).drop_duplicates("time")
+        fetched_minutes = coinbase_client.fetch_candles(PRODUCT, start, chunk_end,
+                                                        MINUTE_SECONDS)
+        merged = (pd.concat([existing, fetched_minutes]).drop_duplicates("time")
                     .sort_values("time").reset_index(drop=True))
         minute_store.save_minutes(merged)
-        added += len(new)
+        rows_added += len(fetched_minutes)
         if verbose:
-            print(f"  +{len(new)} rows, total {len(merged)}", flush=True)
-    return added
+            print(f"  +{len(fetched_minutes)} rows, total {len(merged)}", flush=True)
+    return rows_added

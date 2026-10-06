@@ -11,7 +11,7 @@ from fbench.data import minute_store
 from fbench.data.candle_backfill import backfill
 from fbench.harness_config import MINUTE_SECONDS
 
-added = backfill()
-final = minute_store.load_minutes()
-print("rows added:", added, "| total rows:", len(final))
-print(minute_store.gap_report(final, MINUTE_SECONDS))
+rows_added = backfill()
+stored_minutes = minute_store.load_minutes()
+print("rows added:", rows_added, "| total rows:", len(stored_minutes))
+print(minute_store.gap_report(stored_minutes, MINUTE_SECONDS))

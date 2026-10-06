@@ -45,7 +45,7 @@ def _fig_pinball(scores, fig_prefix):
     return path
 
 
-def write_report(scores, hourly, results_path, out_name="REPORT.md",
+def write_report(scores, hourly, results_path, report_name="REPORT.md",
                  fig_prefix="fig", title="Backtest report",
                  value_label="median annualized RV", dataset_stats=None):
     """Write the backtest report into results/, its two figures into
@@ -66,11 +66,11 @@ def write_report(scores, hourly, results_path, out_name="REPORT.md",
             "dataset_span_end": str(hourly.index.max()),
             "dataset_nan_hours": int(hourly["rv"].isna().sum()),
         }
-    lead = scores.groupby("model")[
+    mean_over_horizons = scores.groupby("model")[
         ["pinball_mean", "mae", "cov50", "cov90",
          "skill_vs_persistence"]].mean().sort_values("pinball_mean")
-    horizon_1 = scores.xs(1, level="horizon").sort_values("pinball_mean")
-    horizon_24 = scores.xs(24, level="horizon").sort_values("pinball_mean")
+    horizon_1_scores = scores.xs(1, level="horizon").sort_values("pinball_mean")
+    horizon_24_scores = scores.xs(24, level="horizon").sort_values("pinball_mean")
     lines = [
         f"# {title} (generated)", "",
         f"Results file: {results_path.name}. All metrics are on the log "
@@ -86,18 +86,19 @@ def write_report(scores, hourly, results_path, out_name="REPORT.md",
         f"- NaN target hours (data gaps, excluded from training and "
         f"scoring): {dataset_stats['dataset_nan_hours']}", "",
         "## Results table, mean over horizons 1-24", "",
-        lead.round(4).to_markdown(), "",
-        "## Horizon 1", "", horizon_1.round(4).to_markdown(), "",
-        "## Horizon 24", "", horizon_24.round(4).to_markdown(), "",
+        mean_over_horizons.round(4).to_markdown(), "",
+        "## Horizon 1", "", horizon_1_scores.round(4).to_markdown(), "",
+        "## Horizon 24", "", horizon_24_scores.round(4).to_markdown(), "",
     ]
-    if {"persistence", "seasonal_persistence"} <= set(horizon_24.index):
+    if {"persistence", "seasonal_persistence"} <= set(horizon_24_scores.index):
         lines += [
             "The identical persistence and seasonal_persistence rows at "
             "horizon 24 are by construction: there the seasonal lag is the "
             "same last observed hour, and both bands draw on the same "
             "24-hour change distribution.", "",
         ]
-    if horizon_1["n"].nunique() > 1 or horizon_24["n"].nunique() > 1:
+    if (horizon_1_scores["n"].nunique() > 1
+            or horizon_24_scores["n"].nunique() > 1):
         lines += [
             "Where a model's n falls short of the maximum, rows whose "
             "forecast came back NaN (a degenerate fit) were dropped "
@@ -129,6 +130,6 @@ def write_report(scores, hourly, results_path, out_name="REPORT.md",
     ]
     _fig_hourly_profile(hourly, fig_prefix, value_label)
     _fig_pinball(scores, fig_prefix)
-    path = RESULTS_DIR / out_name
+    path = RESULTS_DIR / report_name
     path.write_text("\n".join(lines))
     return path

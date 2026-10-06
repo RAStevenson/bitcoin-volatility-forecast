@@ -31,18 +31,19 @@ def _short_names(path):
     """Return one 'file:line name' string per short name bound in the
     file at path that is not on the allowed list."""
     tree = ast.parse(path.read_text(encoding="utf-8"))
-    rel = path.relative_to(ROOT).as_posix()
-    found = set()
+    relative_path = path.relative_to(ROOT).as_posix()
+    flagged = set()
     for line, name in _bound_names(tree):
-        core = name.strip("_")
-        if core and len(core) <= 2 and core not in ALLOWED_SHORT:
-            found.add((line, name))
-    return [f"{rel}:{line} {name}" for line, name in sorted(found)]
+        stripped_name = name.strip("_")
+        if (stripped_name and len(stripped_name) <= 2
+                and stripped_name not in ALLOWED_SHORT):
+            flagged.add((line, name))
+    return [f"{relative_path}:{line} {name}" for line, name in sorted(flagged)]
 
 
 def test_every_name_says_what_it_holds():
-    short = [entry for folder in SOURCE_DIRS
-             for path in sorted((ROOT / folder).rglob("*.py"))
-             for entry in _short_names(path)]
-    assert not short, ("short names (python-repo-layout, variable names):\n  "
-                       + "\n  ".join(short))
+    flagged = [entry for folder in SOURCE_DIRS
+               for path in sorted((ROOT / folder).rglob("*.py"))
+               for entry in _short_names(path)]
+    assert not flagged, ("short names (python-repo-layout, variable names):\n  "
+                         + "\n  ".join(flagged))

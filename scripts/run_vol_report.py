@@ -28,20 +28,20 @@ args = parser.parse_args()
 if args.results:
     results_path = Path(args.results)
 else:
-    candidates = sorted((RESULTS_DIR / "backtest").glob("backtest_*.parquet"))
-    if not candidates:
+    backtest_files = sorted((RESULTS_DIR / "backtest").glob("backtest_*.parquet"))
+    if not backtest_files:
         sys.exit("no backtest parquet in results/backtest/")
-    results_path = candidates[-1]
+    results_path = backtest_files[-1]
 
 results = pd.read_parquet(results_path)
 hourly = load_hourly()
 scores = add_skill(score(results))
 
 run_config = json.loads(results_path.with_suffix(".json").read_text())
-stat_keys = ("dataset_hours", "dataset_span_start", "dataset_span_end",
-             "dataset_nan_hours")
-dataset_stats = ({key: run_config[key] for key in stat_keys}
-                 if all(key in run_config for key in stat_keys) else None)
+snapshot_keys = ("dataset_hours", "dataset_span_start", "dataset_span_end",
+                 "dataset_nan_hours")
+dataset_stats = ({key: run_config[key] for key in snapshot_keys}
+                 if all(key in run_config for key in snapshot_keys) else None)
 report_path = write_report(scores, hourly, results_path,
                            dataset_stats=dataset_stats)
 run_config.pop("models", None)  # param values must be scalars

@@ -18,8 +18,8 @@ def _stored(tmp_path, monkeypatch):
     own save, with the module pointed at a temporary file. Returns the
     file's lines."""
     monkeypatch.setattr(hourly_series, "HOURLY_PATH", tmp_path / "hourly_rv.csv")
-    seed = _minutes("2026-01-01 00:00", 120)
-    hourly_series.save_hourly(hourly_realized_vol(seed.set_index("time")["close"]))
+    seed_minutes = _minutes("2026-01-01 00:00", 120)
+    hourly_series.save_hourly(hourly_realized_vol(seed_minutes.set_index("time")["close"]))
     return (tmp_path / "hourly_rv.csv").read_text().splitlines()
 
 

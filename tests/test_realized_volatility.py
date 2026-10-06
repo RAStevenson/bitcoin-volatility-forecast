@@ -16,28 +16,28 @@ def test_constant_return_hour_matches_closed_form():
     # only has 59: diff() consumes the first price, and the return stamped
     # 01:00 (spanning 00:59-01:00) belongs to hour 1 by floor convention.
     closes = _minutes(121)  # covers hours 0 and 1 fully
-    out = hourly_realized_vol(closes)
-    assert out["n_minutes"].iloc[1] == 60
+    hourly = hourly_realized_vol(closes)
+    assert hourly["n_minutes"].iloc[1] == 60
     expected = np.sqrt(60 * 0.001 ** 2) * ANNUALIZER
-    assert abs(out["rv"].iloc[1] - expected) < 1e-9
+    assert abs(hourly["rv"].iloc[1] - expected) < 1e-9
 
 
 def test_close_is_the_hours_last_minute():
     closes = _minutes(121)
-    out = hourly_realized_vol(closes)
+    hourly = hourly_realized_vol(closes)
     # hour 1 spans minutes 60 to 119; its close is the price at minute 119
-    assert out["close"].iloc[1] == closes.iloc[119]
+    assert hourly["close"].iloc[1] == closes.iloc[119]
 
 
 def test_sparse_hour_is_nan():
     closes = _minutes(61)
     sparse = closes.drop(closes.index[10:40])  # 30 minutes removed from hour 0
-    out = hourly_realized_vol(sparse)
-    assert np.isnan(out["rv"].iloc[0])
+    hourly = hourly_realized_vol(sparse)
+    assert np.isnan(hourly["rv"].iloc[0])
 
 
 def test_missing_hour_appears_as_nan_row():
     first_closes = _minutes(61)
     later_closes = _minutes(61, start="2026-01-01 03:00")
-    out = hourly_realized_vol(pd.concat([first_closes, later_closes]))
-    assert pd.isna(out.loc["2026-01-01 01:00+00:00", "rv"])
+    hourly = hourly_realized_vol(pd.concat([first_closes, later_closes]))
+    assert pd.isna(hourly.loc["2026-01-01 01:00+00:00", "rv"])

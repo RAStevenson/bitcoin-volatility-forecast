@@ -22,13 +22,13 @@ def hourly_realized_vol(minute_close):
     exists, since a price is a price however sparse the hour.
     """
     minute_return = np.log(minute_close).diff().dropna()
-    hour = minute_return.index.floor("h")
-    sum_of_squares = minute_return.pow(2).groupby(hour).sum()
-    n_minutes = minute_return.groupby(hour).count()
-    out = pd.DataFrame({"rv": np.sqrt(sum_of_squares) * ANNUALIZER,
-                        "n_minutes": n_minutes})
-    out.loc[out["n_minutes"] < MIN_MINUTES_PER_HOUR, "rv"] = np.nan
-    out["log_rv"] = np.log(out["rv"])
-    out["close"] = minute_close.groupby(minute_close.index.floor("h")).last()
-    full = pd.date_range(out.index.min(), out.index.max(), freq="h", tz="UTC")
-    return out.reindex(full)  # absent hours become explicit NaN rows
+    return_hour = minute_return.index.floor("h")
+    sum_of_squares = minute_return.pow(2).groupby(return_hour).sum()
+    n_minutes = minute_return.groupby(return_hour).count()
+    hourly = pd.DataFrame({"rv": np.sqrt(sum_of_squares) * ANNUALIZER,
+                           "n_minutes": n_minutes})
+    hourly.loc[hourly["n_minutes"] < MIN_MINUTES_PER_HOUR, "rv"] = np.nan
+    hourly["log_rv"] = np.log(hourly["rv"])
+    hourly["close"] = minute_close.groupby(minute_close.index.floor("h")).last()
+    every_hour = pd.date_range(hourly.index.min(), hourly.index.max(), freq="h", tz="UTC")
+    return hourly.reindex(every_hour)  # absent hours become explicit NaN rows

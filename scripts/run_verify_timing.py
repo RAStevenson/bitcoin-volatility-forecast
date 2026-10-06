@@ -26,23 +26,23 @@ parser = argparse.ArgumentParser(
                 "target hour is origin + 1h and completes an hour later).")
 parser.parse_args()
 
-first = first_commits(ROOT)
-if not first:
+first_commit_by_group = first_commits(ROOT)
+if not first_commit_by_group:
     sys.exit("no committed forecast rows found")
 
-days = {}
-for (origin, _model), (sha, committed, _subject) in first.items():
-    days.setdefault((origin, sha, committed), 0)
-    days[(origin, sha, committed)] += 1
-for (origin, sha, committed), n_models in sorted(days.items()):
-    margin = ((pd.Timestamp(origin) + pd.Timedelta(hours=2)) - committed
-              ).total_seconds() / 60
-    print(f"{'OK  ' if margin > 0 else 'LATE'} origin {origin}  "
-          f"committed {committed} ({sha})  margin {margin:+.0f} min  "
+models_per_day = {}
+for (origin, _model), (commit_sha, committed_at, _subject) in first_commit_by_group.items():
+    models_per_day.setdefault((origin, commit_sha, committed_at), 0)
+    models_per_day[(origin, commit_sha, committed_at)] += 1
+for (origin, commit_sha, committed_at), n_models in sorted(models_per_day.items()):
+    margin_minutes = ((pd.Timestamp(origin) + pd.Timedelta(hours=2)) - committed_at
+                      ).total_seconds() / 60
+    print(f"{'OK  ' if margin_minutes > 0 else 'LATE'} origin {origin}  "
+          f"committed {committed_at} ({commit_sha})  margin {margin_minutes:+.0f} min  "
           f"models: {n_models}")
 
-late = late_groups(first)
-n_late = sum(group["models"] for group in late)
-print(f"\n{len(first)} (origin, model) groups checked, {n_late} committed "
-      f"after their first target hour completed")
-sys.exit(1 if late else 0)
+late_days = late_groups(first_commit_by_group)
+n_late_groups = sum(late_day["models"] for late_day in late_days)
+print(f"\n{len(first_commit_by_group)} (origin, model) groups checked, "
+      f"{n_late_groups} committed after their first target hour completed")
+sys.exit(1 if late_days else 0)
