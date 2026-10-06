@@ -31,18 +31,19 @@ def run_backtest(feats, model_names, origins, horizon=HORIZON):
     for origin in origins:
         future = pd.date_range(origin + pd.Timedelta(hours=1),
                                periods=horizon, freq="h", tz="UTC")
-        for name in model_names:
-            cls = REGISTRY[name]
+        for model_name in model_names:
+            cls = REGISTRY[model_name]
             train = feats.loc[origin - pd.Timedelta(days=cls.train_days):
                               origin]
             # The two guards below ARE the leakage policy. Never remove.
             assert train.index.max() <= origin
             assert future.min() > origin
-            m = cls()
-            m.fit(train)
-            q = m.predict(future)
-            q = q.assign(origin=origin, model=name,
-                         horizon=range(1, horizon + 1),
-                         y_true=feats["log_rv"].reindex(future).to_numpy())
-            out.append(q.rename_axis("target_time").reset_index())
+            model = cls()
+            model.fit(train)
+            quantile_forecast = model.predict(future)
+            quantile_forecast = quantile_forecast.assign(
+                origin=origin, model=model_name,
+                horizon=range(1, horizon + 1),
+                y_true=feats["log_rv"].reindex(future).to_numpy())
+            out.append(quantile_forecast.rename_axis("target_time").reset_index())
     return pd.concat(out, ignore_index=True)

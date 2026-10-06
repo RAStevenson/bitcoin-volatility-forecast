@@ -27,10 +27,10 @@ from fbench.rolling_backtest import make_origins, run_backtest
 
 # Each model module is imported here because the import is what
 # registers its model class.
-for mod in ("har_model", "sarima_model", "prophet_model",
-            "xgboost_model", "nhits_model"):
+for module_name in ("har_model", "sarima_model", "prophet_model",
+                    "xgboost_model", "nhits_model"):
     with contextlib.suppress(ImportError):
-        __import__(f"fbench.models.{mod}")
+        __import__(f"fbench.models.{module_name}")
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--models", default=",".join(sorted(REGISTRY)))
@@ -43,21 +43,21 @@ args = parser.parse_args()
 names = args.models.split(",")
 
 hourly = load_hourly()
-feats = build_features(hourly)
-origins = make_origins(feats.index, args.test_days, args.stride)
+features = build_features(hourly)
+origins = make_origins(features.index, args.test_days, args.stride)
 print(f"models={names} origins={len(origins)}", flush=True)
 
-rows, t_all = [], time.perf_counter()
+rows, run_start_time = [], time.perf_counter()
 for name in names:
-    t0 = time.perf_counter()
-    rows.append(run_backtest(feats, [name], origins))
-    print(f"{name}: {time.perf_counter() - t0:.1f}s", flush=True)
-res = pd.concat(rows, ignore_index=True)
+    model_start_time = time.perf_counter()
+    rows.append(run_backtest(features, [name], origins))
+    print(f"{name}: {time.perf_counter() - model_start_time:.1f}s", flush=True)
+results = pd.concat(rows, ignore_index=True)
 
 (RESULTS_DIR / "backtest").mkdir(parents=True, exist_ok=True)
 stamp = pd.Timestamp.now(tz="UTC").strftime("%Y%m%d")
 out = RESULTS_DIR / "backtest" / f"backtest_{stamp}.parquet"
-res.to_parquet(out, index=False)
+results.to_parquet(out, index=False)
 run_config = {"stride": args.stride, "test_days": args.test_days,
               "horizon": HORIZON, "models": names, "origins": len(origins),
               # Dataset snapshot, so a later re-report describes the data
@@ -67,13 +67,14 @@ run_config = {"stride": args.stride, "test_days": args.test_days,
               "dataset_span_end": str(hourly.index.max()),
               "dataset_nan_hours": int(hourly["rv"].isna().sum())}
 out.with_suffix(".json").write_text(json.dumps(run_config))
-print(f"rows={len(res)} -> {out.name}  total {time.perf_counter()-t_all:.0f}s")
+print(f"rows={len(results)} -> {out.name}  "
+      f"total {time.perf_counter() - run_start_time:.0f}s")
 
 if not args.no_report:
     # Same chain run_vol_report.py applies to an existing parquet. It runs
     # exactly once per invocation, so one backtest logs once to
     # MLflow.
-    scores = add_skill(score(res))
+    scores = add_skill(score(results))
     report_path = write_report(scores, hourly, out)
     run_config.pop("models", None)  # param values must be scalars
     log_backtest(scores, out, run_config)

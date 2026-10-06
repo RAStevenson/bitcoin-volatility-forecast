@@ -34,10 +34,10 @@ def _load(path, cols):
     case."""
     if not path.exists():
         return pd.DataFrame(columns=cols)
-    df = pd.read_csv(path)
-    for c in ("origin", "target_time"):
-        df[c] = pd.to_datetime(df[c], utc=True)
-    return df
+    log = pd.read_csv(path)
+    for column in ("origin", "target_time"):
+        log[column] = pd.to_datetime(log[column], utc=True)
+    return log
 
 
 def fixed_origin(hourly, now=None):
@@ -77,21 +77,21 @@ def log_forecasts(feats, origin):
     future = pd.date_range(origin + pd.Timedelta(hours=1), periods=HORIZON,
                            freq="h", tz="UTC")
     added = []
-    for name, cls in sorted(REGISTRY.items()):
-        if name in done:
+    for model_name, model_class in sorted(REGISTRY.items()):
+        if model_name in done:
             continue
-        train = feats.loc[origin - pd.Timedelta(days=cls.train_days):origin]
+        train = feats.loc[origin - pd.Timedelta(days=model_class.train_days):origin]
         assert train.index.max() <= origin
-        m = cls()
-        m.fit(train)
-        q = m.predict(future)
-        q = q.assign(origin=origin, model=name,
-                     horizon=range(1, HORIZON + 1))
-        added.append(q.rename_axis("target_time").reset_index())
+        model = model_class()
+        model.fit(train)
+        quantile_forecast = model.predict(future)
+        quantile_forecast = quantile_forecast.assign(origin=origin, model=model_name,
+                                                     horizon=range(1, HORIZON + 1))
+        added.append(quantile_forecast.rename_axis("target_time").reset_index())
     if added:
         RESULTS_DIR.mkdir(exist_ok=True)
         _append(FORECAST_LOG, pd.concat(added, ignore_index=True)[LOG_COLS])
-    return sum(len(a) for a in added)
+    return sum(len(forecast_rows) for forecast_rows in added)
 
 
 def _append(path, rows):
@@ -101,8 +101,8 @@ def _append(path, rows):
     new = not path.exists()
     term = "\n"
     if not new:
-        with open(path, "rb") as f:
-            term = "\r\n" if b"\r\n" in f.readline() else "\n"
+        with open(path, "rb") as log_file:
+            term = "\r\n" if b"\r\n" in log_file.readline() else "\n"
     rows.to_csv(path, index=False, mode="a", header=new, lineterminator=term)
 
 
@@ -112,11 +112,12 @@ def score_due(hourly, now=None):
     resolved. `now` defaults to the current UTC time and exists so tests
     can place the clock."""
     now = pd.Timestamp.now(tz="UTC") if now is None else now
-    fc = _load(FORECAST_LOG, LOG_COLS)
-    ev = _load(EVAL_LOG, [*LOG_COLS, "y_true"])
-    seen = set(zip(ev["origin"], ev["target_time"], ev["model"], strict=True))
-    pend = fc[~fc.apply(lambda r: (r["origin"], r["target_time"],
-                                   r["model"]) in seen, axis=1)].copy()
+    forecasts = _load(FORECAST_LOG, LOG_COLS)
+    evaluations = _load(EVAL_LOG, [*LOG_COLS, "y_true"])
+    seen = set(zip(evaluations["origin"], evaluations["target_time"],
+                   evaluations["model"], strict=True))
+    pend = forecasts[~forecasts.apply(lambda row: (row["origin"], row["target_time"],
+                                                   row["model"]) in seen, axis=1)].copy()
     # An hour counts as observed only once it has ended. The realized
     # series marks an hour valid at 45 minutes, so a run late in the hour
     # would otherwise resolve a target on partial data and write that
@@ -133,32 +134,33 @@ def score_due(hourly, now=None):
     return len(resolved)
 
 
-def day_level_scores(ev):
+def day_level_scores(evaluations):
     """Per-model error of the day's average volatility, the level that
     could be one input to a position size, over fully resolved days: the mean absolute
     log error of the median path's 24-hour average against the realized
     24-hour average (day_error), and one minus that error over the
     persistence model's on the same days (day_skill), so a model is
     compared with the baseline only where both forecast the same days."""
-    e = ev.dropna(subset=["y_true", "q50"]).copy()
-    e["fc"] = np.exp(e["q50"])
-    e["rz"] = np.exp(e["y_true"])
-    d = e.groupby(["model", "origin"]).agg(n=("target_time", "nunique"),
-                                           fc=("fc", "mean"), rz=("rz", "mean"))
-    d = d[d["n"] == HORIZON]
-    err = np.log(d["rz"] / d["fc"]).abs().unstack("model")
+    scored = evaluations.dropna(subset=["y_true", "q50"]).copy()
+    scored["fc"] = np.exp(scored["q50"])
+    scored["rz"] = np.exp(scored["y_true"])
+    daily = scored.groupby(["model", "origin"]).agg(n=("target_time", "nunique"),
+                                                    fc=("fc", "mean"), rz=("rz", "mean"))
+    daily = daily[daily["n"] == HORIZON]
+    err = np.log(daily["rz"] / daily["fc"]).abs().unstack("model")
     out = pd.DataFrame({"day_error": err.mean()})
     if "persistence" in err.columns:
         base = err["persistence"]
         skill = {}
-        for m in err.columns:
-            ok = err[m].notna() & base.notna()
-            skill[m] = 1 - err.loc[ok, m].mean() / base[ok].mean()
+        for model_name in err.columns:
+            both_scored = err[model_name].notna() & base.notna()
+            skill[model_name] = (1 - err.loc[both_scored, model_name].mean()
+                                 / base[both_scored].mean())
         out["day_skill"] = pd.Series(skill)
     return out
 
 
-def matched_skill(ev, model, base="persistence", min_days=MIN_CALIBRATION_DAYS):
+def matched_skill(evaluations, model, base="persistence", min_days=MIN_CALIBRATION_DAYS):
     """Skill of model over base on the fully resolved days both forecast,
     with a 95% interval, for two scores: the hourly pinball loss pooled
     over those days, and the day-level error of the 24-hour average (the
@@ -167,28 +169,30 @@ def matched_skill(ev, model, base="persistence", min_days=MIN_CALIBRATION_DAYS):
     that mean improvement over the same denominator, which treats each
     day as independent of the last. Returns None below min_days matched
     days or when base is absent."""
-    e = ev.dropna(subset=["y_true", *QCOLS]).copy()
-    y = e["y_true"].to_numpy()
-    loss = sum(np.maximum(a * (y - e[c].to_numpy()), (a - 1) * (y - e[c].to_numpy()))
-               for c, a in zip(QCOLS, QUANTILES, strict=True)) / len(QUANTILES)
-    e["pb"], e["fc"], e["rz"] = loss, np.exp(e["q50"]), np.exp(e["y_true"])
-    d = e.groupby(["model", "origin"]).agg(n=("target_time", "nunique"),
-                                           pb=("pb", "mean"), fc=("fc", "mean"),
-                                           rz=("rz", "mean"))
-    d = d[d["n"] == HORIZON]
-    d["err"] = np.log(d["rz"] / d["fc"]).abs()
-    if base not in d.index.get_level_values("model"):
+    scored = evaluations.dropna(subset=["y_true", *QCOLS]).copy()
+    log_realized_vol = scored["y_true"].to_numpy()
+    loss = sum(np.maximum(quantile * (log_realized_vol - scored[column].to_numpy()),
+                          (quantile - 1) * (log_realized_vol - scored[column].to_numpy()))
+               for column, quantile in zip(QCOLS, QUANTILES, strict=True)) / len(QUANTILES)
+    scored["pb"], scored["fc"], scored["rz"] = (loss, np.exp(scored["q50"]),
+                                                np.exp(scored["y_true"]))
+    daily = scored.groupby(["model", "origin"]).agg(n=("target_time", "nunique"),
+                                                    pb=("pb", "mean"), fc=("fc", "mean"),
+                                                    rz=("rz", "mean"))
+    daily = daily[daily["n"] == HORIZON]
+    daily["err"] = np.log(daily["rz"] / daily["fc"]).abs()
+    if base not in daily.index.get_level_values("model"):
         return None
-    both = d.loc[model].join(d.loc[base], lsuffix="_m", rsuffix="_b", how="inner")
-    n = len(both)
-    if n < min_days:
+    both = daily.loc[model].join(daily.loc[base], lsuffix="_m", rsuffix="_b", how="inner")
+    n_days = len(both)
+    if n_days < min_days:
         return None
-    t = float(stats.t.ppf(0.975, n - 1))
-    out: dict = {"days": n}
+    t_critical = float(stats.t.ppf(0.975, n_days - 1))
+    out: dict = {"days": n_days}
     for key, col in (("hourly", "pb"), ("day", "err")):
         diff = both[f"{col}_b"] - both[f"{col}_m"]
         scale = float(both[f"{col}_b"].mean())
-        half = t * float(diff.std(ddof=1)) / np.sqrt(n)
+        half = t_critical * float(diff.std(ddof=1)) / np.sqrt(n_days)
         mid = float(diff.mean())
         out[key] = ((mid) / scale, (mid - half) / scale, (mid + half) / scale)
     return out
@@ -211,23 +215,23 @@ def timing_lines(late):
         return [f"{claim}, with no exceptions so far. {audit}", ""]
     lines = [f"{claim}. Any exceptions and their reasons are listed below. "
              f"{audit}", ""]
-    for g in late:
-        mins = g["minutes_late"]
+    for group in late:
+        mins = group["minutes_late"]
         delay = (f"{mins / 60:.0f} hours" if mins >= 60
                  else f"{mins:.0f} minutes")
-        why = (LATE_COMMIT_REASONS.get(f"{g['origin']:%Y-%m-%d}")
-               or run_note(g.get("subject"))
+        why = (LATE_COMMIT_REASONS.get(f"{group['origin']:%Y-%m-%d}")
+               or run_note(group.get("subject"))
                or "No reason is recorded for it.")
         lines.append(
-            f"- The {g['origin']:%Y-%m-%d} forecast, made from data through "
-            f"the hour starting {g['origin']:%H:00} UTC ({g['models']} "
+            f"- The {group['origin']:%Y-%m-%d} forecast, made from data through "
+            f"the hour starting {group['origin']:%H:00} UTC ({group['models']} "
             f"models), was first committed at "
-            f"{g['committed']:%Y-%m-%d %H:%M} UTC, {delay} after its first "
+            f"{group['committed']:%Y-%m-%d %H:%M} UTC, {delay} after its first "
             f"target hour completed. {why}")
     return [*lines, ""]
 
 
-def _fig_daily(ev, model):
+def _fig_daily(evaluations, model):
     """Save results/figures/fig_live_daily.png, the day-by-day record of the
     leading model's forecast average against the realized average and
     against the persistence model's own forecast average, and return its
@@ -237,28 +241,29 @@ def _fig_daily(ev, model):
     import matplotlib.pyplot as plt
     import matplotlib.ticker
 
-    e = ev.dropna(subset=["y_true", "q50"])
+    scored = evaluations.dropna(subset=["y_true", "q50"])
 
     def _by_day(name):
         """One row per fully resolved day for model name, carrying the
         day's average median forecast and average realized volatility."""
-        m = e[e["model"] == name]
-        d = m.groupby("origin").agg(n=("target_time", "nunique"),
-                                    fc=("q50", lambda s: float(np.exp(s).mean())),
-                                    rz=("y_true", lambda s: float(np.exp(s).mean())))
-        return d[d["n"] == HORIZON]
+        model_rows = scored[scored["model"] == name]
+        daily = model_rows.groupby("origin").agg(
+            n=("target_time", "nunique"),
+            fc=("q50", lambda log_values: float(np.exp(log_values).mean())),
+            rz=("y_true", lambda log_values: float(np.exp(log_values).mean())))
+        return daily[daily["n"] == HORIZON]
 
-    d = _by_day(model)
-    base = _by_day("persistence")["fc"].reindex(d.index)
+    daily = _by_day(model)
+    base = _by_day("persistence")["fc"].reindex(daily.index)
     fig, ax = plt.subplots(figsize=(9, 3))
-    ax.plot(d.index, d["rz"], color="#0b0b0b", lw=1.5, marker="o", ms=3,
+    ax.plot(daily.index, daily["rz"], color="#0b0b0b", lw=1.5, marker="o", ms=3,
             label="realized, 24-hour average")
-    ax.plot(d.index, d["fc"], color="#2a78d6", lw=1.5, marker="o", ms=3,
+    ax.plot(daily.index, daily["fc"], color="#2a78d6", lw=1.5, marker="o", ms=3,
             label=f"forecast ({model})")
-    ax.plot(d.index, base, color="#eb6834", lw=1.1, ls="--", marker="o",
+    ax.plot(daily.index, base, color="#eb6834", lw=1.1, ls="--", marker="o",
             ms=2.5, label="persistence forecast")
     ax.set_ylabel("annualized volatility")
-    ax.set_ylim(0, float(d["rz"].max()) * 1.3)
+    ax.set_ylim(0, float(daily["rz"].max()) * 1.3)
     ax.yaxis.set_major_formatter(matplotlib.ticker.PercentFormatter(1.0, decimals=0))
     ax.grid(axis="y", lw=0.5)
     ax.legend(frameon=False, ncol=3, loc="upper left", fontsize=8)
@@ -270,16 +275,16 @@ def _fig_daily(ev, model):
     return path
 
 
-def coverage_by_day(ev):
+def coverage_by_day(evaluations):
     """Fraction of hours that landed inside each model's 90% band, one
     number per model per scored day. Hourly rows within a day are
     strongly dependent, so the day is the unit the check reasons over."""
-    e = ev.dropna(subset=["y_true", "q05", "q95"])
-    inside = (e["q05"] <= e["y_true"]) & (e["y_true"] <= e["q95"])
-    return inside.groupby([e["model"], e["origin"].dt.date]).mean()
+    scored = evaluations.dropna(subset=["y_true", "q05", "q95"])
+    inside = (scored["q05"] <= scored["y_true"]) & (scored["y_true"] <= scored["q95"])
+    return inside.groupby([scored["model"], scored["origin"].dt.date]).mean()
 
 
-def coverage_test_results(ev):
+def coverage_test_results(evaluations):
     """Two-sided t-test of each model's day-level coverage against the
     target, Bonferroni-corrected across the models tested, since testing
     eight at once produces a false rejection often at an uncorrected 5%.
@@ -288,7 +293,7 @@ def coverage_test_results(ev):
     result. Neither does one whose daily coverage has no spread at all:
     the test then has no uncertainty to divide by, and inventing one
     would be the same mistake as the fixed floor it replaced."""
-    cov = coverage_by_day(ev)
+    cov = coverage_by_day(evaluations)
     if cov.empty:
         return {}
     counts = cov.groupby(level=0).size()
@@ -297,43 +302,45 @@ def coverage_test_results(ev):
         return {}
     alpha = CALIBRATION_ALPHA / len(testable)
     out = {}
-    for m in testable:
-        d = cov.xs(m, level=0).to_numpy()
-        n = len(d)
-        se = float(d.std(ddof=1)) / np.sqrt(n)
-        if se == 0:
+    for model_name in testable:
+        daily_coverage = cov.xs(model_name, level=0).to_numpy()
+        n_days = len(daily_coverage)
+        standard_error = float(daily_coverage.std(ddof=1)) / np.sqrt(n_days)
+        if standard_error == 0:
             continue
-        mu = float(d.mean())
-        t = (mu - COV90_TARGET) / se
-        p = float(2 * stats.t.sf(abs(t), n - 1))
-        out[m] = {"cov90": mu, "days": n, "t": t, "p": p,
-                  "alpha": alpha, "reject": p < alpha}
+        mean_coverage = float(daily_coverage.mean())
+        t_statistic = (mean_coverage - COV90_TARGET) / standard_error
+        p_value = float(2 * stats.t.sf(abs(t_statistic), n_days - 1))
+        out[model_name] = {"cov90": mean_coverage, "days": n_days, "t": t_statistic,
+                           "p": p_value, "alpha": alpha, "reject": p_value < alpha}
     return out
 
 
-def rejection_streaks(ev, cap=CALIBRATION_PERSISTENCE_DAYS):
+def rejection_streaks(evaluations, cap=CALIBRATION_PERSISTENCE_DAYS):
     """How many consecutive recent scored days the corrected test has
     rejected each model on, counted back from the latest day and stopped
     at cap. Earlier test_results are re-derived from the log rather than
     stored, so the whole check stays reproducible from evaluation.csv
     with no state file to drift out of step with the data."""
-    days = sorted(ev["origin"].dt.date.unique())
+    days = sorted(evaluations["origin"].dt.date.unique())
     streaks = {}
-    for k in range(cap):
-        if k >= len(days):
+    for days_back in range(cap):
+        if days_back >= len(days):
             break
-        window = ev if k == 0 else ev[ev["origin"].dt.date <= days[-1 - k]]
-        rejected = {m for m, v in coverage_test_results(window).items()
-                    if v["reject"]}
-        if k == 0:
+        window = (evaluations if days_back == 0 else
+                  evaluations[evaluations["origin"].dt.date <= days[-1 - days_back]])
+        rejected = {model_name for model_name, result in coverage_test_results(window).items()
+                    if result["reject"]}
+        if days_back == 0:
             streaks = dict.fromkeys(rejected, 1)
         else:
-            live = [m for m, n in streaks.items() if n == k]
+            live = [model_name for model_name, streak in streaks.items()
+                    if streak == days_back]
             if not live:
                 break
-            for m in live:
-                if m in rejected:
-                    streaks[m] = k + 1
+            for model_name in live:
+                if model_name in rejected:
+                    streaks[model_name] = days_back + 1
     return streaks
 
 
@@ -341,11 +348,11 @@ def _figures(model, test_results):
     """Format one model's coverage and p-value as the short phrase the
     calibration sentences splice in, so a flagged model and a pending one
     read the same way."""
-    v = test_results[model]
-    return f"{model}, coverage {v['cov90']:.4f}, p-value {v['p']:.4f}"
+    result = test_results[model]
+    return f"{model}, coverage {result['cov90']:.4f}, p-value {result['p']:.4f}"
 
 
-def calibration_lines(ev, days):
+def calibration_lines(evaluations, days):
     """Calibration result for the live report. Flags a model only when
     the corrected test rejects it on CALIBRATION_PERSISTENCE_DAYS
     consecutive scored days, and names a shorter streak as pending, so
@@ -362,7 +369,7 @@ def calibration_lines(ev, days):
                 "contributes ~24 dependent hourly rows, so the effective "
                 "sample is the day count.", ""]
 
-    test_results = coverage_test_results(ev)
+    test_results = coverage_test_results(evaluations)
     if not test_results:
         return ["The calibration check found no model with enough scored "
                 f"days to test ({MIN_CALIBRATION_DAYS} required).", ""]
@@ -387,15 +394,15 @@ def calibration_lines(ev, days):
         f"{CALIBRATION_PERSISTENCE_DAYS} consecutive scored days, so one "
         f"noisy day cannot raise an alarm.")
 
-    streaks = rejection_streaks(ev)
-    flagged = {m: n for m, n in streaks.items()
-               if n >= CALIBRATION_PERSISTENCE_DAYS}
+    streaks = rejection_streaks(evaluations)
+    flagged = {model_name: streak for model_name, streak in streaks.items()
+               if streak >= CALIBRATION_PERSISTENCE_DAYS}
     if not flagged:
         pending = sorted(streaks)
         if pending:
             parts = "; ".join(
-                f"{_figures(m, test_results)}, day {streaks[m]} of "
-                f"{CALIBRATION_PERSISTENCE_DAYS}" for m in pending)
+                f"{_figures(model_name, test_results)}, day {streaks[model_name]} of "
+                f"{CALIBRATION_PERSISTENCE_DAYS}" for model_name in pending)
             return [f"The calibration check passes and flags no model. It "
                     f"rejects {parts}, short of the "
                     f"{CALIBRATION_PERSISTENCE_DAYS} consecutive days needed "
@@ -403,7 +410,8 @@ def calibration_lines(ev, days):
         return [f"The calibration check passes. {method} No model crossed "
                 f"that threshold.", ""]
 
-    parts = "; ".join(_figures(m, test_results) for m in sorted(flagged))
+    parts = "; ".join(_figures(model_name, test_results)
+                      for model_name in sorted(flagged))
     return [f"The calibration check flags these models, whose average "
             f"coverage has sat farther from {target} than day-to-day spread "
             f"would explain on {CALIBRATION_PERSISTENCE_DAYS} consecutive "
@@ -419,27 +427,27 @@ def write_live_report(late=None):
     outcome, the leader's matched-day skill with its interval, and the
     calibration result. late is the timing audit's result, passed by the
     daily run; see timing_lines."""
-    ev = _load(EVAL_LOG, [*LOG_COLS, "y_true"])
-    fc = _load(FORECAST_LOG, LOG_COLS)
+    evaluations = _load(EVAL_LOG, [*LOG_COLS, "y_true"])
+    forecasts = _load(FORECAST_LOG, LOG_COLS)
     lines = ["# Daily record (generated)", ""]
-    if ev.empty:
+    if evaluations.empty:
         lines += ["No resolved forecasts yet. First forecasts logged: "
-                  f"{fc['origin'].min() if len(fc) else 'none'}."]
+                  f"{forecasts['origin'].min() if len(forecasts) else 'none'}."]
     else:
-        s = add_skill(score(ev))
-        g = s.groupby("model")[["pinball_mean", "mae", "cov50", "cov90",
-                                "skill_vs_persistence"]].mean()
-        g.insert(0, "days", ev.groupby("model")["origin"]
-                 .apply(lambda o: o.dt.date.nunique()))
-        g = g.join(day_level_scores(ev))
-        days = ev["origin"].dt.date.nunique()
+        scores = add_skill(score(evaluations))
+        summary = scores.groupby("model")[["pinball_mean", "mae", "cov50", "cov90",
+                                           "skill_vs_persistence"]].mean()
+        summary.insert(0, "days", evaluations.groupby("model")["origin"]
+                       .apply(lambda origins: origins.dt.date.nunique()))
+        summary = summary.join(day_level_scores(evaluations))
+        days = evaluations["origin"].dt.date.nunique()
         lines += [
-            f"Forecast days scored: {days}. Resolved rows: {len(ev)}. "
+            f"Forecast days scored: {days}. Resolved rows: {len(evaluations)}. "
             f"Pending (logged, outcome not yet observed): "
-            f"{max(0, len(fc) - len(ev))}.",
+            f"{max(0, len(forecasts) - len(evaluations))}.",
             "",
             *timing_lines(late),
-            g.round(4).sort_values("pinball_mean").to_markdown(), "",
+            summary.round(4).sort_values("pinball_mean").to_markdown(), "",
             "The hourly columns score each of the 24 target hours. The day "
             "columns score the day's average volatility, which could be one "
             "input to a position size. day_error is the mean absolute log "
@@ -449,21 +457,23 @@ def write_live_report(late=None):
             "persistence model's on the same days, so a positive value beats "
             "persistence and 1 would be a perfect forecast.", "",
         ]
-        if g["days"].nunique() > 1:
+        if summary["days"].nunique() > 1:
             lines += ["The days column is each model's own count of scored "
                       "days. Models that joined the loop later are averaged "
                       "over fewer days, so the rows above are not "
                       "sample-matched.", ""]
-        leader = g["pinball_mean"].idxmin()
-        m = matched_skill(ev, leader) if leader != "persistence" else None
-        if m:
-            (hs, hl, hh), (ds, dl, dh) = m["hourly"], m["day"]
+        leader = summary["pinball_mean"].idxmin()
+        matched = matched_skill(evaluations, leader) if leader != "persistence" else None
+        if matched:
+            hourly_skill, hourly_low, hourly_high = matched["hourly"]
+            day_skill, day_low, day_high = matched["day"]
             lines += [
-                f"Matched on the {m['days']} fully resolved days that both "
+                f"Matched on the {matched['days']} fully resolved days that both "
                 f"{leader} and persistence forecast, the skill of {leader} "
-                f"over persistence is {hs:.2f} on the hourly pinball loss "
-                f"(95% interval {hl:.2f} to {hh:.2f}) and {ds:.2f} on the "
-                f"day-level error ({dl:.2f} to {dh:.2f}). Pinball loss "
+                f"over persistence is {hourly_skill:.2f} on the hourly pinball "
+                f"loss (95% interval {hourly_low:.2f} to {hourly_high:.2f}) and "
+                f"{day_skill:.2f} on the day-level error ({day_low:.2f} to "
+                f"{day_high:.2f}). Pinball loss "
                 "scores the whole low-to-high forecast band, not just its "
                 "middle, and lower is better. The hourly figure pools the "
                 "loss over those days, while the table's "
@@ -474,7 +484,7 @@ def write_live_report(late=None):
                 "interval that stays above zero means that, on these days, "
                 "the lead over persistence is larger than day-to-day noise "
                 "would explain.", ""]
-        _fig_daily(ev, leader)
+        _fig_daily(evaluations, leader)
         lines += [
             f"The figure below is that day-level record for {leader}, the "
             "current leader: its forecast of each day's average volatility, "
@@ -483,7 +493,7 @@ def write_live_report(late=None):
             "![day by day: forecast, realized, persistence]"
             "(figures/fig_live_daily.png)", "",
         ]
-        lines += calibration_lines(ev, days)
+        lines += calibration_lines(evaluations, days)
     path = RESULTS_DIR / "LIVE.md"
     path.write_text("\n".join(lines) + "\n")
     return path

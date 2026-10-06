@@ -23,25 +23,25 @@ class Gbm(BaseForecastModel):
         """Stacks one training row per (origin row, horizon) pair, then
         fits an XGBoost regressor under the pinball objective for each
         level in QUANTILES. Rows with any missing feature or a missing
-        h-step target are dropped, and the final feature row is kept
-        aside as the input predict will score."""
+        target at that horizon are dropped, and the final feature row is
+        kept aside as the input predict will score."""
         feats = train[FEATURE_COLS]
         X_parts, y_parts = [], []
-        for h in range(1, HORIZON + 1):
-            target = train["log_rv"].shift(-h)
-            ok = feats.notna().all(axis=1) & target.notna()
-            Xh = feats[ok].copy()
-            Xh["h"] = h
-            X_parts.append(Xh)
-            y_parts.append(target[ok])
+        for horizon in range(1, HORIZON + 1):
+            target = train["log_rv"].shift(-horizon)
+            usable = feats.notna().all(axis=1) & target.notna()
+            X_horizon = feats[usable].copy()
+            X_horizon["h"] = horizon
+            X_parts.append(X_horizon)
+            y_parts.append(target[usable])
         X = pd.concat(X_parts)
         y = pd.concat(y_parts)
         self.models_ = {}
-        for q in QUANTILES:
-            m = xgb.XGBRegressor(objective="reg:quantileerror",
-                                 quantile_alpha=q, **PARAMS)
-            m.fit(X, y)
-            self.models_[q] = m
+        for level in QUANTILES:
+            model = xgb.XGBRegressor(objective="reg:quantileerror",
+                                     quantile_alpha=level, **PARAMS)
+            model.fit(X, y)
+            self.models_[level] = model
         self.x_last_ = feats.iloc[[-1]]
 
     def predict(self, index):
@@ -49,9 +49,9 @@ class Gbm(BaseForecastModel):
         models once per horizon step, with the h feature set to that
         step, and returns the sorted quantile frame."""
         rows = []
-        for h in range(1, len(index) + 1):
-            xrow = self.x_last_.copy()
-            xrow["h"] = h
-            rows.append([float(self.models_[q].predict(xrow)[0])
-                         for q in QUANTILES])
+        for horizon in range(1, len(index) + 1):
+            origin_row = self.x_last_.copy()
+            origin_row["h"] = horizon
+            rows.append([float(self.models_[level].predict(origin_row)[0])
+                         for level in QUANTILES])
         return quantile_frame(rows, index)

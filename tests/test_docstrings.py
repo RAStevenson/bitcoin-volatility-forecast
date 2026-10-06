@@ -26,8 +26,8 @@ def _bare_definitions(path):
 
 
 def test_every_definition_is_documented():
-    bare = [line for d in SOURCE_DIRS
-            for path in sorted((ROOT / d).rglob("*.py"))
+    bare = [line for source_dir in SOURCE_DIRS
+            for path in sorted((ROOT / source_dir).rglob("*.py"))
             for line in _bare_definitions(path)]
     assert not bare, ("undocumented definitions:\n  "
                       + "\n  ".join(bare))

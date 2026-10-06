@@ -15,9 +15,9 @@ def _fig_hourly_profile(hourly, fig_prefix, value_label):
     """Save the median-by-hour-of-day curve into results/figures/ as
     <fig_prefix>_hourly_profile.png and return its path, giving the report
     the daily shape its horizon curve turns out to inherit."""
-    prof = hourly.groupby(hourly.index.hour)["rv"].median()
+    hourly_profile = hourly.groupby(hourly.index.hour)["rv"].median()
     fig, ax = plt.subplots(figsize=(8, 3))
-    ax.plot(prof.index, prof.values)
+    ax.plot(hourly_profile.index, hourly_profile.values)
     ax.set_xlabel("hour of day (UTC)")
     ax.set_ylabel(value_label)
     path = RESULTS_DIR / "figures" / f"{fig_prefix}_hourly_profile.png"
@@ -32,9 +32,9 @@ def _fig_pinball(scores, fig_prefix):
     results/figures/ as <fig_prefix>_pinball_by_horizon.png and return
     its path."""
     fig, ax = plt.subplots(figsize=(8, 3))
-    for model in scores.index.get_level_values("model").unique():
-        s = scores.xs(model)["pinball_mean"]
-        ax.plot(s.index, s.values, label=model)
+    for model_name in scores.index.get_level_values("model").unique():
+        pinball_by_horizon = scores.xs(model_name)["pinball_mean"]
+        ax.plot(pinball_by_horizon.index, pinball_by_horizon.values, label=model_name)
     ax.set_xlabel("horizon (hours ahead)")
     ax.set_ylabel("mean pinball loss (log-scale target)")
     ax.legend(fontsize=7)
@@ -69,8 +69,8 @@ def write_report(scores, hourly, results_path, out_name="REPORT.md",
     lead = scores.groupby("model")[
         ["pinball_mean", "mae", "cov50", "cov90",
          "skill_vs_persistence"]].mean().sort_values("pinball_mean")
-    h1 = scores.xs(1, level="horizon").sort_values("pinball_mean")
-    h24 = scores.xs(24, level="horizon").sort_values("pinball_mean")
+    horizon_1 = scores.xs(1, level="horizon").sort_values("pinball_mean")
+    horizon_24 = scores.xs(24, level="horizon").sort_values("pinball_mean")
     lines = [
         f"# {title} (generated)", "",
         f"Results file: {results_path.name}. All metrics are on the log "
@@ -87,17 +87,17 @@ def write_report(scores, hourly, results_path, out_name="REPORT.md",
         f"scoring): {dataset_stats['dataset_nan_hours']}", "",
         "## Results table, mean over horizons 1-24", "",
         lead.round(4).to_markdown(), "",
-        "## Horizon 1", "", h1.round(4).to_markdown(), "",
-        "## Horizon 24", "", h24.round(4).to_markdown(), "",
+        "## Horizon 1", "", horizon_1.round(4).to_markdown(), "",
+        "## Horizon 24", "", horizon_24.round(4).to_markdown(), "",
     ]
-    if {"persistence", "seasonal_persistence"} <= set(h24.index):
+    if {"persistence", "seasonal_persistence"} <= set(horizon_24.index):
         lines += [
             "The identical persistence and seasonal_persistence rows at "
             "horizon 24 are by construction: there the seasonal lag is the "
             "same last observed hour, and both bands draw on the same "
             "24-hour change distribution.", "",
         ]
-    if h1["n"].nunique() > 1 or h24["n"].nunique() > 1:
+    if horizon_1["n"].nunique() > 1 or horizon_24["n"].nunique() > 1:
         lines += [
             "Where a model's n falls short of the maximum, rows whose "
             "forecast came back NaN (a degenerate fit) were dropped "
@@ -109,20 +109,21 @@ def write_report(scores, hourly, results_path, out_name="REPORT.md",
         f"![pinball by horizon](figures/{fig_prefix}_pinball_by_horizon.png)",
         "",
     ]
-    # Origins are floored to 00:00 UTC by make_origins, so horizon h always
-    # scores the same clock hour and the two figures above are confounded
+    # Origins are floored to 00:00 UTC by make_origins, so a given horizon
+    # always scores the same clock hour and the two figures above are confounded
     # by construction. Computed at render time because the correlation is
     # specific to this run's scores and data.
-    by_h = scores.groupby("horizon")["pinball_mean"].mean()
-    prof = hourly.groupby(hourly.index.hour)["rv"].median()
-    hour_r = float(np.corrcoef(
-        by_h.to_numpy(),
-        prof.reindex([h % 24 for h in by_h.index]).to_numpy())[0, 1])
+    mean_pinball_by_horizon = scores.groupby("horizon")["pinball_mean"].mean()
+    hourly_profile = hourly.groupby(hourly.index.hour)["rv"].median()
+    hour_correlation = float(np.corrcoef(
+        mean_pinball_by_horizon.to_numpy(),
+        hourly_profile.reindex(
+            [horizon % 24 for horizon in mean_pinball_by_horizon.index]).to_numpy())[0, 1])
     lines += [
         f"Backtest origins all sit at 00:00 UTC, so a given horizon always "
         f"lands on the same UTC clock hour, and the pinball-by-horizon "
         f"curve inherits the hour-of-day profile above (correlation "
-        f"{hour_r:.2f} between the two curves on this run). A bump at one "
+        f"{hour_correlation:.2f} between the two curves on this run). A bump at one "
         f"horizon is largely that clock hour showing through, not a "
         f"property of forecasting that far ahead.", "",
     ]

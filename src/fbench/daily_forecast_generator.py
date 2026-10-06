@@ -28,15 +28,15 @@ def prob_above(vol_quantiles, threshold):
     return float(1.0 - cdf)
 
 
-def _live_leader(ev):
+def _live_leader(evaluations):
     """The model with the lowest mean pinball loss over the resolved rows
-    in ev, or None while fewer than three origins have been scored."""
+    in evaluations, or None while fewer than three origins have been scored."""
     # Three origins is a deliberately lower bar than the 10-day
     # calibration gate: picking which model the daily forecast reports only
     # needs a best guess, while the calibration line is a published
     # result, so that one waits for the larger sample.
-    if ev["origin"].nunique() >= 3:
-        return score(ev).groupby("model")["pinball_mean"].mean().idxmin()
+    if evaluations["origin"].nunique() >= 3:
+        return score(evaluations).groupby("model")["pinball_mean"].mean().idxmin()
     return None
 
 
@@ -44,23 +44,23 @@ def _leading_model():
     """Pick the model the daily forecast reports and return it with the
     short phrase explaining the choice, which is the live pinball leader
     once three origins have been scored and FALLBACK_MODEL before that."""
-    ev = _load(EVAL_LOG, ["origin", "target_time", "horizon", "model",
-                          *QCOLS, "y_true"])
-    leader = _live_leader(ev)
+    evaluations = _load(EVAL_LOG, ["origin", "target_time", "horizon", "model",
+                                   *QCOLS, "y_true"])
+    leader = _live_leader(evaluations)
     if leader is not None:
         return leader, "the model currently leading the daily record"
     return FALLBACK_MODEL, "the backtest winner while the live sample is young"
 
 
-def leading_model_asof(ev, origin):
+def leading_model_asof(evaluations, origin):
     """The model the daily forecast issued at `origin` reported, re-derived
     from the scores that existed then (origins strictly earlier)."""
-    leader = _live_leader(ev[ev["origin"] < origin])
+    leader = _live_leader(evaluations[evaluations["origin"] < origin])
     if leader is not None:
         return leader
     # The fallback may not be in the log (a trimmed registry); reporting
     # a model with no rows would print NaN prose, so require presence.
-    day_models = ev.loc[ev["origin"] == origin, "model"].unique()
+    day_models = evaluations.loc[evaluations["origin"] == origin, "model"].unique()
     if FALLBACK_MODEL in day_models:
         return FALLBACK_MODEL
     return sorted(day_models)[0]
@@ -72,8 +72,9 @@ def context(rv_asof):
     averages, the high line (the year's 90th percentile hour), the quiet
     line (the 30th percentile of the daily averages) and the average of
     the 24 hours before the origin."""
-    rv = rv_asof.dropna()
-    year = rv.loc[rv.index >= rv.index.max() - pd.Timedelta(days=365)]
+    realized_vol = rv_asof.dropna()
+    year_start = realized_vol.index.max() - pd.Timedelta(days=365)
+    year = realized_vol.loc[realized_vol.index >= year_start]
     daily_avg = year.rolling(24).mean().dropna()
     # The quiet/normal boundary compares a 24-hour average to the
     # distribution of rolling 24h averages, so the printed threshold must
@@ -81,7 +82,7 @@ def context(rv_asof):
     return {"year": year, "daily_avg": daily_avg,
             "hi_thresh": float(year.quantile(0.90)),
             "q_thresh": float(daily_avg.quantile(0.30)),
-            "last24": float(rv.iloc[-24:].mean())}
+            "last24": float(realized_vol.iloc[-24:].mean())}
 
 
 def regime_of(avg, daily_avg):
@@ -121,7 +122,7 @@ def claims(vol, target_times, ctx):
     regime, pct = regime_of(fc_avg, ctx["daily_avg"])
     p_high = [prob_above(vol[i], ctx["hi_thresh"]) for i in range(len(vol))]
     order = np.argsort(med_path)
-    tt = pd.DatetimeIndex(target_times)
+    target_hours = pd.DatetimeIndex(target_times)
     return {
         "fc_avg": fc_avg, "med_path": med_path,
         "hr_move": fc_avg / ANNUALIZER,
@@ -135,8 +136,9 @@ def claims(vol, target_times, ctx):
         # every hour sits at the clamp the sum is a floor (24 x 0.02), not
         # a forecast, and printing it as one would dress a constant as
         # information.
-        "all_at_floor": all(p <= 0.02 + 1e-9 for p in p_high),
-        "loud": tt[order[-N_NAMED_HOURS:]], "calm": tt[order[:N_NAMED_HOURS]],
+        "all_at_floor": all(probability <= 0.02 + 1e-9 for probability in p_high),
+        "loud": target_hours[order[-N_NAMED_HOURS:]],
+        "calm": target_hours[order[:N_NAMED_HOURS]],
     }
 
 
@@ -146,15 +148,15 @@ def realized_claims(target_rv, ctx):
     words against the same context, the hours that were in fact loudest
     and calmest, and how many hours ran above the high line. target_rv is
     the realized annualized volatility indexed by target hour."""
-    rv = target_rv.dropna()
-    rz_avg = float(rv.mean())
+    realized_vol = target_rv.dropna()
+    rz_avg = float(realized_vol.mean())
     regime, pct = regime_of(rz_avg, ctx["daily_avg"])
-    order = np.argsort(rv.to_numpy())
+    order = np.argsort(realized_vol.to_numpy())
     return {"rz_avg": rz_avg, "regime": regime, "pct": pct,
             "trend": trend_of(rz_avg, ctx["last24"]),
-            "loud": rv.index[order[-N_NAMED_HOURS:]],
-            "calm": rv.index[order[:N_NAMED_HOURS]],
-            "high_hours": int((rv > ctx["hi_thresh"]).sum())}
+            "loud": realized_vol.index[order[-N_NAMED_HOURS:]],
+            "calm": realized_vol.index[order[:N_NAMED_HOURS]],
+            "high_hours": int((realized_vol > ctx["hi_thresh"]).sum())}
 
 
 def build_daily_forecast(hourly, last_price=None):
@@ -163,24 +165,25 @@ def build_daily_forecast(hourly, last_price=None):
     sizes, a regime word set against the past year, and the loud and calm
     hours ahead. Without last_price the moves are quoted in percent only,
     since a dollar figure has no price to hang on."""
-    fc = _load(FORECAST_LOG, ["origin", "target_time", "horizon", "model",
-                              *QCOLS])
-    if fc.empty:
+    forecasts = _load(FORECAST_LOG, ["origin", "target_time", "horizon", "model",
+                                     *QCOLS])
+    if forecasts.empty:
         return "# Volatility forecast\n\nNo forecasts logged yet.\n"
     model, model_why = _leading_model()
-    origin = fc["origin"].max()
-    today = fc[(fc["origin"] == origin) & (fc["model"] == model)].copy()
+    origin = forecasts["origin"].max()
+    today = forecasts[(forecasts["origin"] == origin)
+                      & (forecasts["model"] == model)].copy()
     today = today.sort_values("target_time")
     vol = np.exp(today[QCOLS].to_numpy())  # log RV -> annualized vol
 
     ctx = context(hourly["rv"].loc[:origin])
-    c = claims(vol, today["target_time"], ctx)
-    med_path, fc_avg = c["med_path"], c["fc_avg"]
-    hr_move, day_move = c["hr_move"], c["day_move"]
+    forecast_claims = claims(vol, today["target_time"], ctx)
+    med_path, fc_avg = forecast_claims["med_path"], forecast_claims["fc_avg"]
+    hr_move, day_move = forecast_claims["hr_move"], forecast_claims["day_move"]
     hi_thresh, q_thresh, last24 = ctx["hi_thresh"], ctx["q_thresh"], ctx["last24"]
 
     hi_move = hi_thresh / ANNUALIZER
-    if c["all_at_floor"]:
+    if forecast_claims["all_at_floor"]:
         high_line = (f"- No hour shows a meaningful chance of running "
                      f"high, above {hi_thresh:.0%} annualized (an hourly "
                      f"move over {hi_move:.2%}), higher than 90% of "
@@ -188,15 +191,17 @@ def build_daily_forecast(hourly, last_price=None):
                      f"band sits well below that line.")
     else:
         high_line = (f"- The next 24 hours are expected to include about "
-                     f"{c['exp_high_hours']:.1f} hours running high, above "
+                     f"{forecast_claims['exp_high_hours']:.1f} hours running "
+                     f"high, above "
                      f"{hi_thresh:.0%} annualized (an hourly move over "
                      f"{hi_move:.2%}), higher than 90% of individual "
                      f"hours in the past year"
-                     + (f"; {c['likely_high']} hours are more likely than "
-                        f"not to qualify." if c["likely_high"] else "."))
+                     + (f"; {forecast_claims['likely_high']} hours are more "
+                        f"likely than not to qualify."
+                        if forecast_claims["likely_high"] else "."))
 
-    loud = sorted(c["loud"].tz_convert(LOCAL_TZ).strftime("%H:00"))
-    calm = sorted(c["calm"].tz_convert(LOCAL_TZ).strftime("%H:00"))
+    loud = sorted(forecast_claims["loud"].tz_convert(LOCAL_TZ).strftime("%H:00"))
+    calm = sorted(forecast_claims["calm"].tz_convert(LOCAL_TZ).strftime("%H:00"))
 
     day = origin.tz_convert(LOCAL_TZ).date()
     if last_price is None:
@@ -224,13 +229,16 @@ def build_daily_forecast(hourly, last_price=None):
     pct_phrase = {"quiet": "below most days of the past year",
                   "normal": "in the middle of the past year's range",
                   "elevated": "above most days of the past year",
-                  "high": "among the busiest days of the past year"}[c["regime"]]
+                  "high": "among the busiest days of the past year",
+                  }[forecast_claims["regime"]]
     lines = [
         f"# Volatility forecast - {day} (generated)",
         "",
-        f"**The next 24 hours look {c['regime']} and {c['trend']}.** {move_line}",
+        f"**The next 24 hours look {forecast_claims['regime']} and "
+        f"{forecast_claims['trend']}.** {move_line}",
         "",
-        f"That forecast sits {pct_phrase} (the {c['pct']:.0f}th percentile of "
+        f"That forecast sits {pct_phrase} (the {forecast_claims['pct']:.0f}th "
+        f"percentile of "
         f"the past year's rolling 24-hour averages) and works out to about "
         f"{fc_avg:.0%} in annualized units, the per-year convention "
         f"volatility is quoted in. The hourly figures above are that same "
@@ -253,19 +261,19 @@ def build_daily_forecast(hourly, last_price=None):
     return "\n".join(lines)
 
 
-def distinct_percents(a, b, places=0, extra=2):
+def distinct_percents(first, second, places=0, extra=2):
     """Format two fractions as percents for a sentence that compares
     them, starting at `places` decimals and adding up to `extra` more
     only while the two would print the same. Returns the two strings
     and whether they still print the same, which the caller words as a
     tie. Rounding both sides to the same number and then calling one
     larger is the fault this prevents."""
-    sa, sb = f"{a:.{places}%}", f"{b:.{places}%}"
-    for p in range(places, places + extra + 1):
-        sa, sb = f"{a:.{p}%}", f"{b:.{p}%}"
-        if sa != sb:
-            return sa, sb, False
-    return sa, sb, True
+    first_text, second_text = f"{first:.{places}%}", f"{second:.{places}%}"
+    for decimals in range(places, places + extra + 1):
+        first_text, second_text = f"{first:.{decimals}%}", f"{second:.{decimals}%}"
+        if first_text != second_text:
+            return first_text, second_text, False
+    return first_text, second_text, True
 
 
 def _quiet_line_sentence(last24, q_thresh):
@@ -277,11 +285,12 @@ def _quiet_line_sentence(last24, q_thresh):
     count as below it. The quiet-or-not clause is this sentence's own
     strict comparison with the printed line; the regime word elsewhere
     in the forecast is decided separately, by regime_of."""
-    a, b, tie = distinct_percents(last24, q_thresh)
+    last24_text, line_text, tie = distinct_percents(last24, q_thresh)
     where = "at" if tie else "below" if last24 < q_thresh else "above"
     quiet = ("so yesterday was a quiet day by that line."
              if where == "below" else "so yesterday was not a quiet day.")
-    return (f"- Yesterday's realized average was {a}, {where} the {b} "
+    return (f"- Yesterday's realized average was {last24_text}, {where} the "
+            f"{line_text} "
             f"quiet line, {quiet}")
 
 

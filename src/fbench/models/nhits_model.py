@@ -84,13 +84,13 @@ class NHits(BaseForecastModel):
         pl.seed_everything(7, workers=True, verbose=False)
 
         y = train["log_rv"].interpolate(limit=6).dropna()
-        df = pd.DataFrame({
+        series_frame = pd.DataFrame({
             "y": y.to_numpy(dtype="float32"),
             "time_idx": range(len(y)),
             "group": "series",
         })
-        ds = TimeSeriesDataSet(
-            df, time_idx="time_idx", target="y", group_ids=["group"],
+        dataset = TimeSeriesDataSet(
+            series_frame, time_idx="time_idx", target="y", group_ids=["group"],
             max_encoder_length=ENCODER_HOURS,
             max_prediction_length=HORIZON,
             time_varying_unknown_reals=["y"],
@@ -102,17 +102,17 @@ class NHits(BaseForecastModel):
             # class; it builds an NHiTS, which is what predict is called
             # on below.
             self.model_ = cast(NHiTS, NHiTS.from_dataset(
-                ds, loss=QuantileLoss(quantiles=QUANTILES),
+                dataset, loss=QuantileLoss(quantiles=QUANTILES),
                 hidden_size=64, learning_rate=1e-3, log_interval=-1))
             trainer = pl.Trainer(
                 max_epochs=3, accelerator="cpu", logger=False,
                 enable_progress_bar=False, enable_checkpointing=False,
                 enable_model_summary=False, deterministic=True)
             trainer.fit(self.model_,
-                        ds.to_dataloader(train=True, batch_size=128,
-                                         num_workers=0))
-        self.tail_ = df.tail(ENCODER_HOURS + HORIZON).copy()
-        self.ds_ = ds
+                        dataset.to_dataloader(train=True, batch_size=128,
+                                              num_workers=0))
+        self.tail_ = series_frame.tail(ENCODER_HOURS + HORIZON).copy()
+        self.dataset_ = dataset
 
     def predict(self, index):
         """Returns the quantile frame from a single forward pass over
@@ -130,18 +130,18 @@ class NHits(BaseForecastModel):
             "group": "series",
         })
         frame = pd.concat([self.tail_, future], ignore_index=True)
-        pred_ds = TimeSeriesDataSet.from_dataset(
-            self.ds_, frame, predict=True, stop_randomization=True)
+        prediction_dataset = TimeSeriesDataSet.from_dataset(
+            self.dataset_, frame, predict=True, stop_randomization=True)
         with warnings.catch_warnings():
             _block_listed_warnings()
             out = self.model_.predict(
-                pred_ds.to_dataloader(train=False, batch_size=1,
-                                      num_workers=0),
+                prediction_dataset.to_dataloader(train=False, batch_size=1,
+                                                 num_workers=0),
                 mode="quantiles",
                 # predict builds a Trainer of its own; without these it
                 # writes lightning_logs/version_N/hparams.yaml per call.
                 trainer_kwargs={"logger": False, "accelerator": "cpu",
                                 "enable_progress_bar": False,
                                 "enable_model_summary": False})
-        q = out[0].cpu().numpy()[:len(index), :]
-        return quantile_frame(q, index)
+        quantile_values = out[0].cpu().numpy()[:len(index), :]
+        return quantile_frame(quantile_values, index)

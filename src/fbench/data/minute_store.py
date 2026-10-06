@@ -21,27 +21,27 @@ def load_minutes():
     store that has never been written comes back as a frame with no rows and
     no columns at all, so check `.empty` before reaching for `time`.
     """
-    p = minute_path()
-    if not p.exists():
+    path = minute_path()
+    if not path.exists():
         return pd.DataFrame()
-    return pd.read_parquet(p)
+    return pd.read_parquet(path)
 
 
-def save_minutes(df):
-    """Write the frame to the configured product's minute parquet without its
+def save_minutes(minutes):
+    """Write the minute frame to the configured product's minute parquet without its
     index, creating the data directory if it is missing. The file is replaced
     whole, so a caller adding rows merges them into the loaded frame first
     instead of expecting an append.
     """
     DATA_DIR.mkdir(exist_ok=True)
-    df.to_parquet(minute_path(), index=False)
+    minutes.to_parquet(minute_path(), index=False)
 
 
-def gap_report(df, granularity_seconds):
+def gap_report(bars, granularity_seconds):
     """Count and locate missing bars against a complete regular grid."""
-    full = pd.date_range(df["time"].min(), df["time"].max(),
+    full = pd.date_range(bars["time"].min(), bars["time"].max(),
                          freq=f"{granularity_seconds}s", tz="UTC")
-    missing = full.difference(pd.DatetimeIndex(df["time"]))
-    return {"expected": len(full), "present": len(df),
+    missing = full.difference(pd.DatetimeIndex(bars["time"]))
+    return {"expected": len(full), "present": len(bars),
             "missing": len(missing),
             "missing_sample": list(missing[:10].astype(str))}

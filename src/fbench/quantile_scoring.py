@@ -9,13 +9,14 @@ import pandas as pd
 from fbench.harness_config import QCOLS, QUANTILES
 
 
-def pinball(y, q, alpha):
-    """Mean pinball loss at quantile level alpha between outcomes y and
-    the quantile forecasts q, as a float where lower is better. The mean
-    runs over every paired entry with no weighting, and the value carries
-    the units of its inputs, which here is log realized volatility."""
-    d = np.asarray(y) - np.asarray(q)
-    return float(np.mean(np.maximum(alpha * d, (alpha - 1) * d)))
+def pinball(outcomes, quantile_forecast, alpha):
+    """Mean pinball loss at quantile level alpha between outcomes and
+    the forecasts in quantile_forecast, as a float where lower is better.
+    The mean runs over every paired entry with no weighting, and the value
+    carries the units of its inputs, which here is log realized
+    volatility."""
+    error = np.asarray(outcomes) - np.asarray(quantile_forecast)
+    return float(np.mean(np.maximum(alpha * error, (alpha - 1) * error)))
 
 
 def score(results):
@@ -29,19 +30,19 @@ def score(results):
     # rows with no outcome yet; the per-group n makes the exclusion visible
     # rather than letting one bad fit erase a model's whole scorecard.
     rows = []
-    for (model, h), g in results.dropna(subset=["y_true", *QCOLS]).groupby(
-            ["model", "horizon"]):
-        y = g["y_true"].to_numpy()
-        pb = np.mean([pinball(y, g[c].to_numpy(), a)
-                      for c, a in zip(QCOLS, QUANTILES, strict=True)])
-        e = y - g["q50"].to_numpy()
+    for (model_name, horizon), group in results.dropna(
+            subset=["y_true", *QCOLS]).groupby(["model", "horizon"]):
+        outcomes = group["y_true"].to_numpy()
+        pinball_mean = np.mean([pinball(outcomes, group[column].to_numpy(), level)
+                                for column, level in zip(QCOLS, QUANTILES, strict=True)])
+        error = outcomes - group["q50"].to_numpy()
         rows.append({
-            "model": model, "horizon": h, "pinball_mean": pb,
-            "mae": float(np.mean(np.abs(e))),
-            "rmse": float(np.sqrt(np.mean(e ** 2))),
-            "cov50": float(np.mean((g["q25"] <= y) & (y <= g["q75"]))),
-            "cov90": float(np.mean((g["q05"] <= y) & (y <= g["q95"]))),
-            "n": len(g),
+            "model": model_name, "horizon": horizon, "pinball_mean": pinball_mean,
+            "mae": float(np.mean(np.abs(error))),
+            "rmse": float(np.sqrt(np.mean(error ** 2))),
+            "cov50": float(np.mean((group["q25"] <= outcomes) & (outcomes <= group["q75"]))),
+            "cov90": float(np.mean((group["q05"] <= outcomes) & (outcomes <= group["q95"]))),
+            "n": len(group),
         })
     return pd.DataFrame(rows).set_index(["model", "horizon"]).sort_index()
 

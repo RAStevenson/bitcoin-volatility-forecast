@@ -12,19 +12,21 @@ import pandas as pd
 from fbench.data import bitstamp_client, minute_store
 from fbench.harness_config import BITSTAMP_PAIR, RESULTS_DIR
 
-m = minute_store.load_minutes()
-cb = (m.set_index("time")["close"].groupby(pd.Grouper(freq="h")).last()
-        .rename("cb_close").dropna())
-print(f"fetching Bitstamp hourly {cb.index.min()} -> {cb.index.max()}",
-      flush=True)
-bs = bitstamp_client.fetch_hourly(BITSTAMP_PAIR, cb.index.min(), cb.index.max())
-j = bs.set_index("time").join(cb, how="inner")
-pct = (j["cb_close"] - j["close"]).abs() / j["close"]
+minutes = minute_store.load_minutes()
+coinbase_close = (minutes.set_index("time")["close"].groupby(pd.Grouper(freq="h")).last()
+                  .rename("cb_close").dropna())
+print(f"fetching Bitstamp hourly {coinbase_close.index.min()} -> "
+      f"{coinbase_close.index.max()}", flush=True)
+bitstamp_hourly = bitstamp_client.fetch_hourly(BITSTAMP_PAIR, coinbase_close.index.min(),
+                                               coinbase_close.index.max())
+both_venues = bitstamp_hourly.set_index("time").join(coinbase_close, how="inner")
+relative_difference = ((both_venues["cb_close"] - both_venues["close"]).abs()
+                       / both_venues["close"])
 lines = [
-    f"hours compared: {len(j)}",
-    f"median abs pct diff: {pct.median():.5%}",
-    f"p99 abs pct diff: {pct.quantile(0.99):.5%}",
-    f"hours over 0.5% divergence: {(pct > 0.005).sum()}",
+    f"hours compared: {len(both_venues)}",
+    f"median abs pct diff: {relative_difference.median():.5%}",
+    f"p99 abs pct diff: {relative_difference.quantile(0.99):.5%}",
+    f"hours over 0.5% divergence: {(relative_difference > 0.005).sum()}",
 ]
 RESULTS_DIR.mkdir(exist_ok=True)
 (RESULTS_DIR / "crosscheck.txt").write_text("\n".join(lines) + "\n")

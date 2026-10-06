@@ -57,14 +57,14 @@ print("[daily] scoring earlier forecasts whose hours have ended", flush=True)
 resolved = daily_run.score_due(hourly)
 print(f"  rows resolved: {resolved}")
 
-feats = build_features(hourly)
+features = build_features(hourly)
 # The origin is the same clock hour every day (see fixed_origin), never
 # the hour the run happens to start in, so a late start changes nothing
 # about which data the models see.
 print("[daily] choosing the origin hour", flush=True)
 origin = daily_run.fixed_origin(hourly)
 print("[daily] fitting every model and logging its 24-hour forecast", flush=True)
-logged = daily_run.log_forecasts(feats, origin)
+logged = daily_run.log_forecasts(features, origin)
 print(f"  forecast rows logged: {logged} (origin {origin})")
 
 
@@ -77,12 +77,12 @@ def _audit():
     stating a result."""
     try:
         return late_groups(first_commits(ROOT))
-    except Exception as e:
+    except Exception as error:
         traceback.print_exc()
         # first_commits captures git's output, so git's own message has
         # to be printed here or it is lost.
-        if isinstance(e, subprocess.CalledProcessError) and e.stderr:
-            print(e.stderr.strip(), file=sys.stderr)
+        if isinstance(error, subprocess.CalledProcessError) and error.stderr:
+            print(error.stderr.strip(), file=sys.stderr)
         print("[daily] The timing audit failed (full error above). The run "
               "continues, and LIVE.md will point to "
               "scripts/run_verify_timing.py instead of stating the audit's "
@@ -120,11 +120,11 @@ def _commit_push():
         print("  --no-commit: files written, nothing committed")
         return
     day = pd.Timestamp.now(tz="UTC").date()
-    tracked = [p for p in ("data/hourly_rv.csv",
-                           "results/forecasts.csv", "results/evaluation.csv",
-                           "results/LIVE.md", "results/FORECAST.md",
-                           "results/REVIEW.md", "results/figures/fig_live_daily.png")
-               if (ROOT / p).exists()]
+    tracked = [path for path in ("data/hourly_rv.csv",
+                                 "results/forecasts.csv", "results/evaluation.csv",
+                                 "results/LIVE.md", "results/FORECAST.md",
+                                 "results/REVIEW.md", "results/figures/fig_live_daily.png")
+               if (ROOT / path).exists()]
     subprocess.run(["git", "add", *tracked], cwd=ROOT, check=True)
     diff = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=ROOT)
     if diff.returncode == 0:

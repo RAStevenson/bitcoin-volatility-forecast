@@ -45,7 +45,7 @@ def day_return(close, origin):
     return float(end_px / start_px - 1)
 
 
-def score_daily_forecast(ev, hourly):
+def score_daily_forecast(evaluations, hourly):
     """One row per fully resolved origin, carrying each claim the daily forecast
     made that morning beside what realized. The reported model is
     re-derived as of the origin, the same way the review names it, and
@@ -53,21 +53,22 @@ def score_daily_forecast(ev, hourly):
     what the daily forecast saw. Days whose reported model lacks a full set of
     rows are skipped. The day-move columns are None when the hourly frame
     carries no close column."""
-    counts = ev.groupby("origin")["target_time"].nunique()
+    counts = evaluations.groupby("origin")["target_time"].nunique()
     full = sorted(counts[counts == HORIZON].index)
     close = hourly.get("close")
     rows = []
     for origin in full:
-        model = leading_model_asof(ev, origin)
-        day = ev[(ev["origin"] == origin) & (ev["model"] == model)]
+        model = leading_model_asof(evaluations, origin)
+        day = evaluations[(evaluations["origin"] == origin)
+                          & (evaluations["model"] == model)]
         day = day.sort_values("target_time")
         if len(day) != HORIZON:
             continue
         vol = np.exp(day[QCOLS].to_numpy())  # log RV -> annualized vol
         ctx = context(hourly["rv"].loc[:origin])
-        c = claims(vol, day["target_time"], ctx)
+        forecast_claims = claims(vol, day["target_time"], ctx)
         target_rv = hourly["rv"].reindex(pd.DatetimeIndex(day["target_time"]))
-        r = realized_claims(target_rv, ctx)
+        realized = realized_claims(target_rv, ctx)
         ret = day_return(close, origin)
         # The free alternative for every claim: yesterday, restated. Its
         # regime word is yesterday's, its trend is always steady (the
@@ -76,30 +77,34 @@ def score_daily_forecast(ev, hourly):
         # yesterday's, and its day move is the same root-sum-of-squares
         # taken over yesterday's realized hours.
         yesterday = hourly["rv"].loc[origin - pd.Timedelta(hours=HORIZON - 1):origin]
-        y = realized_claims(yesterday, ctx)
+        yesterday_claims = realized_claims(yesterday, ctx)
         shift = pd.Timedelta(hours=HORIZON)
         base_move = float(np.sqrt(np.sum((yesterday.dropna() / ANNUALIZER) ** 2)))
         rows.append({
             "origin": origin, "model": model,
-            "day_move": c["day_move"], "day_return": ret,
-            "day_move_hit": None if ret is None else abs(ret) <= c["day_move"],
+            "day_move": forecast_claims["day_move"], "day_return": ret,
+            "day_move_hit": (None if ret is None
+                             else abs(ret) <= forecast_claims["day_move"]),
             "base_day_move_hit": None if ret is None else abs(ret) <= base_move,
-            "regime_fc": c["regime"], "regime_rz": r["regime"],
-            "regime_gap": abs(REGIMES.index(c["regime"])
-                              - REGIMES.index(r["regime"])),
-            "base_regime_hit": y["regime"] == r["regime"],
-            "trend_fc": c["trend"], "trend_rz": r["trend"],
-            "base_trend_hit": r["trend"] == "steady",
-            "loud_overlap": len(set(c["loud"]) & set(r["loud"])),
-            "calm_overlap": len(set(c["calm"]) & set(r["calm"])),
-            "base_loud_overlap": len({t + shift for t in y["loud"]} & set(r["loud"])),
-            "base_calm_overlap": len({t + shift for t in y["calm"]} & set(r["calm"])),
+            "regime_fc": forecast_claims["regime"], "regime_rz": realized["regime"],
+            "regime_gap": abs(REGIMES.index(forecast_claims["regime"])
+                              - REGIMES.index(realized["regime"])),
+            "base_regime_hit": yesterday_claims["regime"] == realized["regime"],
+            "trend_fc": forecast_claims["trend"], "trend_rz": realized["trend"],
+            "base_trend_hit": realized["trend"] == "steady",
+            "loud_overlap": len(set(forecast_claims["loud"]) & set(realized["loud"])),
+            "calm_overlap": len(set(forecast_claims["calm"]) & set(realized["calm"])),
+            "base_loud_overlap": len({hour + shift for hour in yesterday_claims["loud"]}
+                                     & set(realized["loud"])),
+            "base_calm_overlap": len({hour + shift for hour in yesterday_claims["calm"]}
+                                     & set(realized["calm"])),
             # On a day when every hour sits at the probability floor the
             # daily forecast prints "no meaningful chance" rather than a count,
             # so the claim it made, and the one scored, is zero hours.
-            "exp_high_hours": 0.0 if c["all_at_floor"] else c["exp_high_hours"],
-            "high_hours": r["high_hours"],
-            "base_high_hours": y["high_hours"],
+            "exp_high_hours": (0.0 if forecast_claims["all_at_floor"]
+                               else forecast_claims["exp_high_hours"]),
+            "high_hours": realized["high_hours"],
+            "base_high_hours": yesterday_claims["high_hours"],
         })
     return pd.DataFrame(rows)
 
@@ -110,7 +115,7 @@ def record_lines(scored):
     resolved day. Empty when nothing has resolved."""
     if scored.empty:
         return []
-    n = len(scored)
+    n_days = len(scored)
     last = scored.iloc[-1]
     moves = scored.dropna(subset=["day_move_hit"])
     lines = ["## The daily forecast's own claims", ""]
@@ -134,7 +139,7 @@ def record_lines(scored):
         f"{last['high_hours']} did.")
     lines += [" ".join(latest), ""]
 
-    lines.append(f"Over {n} resolved days, scored in the terms the daily forecast "
+    lines.append(f"Over {n_days} resolved days, scored in the terms the daily forecast "
                  "states them, with what repeating yesterday would have "
                  "scored beside each claim:")
     lines.append("")
@@ -152,14 +157,14 @@ def record_lines(scored):
     far = int((scored["regime_gap"] >= 2).sum())
     lines.append(
         f"- The regime word (quiet, normal, elevated, high) matched the "
-        f"realized day on {exact} of {n} days, was one step off on "
+        f"realized day on {exact} of {n_days} days, was one step off on "
         f"{adjacent}, and two or more steps off on {far}. Repeating "
         f"yesterday's word would have matched on "
         f"{int(scored['base_regime_hit'].sum())}.")
     trend_hits = int((scored["trend_fc"] == scored["trend_rz"]).sum())
     lines.append(
         f"- The trend word (rising, steady, falling) matched on "
-        f"{trend_hits} of {n} days. Always saying steady would have "
+        f"{trend_hits} of {n_days} days. Always saying steady would have "
         f"matched on {int(scored['base_trend_hit'].sum())}.")
     lines.append(
         f"- Of the {N_NAMED_HOURS} loudest hours named each day, "

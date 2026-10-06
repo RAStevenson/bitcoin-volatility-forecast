@@ -7,64 +7,69 @@ from fbench.feature_builder import build_features
 from fbench.harness_config import HORIZON
 
 
-def _hourly(n=24 * 400, seed=5, with_close=True):
-    idx = pd.date_range("2025-01-01", periods=n, freq="h", tz="UTC")
+def _hourly(n_hours=24 * 400, seed=5, with_close=True):
+    idx = pd.date_range("2025-01-01", periods=n_hours, freq="h", tz="UTC")
     rng = np.random.default_rng(seed)
-    lr = pd.Series(rng.normal(-1, 0.3, n), index=idx).rolling(3).mean()
-    h = pd.DataFrame({"log_rv": lr, "rv": np.exp(lr)}, index=idx)
+    log_realized_vol = pd.Series(rng.normal(-1, 0.3, n_hours), index=idx).rolling(3).mean()
+    hourly = pd.DataFrame({"log_rv": log_realized_vol, "rv": np.exp(log_realized_vol)},
+                          index=idx)
     if with_close:
-        h["close"] = 100.0 * np.exp(rng.normal(0, 0.001, n).cumsum())
-    return h
+        hourly["close"] = 100.0 * np.exp(rng.normal(0, 0.001, n_hours).cumsum())
+    return hourly
 
 
 def test_claims_and_realized_agree_when_the_median_is_exact():
-    h = _hourly()
-    origin = h.index[-25]
-    ctx = daily_forecast_generator.context(h["rv"].loc[:origin])
-    tt = pd.date_range(origin + pd.Timedelta(hours=1), periods=HORIZON,
-                       freq="h", tz="UTC")
+    hourly = _hourly()
+    origin = hourly.index[-25]
+    ctx = daily_forecast_generator.context(hourly["rv"].loc[:origin])
+    target_hours = pd.date_range(origin + pd.Timedelta(hours=1), periods=HORIZON,
+                                 freq="h", tz="UTC")
     order = np.random.default_rng(1).permutation(HORIZON)
-    med = np.linspace(0.3, 0.6, HORIZON)[order]
-    vol = np.column_stack([med * 0.6, med * 0.8, med, med * 1.2, med * 1.6])
-    c = daily_forecast_generator.claims(vol, tt, ctx)
-    r = daily_forecast_generator.realized_claims(pd.Series(med, index=tt), ctx)
-    assert c["regime"] == r["regime"]
-    assert c["trend"] == r["trend"]
-    assert set(c["loud"]) == set(r["loud"])
-    assert set(c["calm"]) == set(r["calm"])
-    assert c["regime"] in daily_forecast_generator.REGIMES
+    median = np.linspace(0.3, 0.6, HORIZON)[order]
+    vol = np.column_stack([median * 0.6, median * 0.8, median, median * 1.2,
+                           median * 1.6])
+    forecast_claims = daily_forecast_generator.claims(vol, target_hours, ctx)
+    realized = daily_forecast_generator.realized_claims(
+        pd.Series(median, index=target_hours), ctx)
+    assert forecast_claims["regime"] == realized["regime"]
+    assert forecast_claims["trend"] == realized["trend"]
+    assert set(forecast_claims["loud"]) == set(realized["loud"])
+    assert set(forecast_claims["calm"]) == set(realized["calm"])
+    assert forecast_claims["regime"] in daily_forecast_generator.REGIMES
 
 
-def _one_day_log(h, origin, end_price):
+def _one_day_log(hourly, origin, end_price):
     """Evaluation log with one model over one origin, whose median
     forecast equals what realized, and a close series pinned at the two
     ends the day-move claim is measured between."""
-    tt = pd.date_range(origin + pd.Timedelta(hours=1), periods=HORIZON,
-                       freq="h", tz="UTC")
-    y = h["log_rv"].reindex(tt).to_numpy()
-    ev = pd.DataFrame({"origin": origin, "target_time": tt,
-                       "horizon": range(1, HORIZON + 1),
-                       "model": "persistence",
-                       "q05": y - 0.5, "q25": y - 0.2, "q50": y,
-                       "q75": y + 0.2, "q95": y + 0.5, "y_true": y})
-    h = h.copy()
-    h.loc[origin, "close"] = 100.0
-    h.loc[origin + pd.Timedelta(hours=HORIZON), "close"] = end_price
-    return ev, h
+    target_hours = pd.date_range(origin + pd.Timedelta(hours=1), periods=HORIZON,
+                                 freq="h", tz="UTC")
+    log_realized_vol = hourly["log_rv"].reindex(target_hours).to_numpy()
+    evaluations = pd.DataFrame({
+        "origin": origin, "target_time": target_hours,
+        "horizon": range(1, HORIZON + 1), "model": "persistence",
+        "q05": log_realized_vol - 0.5, "q25": log_realized_vol - 0.2,
+        "q50": log_realized_vol, "q75": log_realized_vol + 0.2,
+        "q95": log_realized_vol + 0.5, "y_true": log_realized_vol})
+    hourly = hourly.copy()
+    hourly.loc[origin, "close"] = 100.0
+    hourly.loc[origin + pd.Timedelta(hours=HORIZON), "close"] = end_price
+    return evaluations, hourly
 
 
 def test_day_move_hit_is_close_to_close():
-    h = _hourly()
-    origin = h.index[-25]
-    ev, h_in = _one_day_log(h, origin, end_price=100.0)
-    scored = daily_forecast_scoring.score_daily_forecast(ev, h_in)
+    hourly = _hourly()
+    origin = hourly.index[-25]
+    evaluations, hourly_inside = _one_day_log(hourly, origin, end_price=100.0)
+    scored = daily_forecast_scoring.score_daily_forecast(evaluations, hourly_inside)
     assert len(scored) == 1
     move = float(scored["day_move"].iloc[0])
     assert 0 < move < 0.2
     assert bool(scored["day_move_hit"].iloc[0]) is True
     # a day that moved twice the stated distance is a miss
-    ev, h_out = _one_day_log(h, origin, end_price=100.0 * (1 + 2 * move))
-    scored = daily_forecast_scoring.score_daily_forecast(ev, h_out)
+    evaluations, hourly_outside = _one_day_log(hourly, origin,
+                                               end_price=100.0 * (1 + 2 * move))
+    scored = daily_forecast_scoring.score_daily_forecast(evaluations, hourly_outside)
     assert bool(scored["day_move_hit"].iloc[0]) is False
     # the exact-median day matches on every word and names every hour
     assert scored["regime_gap"].iloc[0] == 0
@@ -79,22 +84,23 @@ def test_day_move_hit_is_close_to_close():
 
 
 def test_day_move_is_skipped_without_close():
-    h = _hourly(with_close=False)
-    origin = h.index[-25]
-    ev, _ = _one_day_log(_hourly(), origin, end_price=100.0)
-    scored = daily_forecast_scoring.score_daily_forecast(ev, h)
+    hourly = _hourly(with_close=False)
+    origin = hourly.index[-25]
+    evaluations, _ = _one_day_log(_hourly(), origin, end_price=100.0)
+    scored = daily_forecast_scoring.score_daily_forecast(evaluations, hourly)
     assert scored["day_return"].iloc[0] is None
     lines = daily_forecast_scoring.record_lines(scored)
-    assert not any("one-standard-deviation" in ln for ln in lines)
-    assert any("regime word" in ln for ln in lines)
-    assert any("Repeating yesterday's word" in ln for ln in lines)
+    assert not any("one-standard-deviation" in line for line in lines)
+    assert any("regime word" in line for line in lines)
+    assert any("Repeating yesterday's word" in line for line in lines)
 
 
 def test_partially_resolved_day_is_not_scored():
-    h = _hourly()
-    origin = h.index[-25]
-    ev, h_in = _one_day_log(h, origin, end_price=100.0)
-    assert daily_forecast_scoring.score_daily_forecast(ev.iloc[:-1], h_in).empty
+    hourly = _hourly()
+    origin = hourly.index[-25]
+    evaluations, hourly_inside = _one_day_log(hourly, origin, end_price=100.0)
+    assert daily_forecast_scoring.score_daily_forecast(evaluations.iloc[:-1],
+                                                       hourly_inside).empty
 
 
 def test_review_carries_the_daily_forecast_record(tmp_path, monkeypatch):
@@ -103,11 +109,11 @@ def test_review_carries_the_daily_forecast_record(tmp_path, monkeypatch):
     monkeypatch.setattr(daily_run, "RESULTS_DIR", tmp_path)
     monkeypatch.setattr(review_generator, "EVAL_LOG", daily_run.EVAL_LOG)
     monkeypatch.setattr(review_generator, "RESULTS_DIR", tmp_path)
-    h = _hourly()
-    origin = h.index[-25]
-    daily_run.log_forecasts(build_features(h), origin)
-    daily_run.score_due(h)
-    text = review_generator.write_review(h).read_text()
+    hourly = _hourly()
+    origin = hourly.index[-25]
+    daily_run.log_forecasts(build_features(hourly), origin)
+    daily_run.score_due(hourly)
+    text = review_generator.write_review(hourly).read_text()
     assert "The daily forecast's own claims" in text
     assert "Over 1 resolved days" in text
     assert "one-standard-deviation day move on" in text

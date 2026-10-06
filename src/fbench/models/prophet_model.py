@@ -22,16 +22,16 @@ class ProphetModel(BaseForecastModel):
         """Fits Prophet on the non-missing log RV rows with daily and
         weekly seasonality, no yearly term, and 300 uncertainty draws
         retained for predict."""
-        df = train["log_rv"].dropna().reset_index()
-        df.columns = ["ds", "y"]
-        df["ds"] = df["ds"].dt.tz_localize(None)  # Prophet requires naive
+        history = train["log_rv"].dropna().reset_index()
+        history.columns = ["ds", "y"]
+        history["ds"] = history["ds"].dt.tz_localize(None)  # Prophet requires naive
         # Prophet ships no type hints; the checker reads its "auto" string
         # defaults as the parameter type, and its docstring accepts bools.
-        self.m_ = Prophet(daily_seasonality=True,  # pyright: ignore[reportArgumentType]
-                          weekly_seasonality=True,  # pyright: ignore[reportArgumentType]
-                          yearly_seasonality=False,  # pyright: ignore[reportArgumentType]
-                          uncertainty_samples=300)
-        self.m_.fit(df)
+        self.prophet_ = Prophet(daily_seasonality=True,  # pyright: ignore[reportArgumentType]
+                                weekly_seasonality=True,  # pyright: ignore[reportArgumentType]
+                                yearly_seasonality=False,  # pyright: ignore[reportArgumentType]
+                                uncertainty_samples=300)
+        self.prophet_.fit(history)
 
     def predict(self, index):
         """Draws predictive samples at the target timestamps and returns
@@ -46,8 +46,8 @@ class ProphetModel(BaseForecastModel):
         state = np.random.get_state()
         np.random.seed(SAMPLE_SEED)
         try:
-            samples = self.m_.predictive_samples(future)["yhat"]
+            samples = self.prophet_.predictive_samples(future)["yhat"]
         finally:
             np.random.set_state(state)
-        qs = np.quantile(samples, QUANTILES, axis=1).T
-        return quantile_frame(qs, index)
+        quantile_values = np.quantile(samples, QUANTILES, axis=1).T
+        return quantile_frame(quantile_values, index)

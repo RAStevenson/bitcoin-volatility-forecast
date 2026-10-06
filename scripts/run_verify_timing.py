@@ -34,15 +34,15 @@ days = {}
 for (origin, _model), (sha, committed, _subject) in first.items():
     days.setdefault((origin, sha, committed), 0)
     days[(origin, sha, committed)] += 1
-for (origin, sha, committed), n in sorted(days.items()):
+for (origin, sha, committed), n_models in sorted(days.items()):
     margin = ((pd.Timestamp(origin) + pd.Timedelta(hours=2)) - committed
               ).total_seconds() / 60
     print(f"{'OK  ' if margin > 0 else 'LATE'} origin {origin}  "
           f"committed {committed} ({sha})  margin {margin:+.0f} min  "
-          f"models: {n}")
+          f"models: {n_models}")
 
 late = late_groups(first)
-n_late = sum(g["models"] for g in late)
+n_late = sum(group["models"] for group in late)
 print(f"\n{len(first)} (origin, model) groups checked, {n_late} committed "
       f"after their first target hour completed")
 sys.exit(1 if late else 0)

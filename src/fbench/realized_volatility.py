@@ -21,11 +21,12 @@ def hourly_realized_vol(minute_close):
     close column keeps the hour's last minute close whenever any minute
     exists, since a price is a price however sparse the hour.
     """
-    r = np.log(minute_close).diff().dropna()
-    hour = r.index.floor("h")
-    ss = r.pow(2).groupby(hour).sum()
-    n = r.groupby(hour).count()
-    out = pd.DataFrame({"rv": np.sqrt(ss) * ANNUALIZER, "n_minutes": n})
+    minute_return = np.log(minute_close).diff().dropna()
+    hour = minute_return.index.floor("h")
+    sum_of_squares = minute_return.pow(2).groupby(hour).sum()
+    n_minutes = minute_return.groupby(hour).count()
+    out = pd.DataFrame({"rv": np.sqrt(sum_of_squares) * ANNUALIZER,
+                        "n_minutes": n_minutes})
     out.loc[out["n_minutes"] < MIN_MINUTES_PER_HOUR, "rv"] = np.nan
     out["log_rv"] = np.log(out["rv"])
     out["close"] = minute_close.groupby(minute_close.index.floor("h")).last()
