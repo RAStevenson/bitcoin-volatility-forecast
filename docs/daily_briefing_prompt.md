@@ -1,88 +1,72 @@
 # Daily briefing prompt
 
-The prompt a scheduled agent runs each morning. It starts the GitHub
-Actions run, waits for it, and reports the committed results. It
-computes nothing and edits nothing. The one thing it may run is the
-pipeline itself, and only when the GitHub run has failed or never
+This is the prompt a scheduled agent runs each morning after the daily
+run. It checks that the run has committed and reports the committed
+results. It computes nothing and edits nothing. The one thing it may run
+is the pipeline itself, and only when the GitHub run has failed or never
 started.
 
 ## Setting it up
 
-Two roles use this prompt. The owner of a daily run, on this repo or
-a fork of it, schedules it for 11:15 UTC or any earlier local time,
-and runs every step. The first step waits for 11:15 UTC, which is how
-a local schedule survives clock changes without being moved. A reader
-who only wants this repo's forecast schedules it after 12:00 UTC,
-skips STEP 1, and, if STEP 2 finds no commit for today, reports that
-and stops. A reader never runs the pipeline. The forecast record is
-this repo's commit history, and a local run would write only to the
-reader's clone.
+Two roles use this prompt. A reader who only wants this repo's forecast
+schedules it after 12:00 UTC and, if STEP 1 finds no commit for today,
+reports that and stops. A reader never runs the pipeline. The forecast
+record is this repo's commit history, and a local run would write only
+to the reader's clone.
 
-For the owner, the forecast origin is the 10:00 UTC hour,
-which closes at 11:00, and the run's commit has to land before 12:00
-UTC to count as made before its first target hour ended. The run is
-started from a machine you control because GitHub's own schedule is
+The owner of a daily run, on this repo or a fork of it, runs every step
+of the prompt. The owner also schedules a separate daily job on their
+machine that starts the run. The forecast origin is the 10:00
+UTC hour, which closes at 11:00, and the run's commit has to land before
+12:00 UTC to count as made before its first target hour ended. The run
+is started from a machine you control because GitHub's own schedule is
 best-effort and can fire hours late. The workflow keeps GitHub's
-schedule at 11:15 and 11:45 UTC as the fallback for a day this task
-does not run. Any of these works:
+schedule at 11:15 and 11:45 UTC as the fallback for a day your machine
+does not start it.
 
-- **A Claude Code scheduled task**, which is how the author runs it. In
-  the Claude desktop app, ask Claude to schedule a daily task at that
-  time and give it the text below the line as the prompt. The app
-  stores the task as a Markdown file under `~/.claude/scheduled-tasks/`
-  with a name and a one-line description at the top, and runs it in a
-  fresh session each day. The briefing arrives as that session's reply.
-- **Any other agent** that can run shell commands and read files, on
-  its own scheduler, with the same text as its instructions.
-- **No agent.** Start the run with
-  `gh workflow run daily-run.yml -f dry_run=false`, wait for
-  it, pull, and read `results/REVIEW.md`, `results/FORECAST.md`, and
-  `results/LIVE.md` in that order. Step 3 is a reading order,
-  not a computation.
+On Windows, this PowerShell command registers a Task Scheduler entry
+that starts the run at 11:15 UTC every day. Replace OWNER with the
+GitHub account that holds your copy of the repo.
 
-The machine needs the GitHub CLI signed in to the repo and the
-project's virtual environment built. Replace "the repo's directory"
-with your clone's path.
+```powershell
+$t = New-ScheduledTaskTrigger -Daily -At 11:15; $t.StartBoundary = "2026-01-01T11:15:00Z"
+Register-ScheduledTask -TaskName bitcoin-volatility-dispatch -Trigger $t -Settings (New-ScheduledTaskSettingsSet -StartWhenAvailable) -Action (New-ScheduledTaskAction -Execute (Get-Command gh).Source -Argument "workflow run daily-run.yml -f dry_run=false --repo OWNER/bitcoin-volatility-forecast")
+```
 
-For agent scheduled task, use the below text as the prompt:
+On its own, `-At 11:15` would mean 11:15 local time. The second
+statement replaces the start time with 11:15 UTC, which is what the Z
+at its end means. Windows stores that time with a fixed offset from
+UTC, so the run starts at 11:15 UTC on both sides of a daylight-saving
+change. The machine needs the GitHub CLI signed in to an account that
+can run the repo's workflows.
+
+Then schedule this prompt for the owner at 11:30 UTC, after the run has
+had time to commit and early enough that a local re-run in STEP 1 still
+lands before 12:00 UTC. A Claude Code scheduled task is how the author
+runs it. In the Claude desktop app, ask Claude to schedule a daily task
+at that time and give it the text below the line as the prompt. The app
+runs it in a fresh session each day, and the briefing arrives as that
+session's reply. The app schedules in local time, so the task moves an
+hour against UTC at each daylight-saving change. The author's task runs
+at 6:30 in the morning in Chicago, which is 11:30 UTC in summer and
+12:30 UTC in winter. In winter a local re-run therefore commits after
+12:00 UTC, and the next run lists that day as late in
+`results/LIVE.md`.
+
+Any other agent that can run shell commands and read files works the
+same way on its own scheduler, with the text below the line as its
+instructions. Without an agent, pull the repo and read
+`results/REVIEW.md`, `results/FORECAST.md`, and `results/LIVE.md` in
+that order. STEP 2 is a reading order, not a computation.
+
+The machine that runs this prompt for the owner needs the project's
+virtual environment built, because STEP 1 may run the pipeline there.
+Replace "the repo's directory" in the prompt with your clone's path.
 
 ---
 
-STEP 1 - START THE RUN. Wait until 11:15 UTC in background commands
-of at most ten minutes each, and do nothing between them. Through the
-Bash tool, with run_in_background set to true and timeout set to
-600000, execute exactly:
-
-```
-target=$(date -u -d "today 11:15" +%s); end=$(( $(date -u +%s) + 590 )); until [ "$(date -u +%s)" -ge "$target" ] || [ "$(date -u +%s)" -ge "$end" ]; do sleep 5; done; date -u +%H:%M
-```
-
-The command exits after at most ten minutes, or at once if 11:15 UTC
-has passed, and prints the time in UTC. The session is notified when
-it exits. If the printed time is before 11:15, run the same command
-again. Repeat until it prints 11:15 or later; from a 5:15 Chicago
-start that is at most six runs. A single wait longer than ten minutes
-is stopped by Claude Code before it finishes, which is what lost the
-2026-10-02 start, and a long sleep in the foreground is refused
-outright. An agent with no background mode runs the same command in
-the foreground, with its tool timeout set longer than ten minutes.
-The origin hour closes at 11:00. A run started before then has nothing
-to forecast and fails on purpose. Then, in the repo's directory,
-execute exactly:
-
-```
-gh workflow run daily-run.yml -f dry_run=false
-```
-
-Run that command once and do not retry it. A second start the same
-day, from a retry, from a second session of this task, or from
-GitHub's own schedule, is harmless: the workflow checks the branch tip
-and skips once the day has committed.
-
-Then wait five minutes with `sleep 300` as one background command
-with timeout 600000, and continue when it exits. The run takes about three and a half.
-
-STEP 2 - CHECK THAT IT LANDED. Execute exactly:
+STEP 1 - CHECK THAT THE RUN LANDED. In the repo's directory, execute
+exactly:
 
 ```
 git pull --ff-only
@@ -90,7 +74,7 @@ git log -30 --format=%s
 ```
 
 If any line starts with "Daily run <today's date in UTC, YYYY-MM-DD>",
-the run has landed: go to STEP 3. It need not be the newest commit,
+the run has landed: go to STEP 2. It need not be the newest commit,
 since other work may have been pushed after the run. If no line does,
 a reader reports in one line that today's commit has not landed and
 stops. The owner executes:
@@ -101,12 +85,12 @@ gh run list --workflow daily-run.yml --limit 3
 
 and act on the newest run listed for today:
 
-- Queued or in progress: wait two minutes (`sleep 120` as a background
-  command) and repeat STEP 2, at most ten times, twenty minutes in all.
-  After the tenth, report in one line that
-  the run is still in progress and stop. GitHub's own schedule may also
-  fire meanwhile; the workflow skips a second start once the day has
-  committed.
+- Queued or in progress: wait two minutes (`sleep 120` as one Bash
+  command with run_in_background set to true and timeout 600000) and
+  repeat STEP 1, at most ten times, twenty minutes in all. After the
+  tenth, report in one line that the run is still in progress and stop.
+  GitHub's own schedule may also fire meanwhile; the workflow skips a
+  second start once the day has committed.
 - Failed, or no run for today at all: run the pipeline on this machine
   with the project's own Python, then repeat the pull and the log check
   once.
@@ -122,11 +106,12 @@ run fails too, report in one line the stage it stopped at (the last
 line starting with [daily] before the error) and the error's final
 line, and stop.
 
-Report in one line how the run landed: from GitHub started by this
-task, from GitHub's own schedule, or locally, with the start time. Both
-are in the commit message, after "trigger".
+Report in one line how the run landed: from GitHub started on request
+(trigger workflow_dispatch), from GitHub's own schedule (trigger
+schedule), or locally (trigger local), with the start time. Both are in
+the commit message, after "trigger".
 
-STEP 3 - BRIEF, in this order. Plain prose, no emoji, ASCII only.
+STEP 2 - BRIEF, in this order. Plain prose, no emoji, ASCII only.
 
 Lead with yesterday in review: relay results/REVIEW.md essentially
 verbatim. The result (on target, too low, too high), the forecast
@@ -164,10 +149,12 @@ above the forecast.
 
 HARD RULES:
 
+- Never start the GitHub workflow. The owner's scheduler starts it, and
+  GitHub's own schedule is the fallback.
 - Never hand-edit anything under data/ or results/. The script produces
   every number.
 - Never commit or push by hand. The only commit this task may cause is
-  the one scripts/run_daily.py makes when it runs locally in STEP 2.
+  the one scripts/run_daily.py makes when it runs locally in STEP 1.
 - Never predict or fabricate a pending result; report only what the
   files say.
 - Do not fetch external URLs.

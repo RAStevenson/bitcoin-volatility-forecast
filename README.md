@@ -296,12 +296,12 @@ with the rest in two subfolders:
 
 The run is a GitHub Actions workflow,
 [.github/workflows/daily-run.yml](.github/workflows/daily-run.yml). A
-scheduled task on my machine starts it at 11:15 UTC each day by asking
-GitHub to run the workflow, and GitHub's own schedule at 11:15 and 11:45
-UTC is the fallback. Whichever fires second does nothing, because the
-day's run has already committed. The workflow installs the Python
-packages, with the CPU-only build of PyTorch, and runs
-`scripts/run_daily.py`, which commits the result as
+Windows Task Scheduler entry on my machine starts it at 11:15 UTC each
+day by asking GitHub to run the workflow, and GitHub's own schedule at
+11:15 and 11:45 UTC is the fallback. Whichever fires second does
+nothing, because the day's run has already committed. The workflow
+installs the Python packages, with the CPU-only build of PyTorch, and
+runs `scripts/run_daily.py`, which commits the result as
 `github-actions[bot]` and pushes, so the commit times in the forecast
 log are GitHub's, not mine. The origin is the 10:00 UTC hour every day,
 whatever minute the run starts, so a run that starts late forecasts the
@@ -328,15 +328,18 @@ to GitHub the run was triggered on my machine alone, and one unplanned
 restart of it cost a missed day, 2026-09-02, which is a gap in the
 history, and a late commit, which the audit lists.
 
-The same task then pulls the repo, checks that the day's commit has
-landed, and briefs me from
+After the run, a Claude Code scheduled task pulls the repo and checks
+that the day's commit has landed. If the GitHub run failed or never
+started, the task runs `scripts/run_daily.py` on my machine instead.
+It then briefs me from
 [results/REVIEW.md](results/REVIEW.md),
 [results/FORECAST.md](results/FORECAST.md), and
 [results/LIVE.md](results/LIVE.md), under rules that it relays
 the files' numbers and adds no diagnosis of its own. Its prompt is
 committed as [docs/daily_briefing_prompt.md](docs/daily_briefing_prompt.md),
 and any scheduled agent or a person can run it. The prompt says which
-steps a reader without write access runs.
+steps a reader without write access runs, and for the owner of a fork
+it gives the PowerShell lines that register the Task Scheduler entry.
 
 To run the loop yourself on a clone, fork the repo and enable the
 workflow, or schedule `python scripts/run_daily.py --no-push` with
