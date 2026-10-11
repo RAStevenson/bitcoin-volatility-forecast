@@ -1,6 +1,6 @@
 # Daily record (generated)
 
-Forecast days scored: 67. Resolved rows: 12792. Pending (logged, outcome not yet observed): 192.
+Forecast days scored: 68. Resolved rows: 12984. Pending (logged, outcome not yet observed): 192.
 
 Every row from an earlier run was committed to git before its target hour completed. Any exceptions and their reasons are listed below. Each run audits every earlier commit of the forecast log, so a day's rows are checked on the run after the one that committed them. The commit history is the timestamp evidence.
 
@@ -9,24 +9,24 @@ Every row from an earlier run was committed to git before its target hour comple
 
 | model                |   days |   pinball_mean |    mae |   cov50 |   cov90 |   skill_vs_persistence |   day_error |   day_skill |
 |:---------------------|-------:|---------------:|-------:|--------:|--------:|-----------------------:|------------:|------------:|
-| nhits                |     64 |         0.1006 | 0.313  |  0.4987 |  0.8945 |                 0.2291 |      0.1648 |      0.41   |
-| gbm                  |     67 |         0.108  | 0.3338 |  0.4434 |  0.8402 |                 0.18   |      0.1728 |      0.3674 |
-| sarima               |     67 |         0.1125 | 0.3471 |  0.5715 |  0.9142 |                 0.1437 |      0.1933 |      0.2923 |
-| har_seasonal         |     67 |         0.1234 | 0.3885 |  0.4478 |  0.8675 |                 0.0608 |      0.2425 |      0.1121 |
-| har                  |     67 |         0.1267 | 0.3991 |  0.4764 |  0.8694 |                 0.0471 |      0.2523 |      0.0761 |
-| prophet              |     67 |         0.1288 | 0.3922 |  0.477  |  0.8284 |                 0.011  |      0.2889 |     -0.0577 |
-| persistence          |     67 |         0.134  | 0.4199 |  0.5354 |  0.921  |                 0      |      0.2731 |      0      |
-| seasonal_persistence |     67 |         0.1564 | 0.48   |  0.4751 |  0.8688 |                -0.1967 |      0.2983 |     -0.0921 |
+| nhits                |     65 |         0.1002 | 0.3119 |  0.5013 |  0.8955 |                 0.2273 |      0.1641 |      0.4072 |
+| gbm                  |     68 |         0.1078 | 0.3334 |  0.4418 |  0.8413 |                 0.1765 |      0.1736 |      0.3592 |
+| sarima               |     68 |         0.1133 | 0.3507 |  0.565  |  0.9118 |                 0.132  |      0.1988 |      0.2662 |
+| har_seasonal         |     68 |         0.1247 | 0.3926 |  0.4424 |  0.8634 |                 0.0443 |      0.2483 |      0.0835 |
+| har                  |     68 |         0.1278 | 0.4027 |  0.47   |  0.8646 |                 0.0319 |      0.2576 |      0.0492 |
+| prophet              |     68 |         0.129  | 0.3937 |  0.473  |  0.8272 |                 0.0036 |      0.2916 |     -0.0762 |
+| persistence          |     68 |         0.1333 | 0.4169 |  0.5392 |  0.9222 |                 0      |      0.2709 |      0      |
+| seasonal_persistence |     68 |         0.1572 | 0.4822 |  0.4737 |  0.8676 |                -0.2119 |      0.3043 |     -0.1231 |
 
 The hourly columns score each of the 24 target hours. The day columns score the day's average volatility, which could be one input to a position size. day_error is the mean absolute log error of the 24 hourly median forecasts' average against the realized average, over fully resolved days, so lower is better. day_skill is one minus the ratio of that error to the persistence model's on the same days, so a positive value beats persistence and 1 would be a perfect forecast.
 
 The days column is each model's own count of scored days. Models that joined the loop later are averaged over fewer days, so the rows above are not sample-matched.
 
-Matched on the 64 fully resolved days that both nhits and persistence forecast, the skill of nhits over persistence is 0.26 on the hourly pinball loss (95% interval 0.18 to 0.34) and 0.41 on the day-level error (0.21 to 0.61). Pinball loss scores the whole low-to-high forecast band, not just its middle, and lower is better. The hourly figure pools the loss over those days, while the table's skill_vs_persistence averages the 24 per-hour skills, each model over its own days. Each interval comes from the day-to-day spread of the gap between the two models' daily scores and treats each day as independent of the last. An interval that stays above zero means that, on these days, the lead over persistence is larger than day-to-day noise would explain.
+Matched on the 65 fully resolved days that both nhits and persistence forecast, the skill of nhits over persistence is 0.26 on the hourly pinball loss (95% interval 0.18 to 0.33) and 0.41 on the day-level error (0.21 to 0.61). Pinball loss scores the whole low-to-high forecast band, not just its middle, and lower is better. The hourly figure pools the loss over those days, while the table's skill_vs_persistence averages the 24 per-hour skills, each model over its own days. Each interval comes from the day-to-day spread of the gap between the two models' daily scores and treats each day as independent of the last. An interval that stays above zero means that, on these days, the lead over persistence is larger than day-to-day noise would explain.
 
 The figure below is that day-level record for nhits, the current leader: its forecast of each day's average volatility, the average that realized, and the persistence model's own forecast of the same average.
 
 ![day by day: forecast, realized, persistence](figures/fig_live_daily.png)
 
-The calibration check flags these models, whose average coverage has sat farther from 0.90 than day-to-day spread would explain on 3 consecutive scored days: gbm, coverage 0.8402, p-value 0.0017. Bands are left as each model produces them, and the coverage column is the record of that. A model's 90% band is meant to contain the realized value on about 90% of hours. Coverage is the share of hours that landed inside it. The check takes that share for each day a model has been scored, one number per day. It asks whether the average of those numbers sits farther from 0.90 than their day-to-day spread would explain, in either direction (a two-sided t-test). The p-value is the chance of an average at least that far from 0.90 if the model's true coverage were exactly 0.90. Because 8 models are tested at once, each is held to a threshold of 0.05 divided by 8, or 0.0063, so that the chance of a false alarm across all of them stays at or below 5% (a Bonferroni correction). A p-value below that threshold is a rejection. A model is flagged only after it is rejected on 3 consecutive scored days, so one noisy day cannot raise an alarm.
+The calibration check flags these models, whose average coverage has sat farther from 0.90 than day-to-day spread would explain on 3 consecutive scored days: gbm, coverage 0.8413, p-value 0.0018. Bands are left as each model produces them, and the coverage column is the record of that. A model's 90% band is meant to contain the realized value on about 90% of hours. Coverage is the share of hours that landed inside it. The check takes that share for each day a model has been scored, one number per day. It asks whether the average of those numbers sits farther from 0.90 than their day-to-day spread would explain, in either direction (a two-sided t-test). The p-value is the chance of an average at least that far from 0.90 if the model's true coverage were exactly 0.90. Because 8 models are tested at once, each is held to a threshold of 0.05 divided by 8, or 0.0063, so that the chance of a false alarm across all of them stays at or below 5% (a Bonferroni correction). A p-value below that threshold is a rejection. A model is flagged only after it is rejected on 3 consecutive scored days, so one noisy day cannot raise an alarm.
 
