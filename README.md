@@ -94,6 +94,7 @@ average only when each quantile sits at its true value, so a model
 cannot improve it by hedging wide or narrow. Calibration scores whether
 the bands are sized correctly. It counts how often the realized value
 landed inside the 90% band, the span between the 5% and 95% quantiles.
+LIVE.md reports that share as the `cov90` column.
 
 Two baselines sit in the results tables beside the other six models.
 One is persistence. The other is HAR (heterogeneous autoregressive),
@@ -358,50 +359,7 @@ checks that features are strictly trailing (rewriting the future changes
 nothing in the past), checks the fit-and-predict contract every
 registered model implements, checks pinball loss against hand-computed
 values, and confirms that the backtest engine never hands a model data
-past its forecast origin. It also covers the calibration check described
-in the next section: that a rejection streak shorter than three days is
-reported as pending rather than flagged, that the correction for testing
-several models at once scales with their number, and that a model whose
-daily coverage has no spread gets no result at all.
-
-## The calibration check
-
-`LIVE.md` carries a `cov90` column, the fraction of hours where the
-realized value landed inside a model's 90% band. A calibrated model
-sits near 0.90, and a model that sits well below it is claiming more
-precision than it has.
-
-Each daily run checks whether a model's coverage is farther from 0.90,
-in either direction, than noise would explain, taking each model's
-coverage one day at a time, with a correction for testing eight models
-at once. A model is flagged only after it sits farther from 0.90 than
-noise explains on three consecutive scored days, and a shorter streak
-is reported as pending. Each day's LIVE.md states the test in full.
-Earlier results are recomputed from `evaluation.csv`, the log of every
-scored forecast, rather than stored, so the whole check is reproducible
-from that log.
-
-The check stays silent in two cases on purpose. A model with fewer than
-10 scored days gets no result, because three clean quiet days once
-produced a coverage of 1.0 from models the year-long backtest shows are
-calibrated. A model whose daily coverage has no spread at all also gets
-none, because the test would have no uncertainty to divide by, and
-inventing one would be a guess.
-
-Part of why some bands run narrow is visible in how they are built.
-HAR takes its band from the spread of the errors of the regression it
-has just fit, on the hours it was fit to. XGBoost fits each of its five
-quantiles to every row of its training window with nothing held back. A
-band fitted to the hours a model has seen tends to understate the
-errors it makes on hours it has not. In LIVE.md's cov90 column both
-models' 90% bands cover fewer than 90% of hours, and so does Prophet's.
-The bands are left as each model produces them, because widening them
-by hand would hide what the coverage column exists to show.
-
-The check replaced an earlier version that named any model under 0.80
-coverage. How that version failed and which models the current one has
-flagged are recorded in
-[docs/calibration_check_history.md](docs/calibration_check_history.md).
+past its forecast origin.
 
 ## Limitations and next steps
 
@@ -414,16 +372,10 @@ Before that they were made by a machine I control, and the audit reads
 commit times only, so those days depend on that machine's clock. The
 audit in LIVE.md lists every exception.
 
-The coverage columns in LIVE.md carry real uncertainty, because each day
-contributes about 24 dependent hourly rows. The calibration check above
-quantifies that uncertainty rather than reading the column as exact. It
-treats each scored day as independent of the last, and that day-to-day
-dependence is unmodeled. If consecutive days move together, the check
-and the interval above are more confident than they should be. As of
-2026-10-02, six of the eight models' coverage sits below 0.90 and the
-other two sit just above it. That mostly one-sided pattern is a weak
-signal that the bands are narrow, and no per-model test will settle it
-at this sample size.
+The 95% interval on N-HiTS's lead over persistence, near the top of this
+README, treats each scored day as independent of the last. If
+consecutive days move together, the interval is narrower than it should
+be.
 
 The 2026-08-19 forecast day shows the pattern of the whole record.
 Realized volatility ran 3.67 times the nhits median forecast. The
