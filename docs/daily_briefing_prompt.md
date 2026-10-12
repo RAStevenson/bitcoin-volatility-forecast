@@ -133,16 +133,6 @@ Then, briefly, system health:
 - Yesterday's scoring: rows resolved, the leading model in the daily
   record with its pinball loss, and any change of leader since the
   previous briefing.
-- Calibration: relay the "calibration check" line from results/LIVE.md
-  verbatim in one clause. The script computes the result itself. Raise
-  it as an alert only if that line begins "The calibration check
-  flags". While it says "stays inactive", "passes", or "found no model
-  with enough scored days", it is one clause and never an alert. That
-  holds when it names a model as pending part way through the three
-  days; a pending model is worth one sentence, not a heading. Never apply a threshold to the raw cov90 column
-  yourself. Its day-to-day noise is larger than the gaps between
-  models. Reading the column as exact is the mistake the check was rebuilt on
-  2026-08-24 to stop making (see docs/calibration_check_history.md).
 
 If a scoring anomaly or a failed step exists, it moves to the top,
 above the forecast.
@@ -151,6 +141,9 @@ HARD RULES:
 
 - Never start the GitHub workflow. The owner's scheduler starts it, and
   GitHub's own schedule is the fallback.
+- Never mention or judge LIVE.md's cov50 and cov90 columns, and never
+  apply a threshold to them. A single day's coverage swings far more
+  than the gaps between models.
 - Never hand-edit anything under data/ or results/. The script produces
   every number.
 - Never commit or push by hand. The only commit this task may cause is

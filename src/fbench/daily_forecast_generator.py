@@ -31,9 +31,9 @@ def prob_above(vol_quantiles, threshold):
 def _live_leader(evaluations):
     """The model with the lowest mean pinball loss over the resolved rows
     in evaluations, or None while fewer than three origins have been scored."""
-    # Three origins is a deliberately lower bar than the 10-day
-    # calibration gate: picking which model the daily forecast reports only
-    # needs a best guess, while the calibration line is a published
+    # Three origins is a deliberately lower bar than the 10-day gate on
+    # LIVE.md's matched-day skill: picking which model the daily forecast
+    # reports only needs a best guess, while the skill line is a published
     # result, so that one waits for the larger sample.
     if evaluations["origin"].nunique() >= 3:
         return score(evaluations).groupby("model")["pinball_mean"].mean().idxmin()

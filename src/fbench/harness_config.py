@@ -1,6 +1,6 @@
 """Settings for the whole harness, covering repo paths and data source
 ids, the quantile grid, the realized-volatility and backtest windows, and
-the thresholds of the live calibration check. Every other fbench module
+the live record's minimum sample. Every other fbench module
 and every entry script in scripts/ reads its constants from here rather
 than defining them locally."""
 
@@ -39,20 +39,8 @@ ORIGIN_HOUR_UTC = 10           # the daily run's origin, the same clock
                                # same window and sees no data past it
 ANNUALIZER = (365 * 24) ** 0.5 # hourly variance -> annualized vol units
 
-# Live calibration check. Hourly rows within a day are strongly
-# dependent, so the effective sample is roughly the number of scored
-# days, not the row count; no result is reported below the minimum.
-MIN_CALIBRATION_DAYS = 10
-COV90_TARGET = 0.90
-# The check compares each model's day-level coverage against the target
-# with a two-sided t-test, Bonferroni-corrected across the models tested,
-# and flags a model only after it rejects on consecutive days, naming a
-# shorter streak as pending. A fixed
-# floor was tried first and could not separate a miscalibrated model from
-# a noisy one: at ~20 scored days the standard error of day-level
-# coverage is about 0.045, so a floor at 0.80 sat inside the noise. Its
-# flag list stayed populated for nine straight days (one model the first
-# four, three to five from 2026-08-20) and swapped members as point
-# estimates drifted a few thousandths.
-CALIBRATION_ALPHA = 0.05
-CALIBRATION_PERSISTENCE_DAYS = 3
+# Fewest fully resolved days the leader and persistence must share
+# before LIVE.md states the leader's matched-day skill and its interval.
+# Hourly rows within a day are strongly dependent, so the effective
+# sample is the day count, not the row count.
+MIN_MATCHED_DAYS = 10
