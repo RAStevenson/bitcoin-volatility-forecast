@@ -1,8 +1,8 @@
 """Settings for the whole harness, covering repo paths and data source
 ids, the quantile grid, the realized-volatility and backtest windows, and
-the live record's minimum sample. Every other fbench module
-and every entry script in scripts/ reads its constants from here rather
-than defining them locally."""
+the live record's minimum sample. Settings shared across modules
+live here. A constant that belongs to one module's own job, such as its
+file paths or report labels, is defined in that module instead."""
 
 from pathlib import Path
 
