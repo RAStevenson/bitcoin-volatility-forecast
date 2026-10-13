@@ -141,9 +141,6 @@ HARD RULES:
 
 - Never start the GitHub workflow. The owner's scheduler starts it, and
   GitHub's own schedule is the fallback.
-- Never mention or judge LIVE.md's cov50 and cov90 columns, and never
-  apply a threshold to them. A single day's coverage swings far more
-  than the gaps between models.
 - Never hand-edit anything under data/ or results/. The script produces
   every number.
 - Never commit or push by hand. The only commit this task may cause is
