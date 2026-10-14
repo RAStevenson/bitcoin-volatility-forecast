@@ -8,7 +8,7 @@ import math
 import numpy as np
 import pandas as pd
 
-from fbench.daily_forecast_generator import LOCAL_TZ, leading_model_asof
+from fbench.daily_forecast_generator import LOCAL_TZ, leading_model_asof, ordinal
 from fbench.daily_forecast_scoring import record_lines, score_daily_forecast
 from fbench.daily_run import EVAL_LOG, _load
 from fbench.harness_config import QCOLS, RESULTS_DIR
@@ -156,16 +156,8 @@ def _rank_phrase(from_worst, from_best, n_days):
     if from_worst == from_best:
         return f"at the median of {n_days} scored days"
     end = "smallest" if from_best < from_worst else "largest"
-    rank = end if nearer == 1 else f"{_ordinal(nearer)} {end}"
+    rank = end if nearer == 1 else f"{ordinal(nearer)} {end}"
     return f"the {rank} of {n_days} scored days"
-
-
-def _ordinal(number):
-    """Return number with its English ordinal suffix, as in 3 to 3rd, for
-    the sentence that ranks the day among all scored days."""
-    suffix = ("th" if 10 <= number % 100 <= 20
-              else {1: "st", 2: "nd", 3: "rd"}.get(number % 10, "th"))
-    return f"{number}{suffix}"
 
 
 def write_review(hourly=None):
