@@ -333,8 +333,8 @@ After the run, a Claude Code scheduled task pulls the repo and checks
 that the day's commit has landed. If the GitHub run failed or never
 started, the task runs `scripts/run_daily.py` on my machine instead.
 It then briefs me from
-[results/REVIEW.md](results/REVIEW.md),
-[results/FORECAST.md](results/FORECAST.md), and
+[results/FORECAST.md](results/FORECAST.md),
+[results/REVIEW.md](results/REVIEW.md), and
 [results/LIVE.md](results/LIVE.md), under rules that it relays
 the files' numbers and adds no diagnosis of its own. Its prompt is
 committed as [docs/daily_briefing_prompt.md](docs/daily_briefing_prompt.md),
