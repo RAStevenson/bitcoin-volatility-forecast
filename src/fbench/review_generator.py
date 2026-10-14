@@ -3,6 +3,8 @@ compared with what realized, followed by the daily forecast's own claims scored
 over every resolved day. Generated from the evaluation log and the
 hourly realized series, so every number is reproducible from the
 committed files."""
+import math
+
 import numpy as np
 import pandas as pd
 
@@ -106,9 +108,11 @@ def build_review(hourly=None):
         f"- {inside_band.sum()} of {n_hours} hours landed inside the 90% band "
         f"({above_band.sum()} above it, {below_band.sum()} below). A calibrated band "
         f"holds about {round(0.9 * n_hours)} of {n_hours}.",
-        f"- Across all models this was the {rank_text} (mean log error "
-        f"{day_abs_log_error:.3f}, median day {scores_by_day['mae'].median():.3f}).",
-        f"- Best median that day: {best}; worst: {worst}."
+        f"- Across all models the day's mean absolute log error was "
+        f"{day_abs_log_error:.3f}, {rank_text} (median day "
+        f"{scores_by_day['mae'].median():.3f}).",
+        f"- Among the models, {best} had the smallest mean absolute log "
+        f"error that day and {worst} the largest."
         + (f" Every model forecast {shared_direction}, so the error traces to what "
            "was knowable that day rather than to any one model's choice."
            if shared_direction else
@@ -131,23 +135,27 @@ def build_review(hourly=None):
 
 
 def _rank_phrase(from_worst, from_best, n_days):
-    """The day's place among the scored days by error, counted from
-    whichever end is nearer, so the lowest-error day on record reads as
-    "the best of 57 scored days" rather than "the 57th worst". from_worst
+    """The day's error placed among the scored days. A day more than
+    ceil(n_days / 3) places from either end is said to be in the middle
+    third, since an exact place such as "the 28th largest" reads as a
+    judgment on a day near the median. A day outside it is counted from
+    the nearer end, so the lowest-error day on record reads as "the
+    smallest of 57 scored days" rather than "the 57th largest". from_worst
     is one more than the count of days with a larger error, so 1 is the
-    worst day, and from_best one more than the count with a smaller
-    error, so 1 is the best; days tied on error share a place. A day
-    equally far from both ends is the middle day, and a lone day is
-    called that."""
+    largest, and from_best one more than the count with a smaller error,
+    so 1 is the smallest; days tied on error share a place, and a day
+    equally far from both ends is at the median. A lone day has nothing
+    to rank against."""
     if n_days == 1:
-        return "only scored day so far"
-    if from_best < from_worst:
-        rank = "best" if from_best == 1 else f"{_ordinal(from_best)} best"
-    elif from_worst < from_best:
-        rank = "worst" if from_worst == 1 else f"{_ordinal(from_worst)} worst"
-    else:
-        rank = "middle day"
-    return f"{rank} of {n_days} scored days"
+        return "with no other scored day to rank it against"
+    nearer = min(from_worst, from_best)
+    if nearer > math.ceil(n_days / 3):
+        return f"in the middle third of {n_days} scored days"
+    if from_worst == from_best:
+        return f"at the median of {n_days} scored days"
+    end = "smallest" if from_best < from_worst else "largest"
+    rank = end if nearer == 1 else f"{_ordinal(nearer)} {end}"
+    return f"the {rank} of {n_days} scored days"
 
 
 def _ordinal(number):

@@ -3,8 +3,8 @@
 **The forecast was on target.** The nhits median averaged 27% annualized volatility over the 24 hours; realized averaged 35%, 1.28x the forecast.
 
 - 22 of 24 hours landed inside the 90% band (2 above it, 0 below). A calibrated band holds about 22 of 24.
-- Across all models this was the 28th worst of 70 scored days (mean log error 0.398, median day 0.356).
-- Best median that day: prophet; worst: seasonal_persistence. Every model forecast too low, so the error traces to what was knowable that day rather than to any one model's choice.
+- Across all models the day's mean absolute log error was 0.398, in the middle third of 70 scored days (median day 0.356).
+- Among the models, prophet had the smallest mean absolute log error that day and seasonal_persistence the largest. Every model forecast too low, so the error traces to what was knowable that day rather than to any one model's choice.
 
 Largest hourly errors (local time, America/Chicago):
 
