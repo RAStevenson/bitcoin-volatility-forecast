@@ -33,6 +33,7 @@ def test_review_on_target_for_ordinary_day(tmp_path, monkeypatch):
     text = review_generator.write_review().read_text()
     assert "Yesterday in review" in text
     assert "on target" in text
+    assert "within a factor of 1.5 of the forecast, above or below it" in text
     assert "price direction" in text
 
 

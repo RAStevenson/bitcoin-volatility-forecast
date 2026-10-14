@@ -103,7 +103,9 @@ def build_review(hourly=None):
         "",
         f"**The forecast was {outcome}.** The {model} median averaged "
         f"{forecast_average:.0%} annualized volatility over the 24 hours; realized "
-        f"averaged {realized_average:.0%}, {ratio:.2f}x the forecast.",
+        f"averaged {realized_average:.0%}, {ratio:.2f}x the forecast. The "
+        f"forecast counts as on target when the realized volatility averages "
+        f"within a factor of {ON_TARGET[1]:g} of the forecast, above or below it.",
         "",
         f"- {inside_band.sum()} of {n_hours} hours landed inside the 90% band "
         f"({above_band.sum()} above it, {below_band.sum()} below). A calibrated band "
