@@ -85,6 +85,15 @@ def context(realized_vol_to_origin):
             "previous_day_average": float(realized_vol.iloc[-24:].mean())}
 
 
+def ordinal(number):
+    """Return number with its English ordinal suffix, as in 3 to 3rd and
+    31 to 31st, for generated sentences that place a value by rank or
+    percentile."""
+    suffix = ("th" if 10 <= number % 100 <= 20
+              else {1: "st", 2: "nd", 3: "rd"}.get(number % 10, "th"))
+    return f"{number}{suffix}"
+
+
 def regime_of(day_average, daily_averages):
     """The regime word for a 24-hour average of annualized volatility,
     placed against the past year's rolling 24-hour averages, returned
@@ -248,7 +257,7 @@ def build_daily_forecast(hourly, last_price=None):
         f"{forecast_claims['trend']}.** {move_line}",
         "",
         f"That forecast sits {percentile_phrase} (the "
-        f"{forecast_claims['percentile']:.0f}th percentile of "
+        f"{ordinal(round(forecast_claims['percentile']))} percentile of "
         f"the past year's rolling 24-hour averages) and works out to about "
         f"{forecast_average:.0%} in annualized units, the per-year convention "
         f"volatility is quoted in. The hourly figures above are that same "

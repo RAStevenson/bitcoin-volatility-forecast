@@ -77,3 +77,12 @@ def test_daily_forecast_written_with_regime_words(tmp_path, monkeypatch):
     text_with_price = daily_forecast_generator.write_daily_forecast(
         hourly, last_price=50_000.0).read_text()
     assert "$50,000" in text_with_price
+
+
+def test_ordinal_suffixes_including_the_teens():
+    ordinal = daily_forecast_generator.ordinal
+    expected = {1: "1st", 2: "2nd", 3: "3rd", 4: "4th", 11: "11th", 12: "12th",
+                13: "13th", 21: "21st", 31: "31st", 42: "42nd", 53: "53rd",
+                100: "100th", 101: "101st", 111: "111th"}
+    for number, text in expected.items():
+        assert ordinal(number) == text
