@@ -229,8 +229,9 @@ def timing_lines(late):
         minutes_late = group["minutes_late"]
         delay = (f"{minutes_late / 60:.0f} hours" if minutes_late >= 60
                  else f"{minutes_late:.0f} minutes")
-        reason = (LATE_COMMIT_REASONS.get(f"{group['origin']:%Y-%m-%d}")
-                  or run_note(group.get("subject"))
+        reason = (" ".join(filter(None, (
+                      LATE_COMMIT_REASONS.get(f"{group['origin']:%Y-%m-%d}"),
+                      run_note(group.get("subject")))))
                   or "No reason is recorded for it.")
         lines.append(
             f"- The {group['origin']:%Y-%m-%d} forecast, made from data through "
