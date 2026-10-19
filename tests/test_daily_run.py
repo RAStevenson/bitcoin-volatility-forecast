@@ -145,6 +145,14 @@ def test_timing_lines_state_exceptions_and_never_assume_an_audit():
                           "trigger workflow_dispatch, started 12:30 UTC")]
     text = " ".join(daily_run.timing_lines(later))
     assert "started by a dispatch from the author's machine at 12:30 UTC" in text
+    # a recorded reason comes first and the trigger sentence still follows
+    restart = [dict(later[0], origin=pd.Timestamp("2026-10-17 10:00", tz="UTC"),
+                    subject="Daily run 2026-10-17: 192 forecast rows logged; "
+                            "trigger schedule, started 14:12 UTC")]
+    text = " ".join(daily_run.timing_lines(restart))
+    assert ("could not log back in, so it did not start the run. The run "
+            "that committed it was started by GitHub's scheduled trigger at "
+            "14:12 UTC.") in text
     unknown = [dict(later[0], subject="Daily run 2026-09-28: 192 rows")]
     assert "No reason is recorded" in " ".join(daily_run.timing_lines(unknown))
 
