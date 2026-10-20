@@ -156,10 +156,9 @@ to and where its band comes from.
 - `sarima` (SARIMAX). A classical time-series model fit on the most
   recent 90 days. Its order, (1,0,1)(1,0,1,24), means one term carrying
   over from the previous hour and one from the previous hour's error,
-  with the same pair at a lag of 24 hours for the daily cycle. The
-  zeros mean no differencing, because log volatility stays roughly
-  level over time.
-  The X stands for outside inputs, and none are used. Its band is
+  with the same pair at a lag of 24 hours for the daily cycle. The zeros
+  mean no differencing, because log volatility stays roughly level over
+  time. The X stands for outside inputs, and none are used. Its band is
   symmetric, from the forecast's standard error.
 - `prophet` (Prophet). A trend-plus-cycles model with daily and weekly
   cycles and no yearly one. Its band comes from 300 simulated draws of
@@ -229,9 +228,9 @@ In a terminal, run the following commands.
 
    PyTorch installs without a GPU either way. The first line matters on
    Linux, where the default PyTorch package also downloads large CUDA
-   libraries that these models never use. On Windows
-   the default package is already CPU-only. The pinned versions in
-   `requirements.txt` are the ones the daily run installs.
+   libraries that these models never use. On Windows the default package
+   is already CPU-only. The pinned versions in `requirements.txt` are
+   the ones the daily run installs.
 
 The scripts, in the order a rebuild from scratch would run them:
 
@@ -258,9 +257,9 @@ python scripts/run_daily.py        # the daily run: score yesterday, log
                                    #   plain language), commit and push
                                    #   (--no-push, --no-commit)
 python scripts/run_verify_timing.py  # audit the forecast log's timing claim
-                                     #   against git history: exits 1 if any
-                                     #   forecast row was first committed
-                                     #   after its target hour completed
+                                     #   against git history, listing each
+                                     #   late day with its reason; exits 1
+                                     #   if a late day has no reason
 ```
 
 `run_vol_backtest.py` takes `--models` (default: every registered
@@ -295,52 +294,56 @@ with the rest in two subfolders:
 
 ## How the daily run happens
 
-The run is a GitHub Actions workflow,
-[.github/workflows/daily-run.yml](.github/workflows/daily-run.yml). A
-Windows Task Scheduler entry on my machine starts it at 11:15 UTC each
-day by asking GitHub to run the workflow, and GitHub's own schedule at
-11:15 and 11:45 UTC is the fallback. Whichever fires second does
-nothing, because the day's run has already committed. The workflow
-installs the Python packages, with the CPU-only build of PyTorch, and
-runs `scripts/run_daily.py`, which commits the result as
+The run is a GitHub Actions workflow, [daily-run.yml][workflow]. A
+Windows Task Scheduler entry on the author's machine starts it at
+11:15 UTC each day by asking GitHub to run the workflow, and GitHub's
+own schedule at 11:15 and 11:45 UTC is the fallback. Whichever fires
+second does nothing, because the day's run has already committed. The
+workflow installs the Python packages, with the CPU-only build of
+PyTorch, and runs `scripts/run_daily.py`, which commits the result as
 `github-actions[bot]` and pushes, so the commit times in the forecast
-log are GitHub's, not mine. The origin is the 10:00 UTC hour every day,
-whatever minute the run starts, so a run that starts late forecasts the
-window an on-time run would have, and its models see no data past that
-hour. Only the dollar figures in FORECAST.md use the price at the time
-of the run. The 10:00 hour is 5:00 in the morning in Chicago, 4:00 once
-daylight saving ends, so the forecast and its briefing land before the
-US stock market opens at 8:30 Central, and the 24 hours it covers
-include that session. The origin hour closes at 11:00, and its first
-target hour ends at 12:00 UTC, so a run that starts on time and takes
-its usual three and a half minutes commits with about forty minutes to
-spare. A run that commits after that is listed in
-[results/LIVE.md](results/LIVE.md) by the audit, with what started it
-and when, read from its commit message. A run that fails leaves no
-commit that day, and the gap is visible in the history.
+log are GitHub's, not the author's. The origin is the 10:00 UTC hour
+every day, whatever minute the run starts, so a run that starts late
+forecasts the window an on-time run would have, and its models see no
+data past that hour. Only the dollar figures in FORECAST.md use the
+price at the time of the run. The 10:00 hour is 5:00 in the morning in
+Chicago, 4:00 once daylight saving ends, so the forecast and its
+briefing land before the US stock market opens at 8:30 Central, and
+the 24 hours it covers include that session. The origin hour closes at
+11:00, and its first target hour ends at 12:00 UTC, so a run that
+starts on time and takes its usual three and a half minutes commits
+with about forty minutes to spare. A run that commits after that is
+listed in [LIVE.md][live] by the audit, with what started it and when,
+read from its commit message. A run that fails leaves no commit that
+day, and the gap is visible in the history.
 
-My machine starts the run because GitHub's documentation says a
-scheduled run can be delayed under load, and the first scheduled run of
-this workflow started 4 hours 26 minutes late. A run started on request
-begins within about a minute. The origin has been fixed at 10:00 from
-the day after that late run. The five days whose origin was not 10:00,
-that one included, are visible in the forecast log. Before the move
-to GitHub the run was triggered on my machine alone, and one unplanned
-restart of it cost a missed day, 2026-09-02, which is a gap in the
-history, and a late commit, which the audit lists.
+[workflow]: .github/workflows/daily-run.yml
+
+The author's machine starts the run because GitHub's documentation says
+a scheduled run can be delayed under load, and the first scheduled run
+of this workflow started 4 hours 26 minutes late. A run started on
+request begins within about a minute. The origin has been fixed at 10:00
+from the day after that late run. The five days whose origin was not
+10:00, that one included, are visible in the forecast log. Before the
+move to GitHub the run was triggered on that machine alone, and one
+unplanned restart of it cost a missed day, 2026-09-02, which is a gap in
+the history, and a late commit, which the audit lists.
 
 After the run, a Claude Code scheduled task pulls the repo and checks
 that the day's commit has landed. If the GitHub run failed or never
-started, the task runs `scripts/run_daily.py` on my machine instead.
-It then briefs me from
-[results/FORECAST.md](results/FORECAST.md),
-[results/REVIEW.md](results/REVIEW.md), and
-[results/LIVE.md](results/LIVE.md), under rules that it relays
-the files' numbers and adds no diagnosis of its own. Its prompt is
-committed as [docs/daily_briefing_prompt.md](docs/daily_briefing_prompt.md),
-and any scheduled agent or a person can run it. The prompt says which
-steps a reader without write access runs, and for the owner of a fork
-it gives the PowerShell lines that register the Task Scheduler entry.
+started, the task runs `scripts/run_daily.py` on the author's machine
+instead. Either way, it then writes a briefing for the author from
+[FORECAST.md][forecast], [REVIEW.md][review], and [LIVE.md][live], under
+rules that it relays the files' numbers and adds no diagnosis of its
+own. Its prompt is committed as [daily_briefing_prompt.md][prompt], and
+any scheduled agent or a person can run it. The prompt says which steps
+a reader without write access runs, and for the owner of a fork it gives
+the PowerShell lines that register the Task Scheduler entry.
+
+[forecast]: results/FORECAST.md
+[review]: results/REVIEW.md
+[live]: results/LIVE.md
+[prompt]: docs/daily_briefing_prompt.md
 
 To run the loop yourself on a clone, fork the repo and enable the
 workflow, or schedule `python scripts/run_daily.py --no-push` with
@@ -368,9 +371,9 @@ results table will stay noisy until the sample grows.
 
 The timing evidence for the forecast log is the commit history. Since
 2026-09-27 the commits are made by GitHub's runner on GitHub's clock.
-Before that they were made by a machine I control, and the audit reads
-commit times only, so those days depend on that machine's clock. The
-audit in LIVE.md lists every exception.
+Before that they were made by a machine the author controls, and the
+audit reads commit times only, so those days depend on that machine's
+clock. The audit in LIVE.md lists every exception.
 
 The 95% interval on N-HiTS's lead over persistence, near the top of this
 README, treats each scored day as independent of the last. If
