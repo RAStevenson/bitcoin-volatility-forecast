@@ -223,8 +223,7 @@ def timing_lines(late):
              "target hour completed")
     if not late:
         return [f"{claim}, with no exceptions so far. {audit}", ""]
-    lines = [f"{claim}. Any exceptions and their reasons are listed below. "
-             f"{audit}", ""]
+    lines = [f"{claim}, except on the days listed below. {audit}", ""]
     for group in late:
         minutes_late = group["minutes_late"]
         delay = (f"{minutes_late / 60:.0f} hours" if minutes_late >= 60

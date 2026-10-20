@@ -15,7 +15,9 @@ COMMIT_MARK = "@@commit "
 
 # Why a forecast day was committed late, keyed by its origin date, one
 # full sentence for LIVE.md to print after the delay. A late day with no
-# entry here is listed with no reason, never a guessed one.
+# entry here gets run_note's sentence on what started its run and when;
+# one with neither an entry nor a trigger in its commit subject is listed
+# with no reason, never a guessed one.
 LATE_COMMIT_REASONS = {
     "2026-09-03": "The machine that ran the daily job had an unplanned "
                   "restart.",

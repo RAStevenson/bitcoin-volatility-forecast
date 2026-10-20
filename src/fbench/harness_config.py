@@ -1,8 +1,9 @@
 """Settings for the whole harness, covering repo paths and data source
 ids, the quantile grid, the realized-volatility and backtest windows, and
-the live record's minimum sample. Settings shared across modules
-live here. A constant that belongs to one module's own job, such as its
-file paths or report labels, is defined in that module instead."""
+the live record's origin hour and minimum sample. A constant that
+belongs to one module's job is defined in that module instead, such as
+FALLBACK_MODEL in daily_forecast_generator, LATE_COMMIT_REASONS in
+commit_timing, and ON_TARGET in review_generator."""
 
 from pathlib import Path
 
@@ -21,7 +22,6 @@ PRODUCT = "BTC-USD"            # Coinbase product id
 BITSTAMP_PAIR = "btcusd"
 HISTORY_START = "2023-08-01"   # ~3 years of 1-min candles at build time
 MINUTE_SECONDS = 60
-HOUR_SECONDS = 3600
 
 QUANTILES = [0.05, 0.25, 0.50, 0.75, 0.95]
 QCOLS = ["q05", "q25", "q50", "q75", "q95"]

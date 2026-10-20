@@ -137,17 +137,18 @@ def build_review(hourly=None):
 
 
 def _rank_phrase(from_worst, from_best, n_days):
-    """The day's error placed among the scored days. A day more than
-    ceil(n_days / 3) places from either end is said to be in the middle
-    third, since an exact place such as "the 28th largest" reads as a
-    judgment on a day near the median. A day outside it is counted from
-    the nearer end, so the lowest-error day on record reads as "the
-    smallest of 57 scored days" rather than "the 57th largest". from_worst
-    is one more than the count of days with a larger error, so 1 is the
-    largest, and from_best one more than the count with a smaller error,
-    so 1 is the smallest; days tied on error share a place, and a day
-    equally far from both ends is at the median. A lone day has nothing
-    to rank against."""
+    """The day's error placed among the scored days. A day whose place,
+    counted from the nearer end, is greater than ceil(n_days / 3) is
+    said to be in the middle third, since an exact place such as "the
+    28th largest" reads as a judgment on a day near the median. A day
+    outside it is counted from the nearer end, so the lowest-error day
+    on record reads as "the smallest of 57 scored days" rather than "the
+    57th largest". from_worst is one more than the count of days with a
+    larger error, so 1 is the largest, and from_best one more than the
+    count with a smaller error, so 1 is the smallest; days tied on error
+    share a place. A day equally far from both ends but outside the
+    middle third, which happens only when days tie on error, is at the
+    median. A lone day has nothing to rank against."""
     if n_days == 1:
         return "with no other scored day to rank it against"
     nearer = min(from_worst, from_best)

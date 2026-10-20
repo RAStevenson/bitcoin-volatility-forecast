@@ -50,8 +50,7 @@ session's reply. The app schedules in local time, so the task moves an
 hour against UTC at each daylight-saving change. The author's task runs
 at 6:30 in the morning in Chicago, which is 11:30 UTC in summer and
 12:30 UTC in winter. In winter a local re-run therefore commits after
-12:00 UTC, and the next run lists that day as late in
-`results/LIVE.md`.
+12:00 UTC, and the next run lists that day as late in `results/LIVE.md`.
 
 Any other agent that can run shell commands and read files works the
 same way on its own scheduler, with the text below the line as its
@@ -122,9 +121,10 @@ Then yesterday in review, briefly, from results/REVIEW.md: the result
 (on target, too low, too high) with the forecast average, the realized
 average and the ratio, and the 90% band line as written. Add the
 table of the largest hourly errors only when the result was too low or
-too high. Leave out the rest of the file, including the section on the
-daily forecast's own claims. Every number comes from the file; add no
-diagnosis the file does not contain.
+too high. Leave out the rest of the file, including the sentence that
+defines on target and the section on the daily forecast's own claims.
+Every number comes from the file; add no diagnosis the file does not
+contain.
 
 Then, briefly, system health:
 
