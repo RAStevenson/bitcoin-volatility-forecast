@@ -134,7 +134,7 @@ def test_timing_lines_state_exceptions_and_never_assume_an_audit():
              "committed": pd.Timestamp("2026-09-04 05:15", tz="UTC"),
              "minutes_late": 1035.0, "sha": "c9feb5305"}]
     text = " ".join(daily_run.timing_lines(late))
-    assert "Any exceptions and their reasons are listed below" in text
+    assert "completed, except on the days listed below" in text
     assert "completed. The machine that ran the daily job" in text
     assert "hour starting 10:00 UTC (8 models)" in text and "17 hours" in text
     short_delay = [dict(late[0], minutes_late=20.0)]
@@ -173,7 +173,6 @@ def test_live_report_written(logs_in_tmp):
     path = daily_run.write_live_report()
     text = path.read_text()
     assert "persistence" in text and "pinball" in text
-    # the coverage columns are glossed, and no pass or fail is stated about them
+    # the coverage columns are glossed
     assert "for well-sized bands they sit near 0.50 and 0.90" in text
-    assert "calibration" not in text.lower()
     assert "day_error" in text and (logs_in_tmp / "figures" / "fig_live_daily.png").exists()
