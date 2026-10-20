@@ -105,3 +105,13 @@ def run_note(subject):
     trigger_description = _TRIGGER_WORDS.get(match.group(1), match.group(1))
     return (f"The run that committed it was started by {trigger_description} "
             f"at {match.group(2)} UTC.")
+
+
+def late_reason(late_day):
+    """The sentence LIVE.md prints for why a late day was late: its entry
+    in LATE_COMMIT_REASONS if it has one, else run_note's sentence on what
+    started the run and when, else None. A late day with a reason is
+    accounted for in the published record; one without is the case
+    scripts/run_verify_timing.py fails on."""
+    return (LATE_COMMIT_REASONS.get(f"{late_day['origin']:%Y-%m-%d}")
+            or run_note(late_day.get("subject")))
