@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-from fbench.commit_timing import LATE_COMMIT_REASONS, run_note
+from fbench.commit_timing import late_reason
 from fbench.harness_config import (
     HORIZON,
     MIN_MATCHED_DAYS,
@@ -228,9 +228,7 @@ def timing_lines(late):
         minutes_late = group["minutes_late"]
         delay = (f"{minutes_late / 60:.0f} hours" if minutes_late >= 60
                  else f"{minutes_late:.0f} minutes")
-        reason = (LATE_COMMIT_REASONS.get(f"{group['origin']:%Y-%m-%d}")
-                  or run_note(group.get("subject"))
-                  or "No reason is recorded for it.")
+        reason = late_reason(group) or "No reason is recorded for it."
         lines.append(
             f"- The {group['origin']:%Y-%m-%d} forecast, made from data through "
             f"the hour starting {group['origin']:%H:00} UTC ({group['models']} "

@@ -51,3 +51,16 @@ def test_run_note_reads_the_trigger_from_the_subject():
                     "scheduled trigger at 15:38 UTC.")
     assert commit_timing.run_note("Daily run 2026-09-03: 192 rows") is None
     assert commit_timing.run_note("") is None
+
+
+def test_late_reason_prefers_the_recorded_entry_then_the_trigger():
+    late_day = commit_timing.late_groups(commit_timing.parse_log(GIT_LOG))[0]
+    # no entry for 2026-01-02, so the trigger sentence explains it
+    assert commit_timing.late_reason(late_day) == (
+        "The run that committed it was started by GitHub's scheduled trigger "
+        "at 04:57 UTC.")
+    recorded_day = {**late_day, "origin": pd.Timestamp("2026-09-03 10:00:00+00:00")}
+    assert (commit_timing.late_reason(recorded_day)
+            == commit_timing.LATE_COMMIT_REASONS["2026-09-03"])
+    # a late commit with neither a recorded reason nor a trigger is unexplained
+    assert commit_timing.late_reason({**late_day, "subject": "hand commit"}) is None

@@ -2,9 +2,11 @@
 was committed before its first target hour ended, by walking the commit
 history of results/forecasts.csv and checking every (origin, model)
 group. It reads git history only, prints a line per forecast day with its
-margin, and exits non-zero if any group was late, so a CI job can fail on
-it. The daily run runs the same audit and prints its exceptions in
-LIVE.md."""
+margin and, for a late day, the reason LIVE.md gives for it. It exits
+non-zero only if a late day has no reason, meaning neither an entry in
+LATE_COMMIT_REASONS nor a trigger and start time in its commit subject,
+so a CI job fails on a late commit nothing accounts for rather than on
+every day already listed in LIVE.md."""
 import sys
 from pathlib import Path
 
@@ -14,21 +16,24 @@ import argparse
 
 import pandas as pd
 
-from fbench.commit_timing import first_commits, late_groups
+from fbench.commit_timing import first_commits, late_groups, late_reason
 from fbench.harness_config import ROOT
 
 
 def main():
     """Runs the timing audit, prints one line per forecast day with its
-    margin, and exits 1 if any day was committed late. The parser takes no
-    arguments; it exists so --help prints what the audit checks."""
+    margin and each late day's reason, and exits 1 if any late day has no
+    reason. The parser takes no arguments; it exists so --help prints what
+    the audit checks."""
     parser = argparse.ArgumentParser(
         description="Audit the forecast log's timing claim: every forecast row "
                     "was committed to git before its target hour completed. "
                     "Finds the first commit that added each (origin, model) "
                     "group and compares that commit's time against the group's "
                     "earliest target completion (origin + 2h, since the first "
-                    "target hour is origin + 1h and completes an hour later).")
+                    "target hour is origin + 1h and completes an hour later). "
+                    "Exits 1 only if a late day has no recorded reason and no "
+                    "trigger in its commit subject.")
     parser.parse_args()
 
     first_commit_by_group = first_commits(ROOT)
@@ -50,7 +55,15 @@ def main():
     n_late_groups = sum(late_day["models"] for late_day in late_days)
     print(f"\n{len(first_commit_by_group)} (origin, model) groups checked, "
           f"{n_late_groups} committed after their first target hour completed")
-    sys.exit(1 if late_days else 0)
+    unexplained_days = []
+    for late_day in late_days:
+        reason = late_reason(late_day)
+        print(f"  late {late_day['origin']:%Y-%m-%d}: "
+              f"{reason or 'NO REASON RECORDED'}")
+        if reason is None:
+            unexplained_days.append(late_day)
+    print(f"{len(unexplained_days)} late days with no recorded reason")
+    sys.exit(1 if unexplained_days else 0)
 
 
 if __name__ == "__main__":
