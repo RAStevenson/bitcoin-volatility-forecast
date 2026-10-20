@@ -14,19 +14,11 @@ FORECAST_LOG = "results/forecasts.csv"
 COMMIT_MARK = "@@commit "
 
 # Why a forecast day was committed late, keyed by its origin date, one
-# full sentence for LIVE.md to print after the delay, ahead of run_note's
-# sentence when the commit subject carries one. A late day with no entry
-# here and no trigger in its subject is listed with no reason, never a
-# guessed one.
-_RESTART_AWAY = ("The author's machine, which starts the daily run, restarted "
-                 "for updates while the author was away and could not log "
-                 "back in, so it did not start the run.")
+# full sentence for LIVE.md to print after the delay. A late day with no
+# entry here is listed with no reason, never a guessed one.
 LATE_COMMIT_REASONS = {
     "2026-09-03": "The machine that ran the daily job had an unplanned "
                   "restart.",
-    "2026-10-17": _RESTART_AWAY,
-    "2026-10-18": _RESTART_AWAY,
-    "2026-10-19": _RESTART_AWAY,
 }
 
 
@@ -103,9 +95,8 @@ def run_note(subject):
     """One sentence on what started the run that made a commit and when,
     read from the trigger and start time the daily run writes into its
     commit subject since 2026-09-28, or None for a subject without them.
-    LIVE.md prints this sentence for every late day whose subject has
-    one, after the day's LATE_COMMIT_REASONS entry if it has one, so a
-    delayed trigger explains itself."""
+    A late day with no entry in LATE_COMMIT_REASONS gets this sentence,
+    so a delayed trigger explains itself in LIVE.md."""
     match = re.search(r"trigger (\S+), started (\d\d:\d\d) UTC", subject or "")
     if not match:
         return None
