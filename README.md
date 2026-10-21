@@ -434,11 +434,10 @@ past its forecast origin.
   should be.
 
 - The 2026-08-19 forecast day illustrates an important limitation. It
-  was an abnormally volatile day likely due to news with realized
-  volatility at 3.67 times the N-HiTS median forecast. But the forecast
-  tracks the level of ordinary days. Rare days that break the pattern
-  are not usually signaled by the hours before them, making them
-  impossible to forecast reliably.
+  was an abnormally volatile day, with realized volatility at 3.67 times
+  the N-HiTS median forecast. But the forecast tracks the level of
+  ordinary days. Rare days that break the pattern are not usually
+  signaled by the hours before them.
 
 - The backtest covers one asset, BTC-USD, a market that trades every
   hour of every day. Nothing here shows the ranking holds on other
