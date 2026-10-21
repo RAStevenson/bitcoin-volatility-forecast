@@ -9,10 +9,12 @@ started.
 ## Setting it up
 
 Two roles use this prompt. A reader who only wants this repo's forecast
-schedules it after 12:00 UTC and, if STEP 1 finds no commit for today,
+needs no clone of the repo. The reader schedules the prompt after 12:00
+UTC. STEP 1 then fetches the forecast, the review, and the daily record
+straight from GitHub. If today's forecast has not landed, the prompt
 reports that and stops. A reader never runs the pipeline. The forecast
 record is this repo's commit history, and a local run would write only
-to the reader's clone.
+to a clone.
 
 The owner of a daily run, on this repo or a fork of it, runs every step
 of the prompt. The owner also schedules a separate daily job on their
@@ -54,18 +56,37 @@ at 6:30 in the morning in Chicago, which is 11:30 UTC in summer and
 
 Any other agent that can run shell commands and read files works the
 same way on its own scheduler, with the text below the line as its
-instructions. Without an agent, pull the repo and read
-`results/FORECAST.md`, `results/REVIEW.md`, and `results/LIVE.md` in
+instructions. Without an agent, open `results/FORECAST.md`,
+`results/REVIEW.md`, and `results/LIVE.md` on GitHub and read them in
 that order. STEP 2 is a reading order, not a computation.
 
 The machine that runs this prompt for the owner needs the project's
 virtual environment built, because STEP 1 may run the pipeline there.
-Replace "the repo's directory" in the prompt with your clone's path.
+The owner replaces "the repo's directory" in the prompt with the path
+of their clone.
 
 ---
 
-STEP 1 - CHECK THAT THE RUN LANDED. In the repo's directory, execute
-exactly:
+ROLE. You are the owner if the text before this prompt says so, or if
+a path has replaced "the repo's directory" below. Otherwise you are a
+reader.
+
+STEP 1 - CHECK THAT THE RUN LANDED.
+
+A reader runs this in Bash as one command, with no clone of the repo:
+
+```
+date -u +%F; base=https://raw.githubusercontent.com/RAStevenson/bitcoin-volatility-forecast/master/results; for name in FORECAST REVIEW LIVE; do echo "=== $name.md"; curl -fsS "$base/$name.md" || echo "FETCH FAILED: $name.md"; echo; done
+```
+
+If the first line of FORECAST.md names the date the command printed
+first, the run has landed: go to STEP 2 and read the three files from
+that output. If it names an earlier date, report in one line that
+today's forecast has not landed yet, and stop. If any fetch failed,
+report which one in one line and stop. The rest of STEP 1 is the
+owner's.
+
+The owner, in the repo's directory, executes exactly:
 
 ```
 git pull --ff-only
@@ -75,8 +96,7 @@ git log -30 --format=%s
 If any line starts with "Daily run <today's date in UTC, YYYY-MM-DD>",
 the run has landed: go to STEP 2. It need not be the newest commit,
 since other work may have been pushed after the run. If no line does,
-a reader reports in one line that today's commit has not landed and
-stops. The owner executes:
+the owner executes:
 
 ```
 gh run list --workflow daily-run.yml --limit 3
@@ -86,10 +106,11 @@ and act on the newest run listed for today:
 
 - Queued or in progress: wait two minutes (`sleep 120` as one Bash
   command with run_in_background set to true and timeout 600000) and
-  repeat STEP 1, at most ten times, twenty minutes in all. After the
-  tenth, report in one line that the run is still in progress and stop.
-  GitHub's own schedule may also fire meanwhile; the workflow skips a
-  second start once the day has committed.
+  repeat the owner's pull and log check, at most ten times, twenty
+  minutes in all. After the tenth, report in one line that the run is
+  still in progress and stop. GitHub's own schedule may also fire
+  meanwhile; the workflow skips a second start once the day has
+  committed.
 - Failed, or no run for today at all: run the pipeline on this machine
   with the project's own Python, then repeat the pull and the log check
   once.
@@ -105,8 +126,8 @@ run fails too, report in one line the stage it stopped at (the last
 line starting with [daily] before the error) and the error's final
 line, and stop.
 
-Report in one line how the run landed: from GitHub started on request
-(trigger workflow_dispatch), from GitHub's own schedule (trigger
+The owner reports in one line how the run landed: from GitHub started on
+request (trigger workflow_dispatch), from GitHub's own schedule (trigger
 schedule), or locally (trigger local), with the start time. Both are in
 the commit message, after "trigger".
 
@@ -126,7 +147,9 @@ defines on target and the section on the daily forecast's own claims.
 Every number comes from the file; add no diagnosis the file does not
 contain.
 
-Then, briefly, system health:
+Then, briefly, system health. The owner gives all of it. A reader gives
+only the leading model and its pinball loss from LIVE.md, since the
+rest comes from the commit history.
 
 - Whether today's run was clean, and how many consecutive days have
   run.
@@ -147,7 +170,7 @@ HARD RULES:
   the one scripts/run_daily.py makes when it runs locally in STEP 1.
 - Never predict or fabricate a pending result; report only what the
   files say.
-- Do not fetch external URLs.
+- Fetch no URL except the three report files a reader reads in STEP 1.
 - The forecast describes volatility only. Never add commentary about
   price direction, trade ideas, or market calls that the files do not
   contain.
