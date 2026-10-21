@@ -37,20 +37,21 @@ The daily record scores each day's average volatility, the mean of a
 model's 24 hourly median forecasts against the mean of the 24 hourly
 values that occurred. The median forecast is the middle of the band of
 values a model gives for each hour. The error is the log of realized
-over forecast value, sign ignored, so a forecast 20% off counts the
-same on a quiet day as on a spike day. A day is fully resolved once all 24
-of its hours have been observed. Over the 56 fully resolved days as of
+over forecast value, sign ignored, so a forecast 20% off counts the same
+on a quiet day as on a spike day. A day is fully resolved once all 24 of
+its hours have been observed. Over the 56 fully resolved days as of
 2026-10-02, N-HiTS, the leading model, had an average error of 0.18 on
-that scale. Persistence's average error was 0.29 over its 59 days.
-Lower is better. Persistence has three more days because N-HiTS joined
-the daily run three days after the others. The 39% above is measured
-on the 56 days that both models forecast, and its 95% interval runs
-from 18% to 60%. That interval is the range the true lead could
-plausibly sit in given the day-to-day noise, computed as if each day
-were independent of the last. It stays above zero, indicating that on
-those days the lead over persistence is larger than day-to-day noise
-would explain. The error is a column in LIVE.md's table, and the
-interval is stated under it.
+that scale. Persistence's average error was 0.29 over its 59 days. Lower
+is better. Persistence has three more days because N-HiTS joined the
+daily run three days after the others. The 39% above is measured on the
+56 days that both models forecast, and its 95% interval runs from 18% to
+60%. That interval is the range the true lead could plausibly sit in
+given the day-to-day noise, computed as if each day were independent of
+the last. It stays above zero, indicating that on those days the lead
+over persistence is larger than day-to-day noise would explain. The
+error is the day_error column in LIVE.md's table, each model over its
+own days, and the matched comparison is the day_skill column, with the
+interval stated under the table.
 
 ## Getting the daily forecast
 
@@ -100,10 +101,10 @@ those commit times against the git history and lists the days whose
 commit came late in the daily record. Those days stay in the scores,
 and the list records them.
 
-Scoring is rolling-origin evaluation. Each forecast is made from one
-point in time, its origin, using only data before it, and the origin
-steps forward for the next forecast. Every score is therefore out of
-sample in time, the same position a live forecast is in.
+Each forecast is made from one point in time, its origin, using only
+data before it, and the origin steps forward for the next forecast. This
+is rolling-origin evaluation. Every score is therefore out of sample in
+time, the same position a live forecast is in.
 
 The band is scored two ways, pinball loss and calibration, because a
 model can be accurate with a band too narrow, or well-banded and
@@ -241,7 +242,7 @@ run over the 365 days of history before 2026-08-05, kept as the
 reference (pinned) rather than re-run. It used a forecast origin every
 second day, 183 origins in all. Its winner, N-HiTS, is the model the
 daily run falls back to while fewer than three days are scored. N-HiTS
-scored a mean pinball loss of 0.0959 on the log scale (lower is
+scored a mean pinball loss of 0.0959 on log volatility (lower is
 better), averaged over forecast horizons of 1 to 24 hours ahead,
 against 0.1180 for persistence on the same origins. The skill score
 averaged over the same horizons is 0.186 (higher is better), meaning
