@@ -165,8 +165,8 @@ to and where its band comes from.
   volatility changed over those hours. Each forecast hour's band is the
   last observed value plus the spread of those changes over the past
   year. The band widens over the first few hours, then levels off
-  because volatility tends to return toward its usual level. -
-  `seasonal_persistence`. The seasonal naive baseline. Its forecast for
+  because volatility tends to return toward its usual level.
+- `seasonal_persistence`. The seasonal naive baseline. Its forecast for
   each hour is the value at the same hour one day earlier, so it repeats
   yesterday's daily pattern. Its band is also an empirical prediction
   interval. Each forecast copies a value from exactly one day earlier,
@@ -174,21 +174,22 @@ to and where its band comes from.
   same hour the next day. Each forecast hour's band is yesterday's value
   at that hour plus the spread of those day-over-day changes over the
   past year. The band has the same width on the log scale at every hour,
-  because the gap to the copied value is always one day. - `har`
-  (heterogeneous autoregressive). The published standard baseline for
-  realized volatility. It forecasts from four inputs, the last hour and
-  the averages over the trailing day, week, and month. Mixing those time
-  spans lets it follow both quick swings and slow shifts in the level.
-  It is a least-squares regression, fit separately for each of the 24
-  hours ahead. Its band is also an empirical prediction interval. Each
-  forecast hour's band is the regression's forecast plus the spread of
-  that regression's own errors on the past year, the same year it was
-  fit to. - `har_seasonal`. HAR with one more input, the hour of day the
-  forecast starts from. Each of the 24 hours ahead has its own
-  regression, so the starting hour tells each one which hour of the day
-  it is forecasting. Its forecast can therefore follow the daily cycle,
-  which plain HAR's cannot. Its band is built the same way as HAR's. -
-  `sarima` (SARIMAX - seasonal autoregressive integrated moving
+  because the gap to the copied value is always one day.
+- `har` (heterogeneous autoregressive). The published standard baseline
+  for realized volatility. It forecasts from four inputs, the last hour
+  and the averages over the trailing day, week, and month. Mixing those
+  time spans lets it follow both quick swings and slow shifts in the
+  level. It is a least-squares regression, fit separately for each of
+  the 24 hours ahead. Its band is also an empirical prediction interval.
+  Each forecast hour's band is the regression's forecast plus the spread
+  of that regression's own errors on the past year, the same year it was
+  fit to.
+- `har_seasonal`. HAR with one more input, the hour of day the forecast
+  starts from. Each of the 24 hours ahead has its own regression, so the
+  starting hour tells each one which hour of the day it is forecasting.
+  Its forecast can therefore follow the daily cycle, which plain HAR's
+  cannot. Its band is built the same way as HAR's.
+- `sarima` (SARIMAX - seasonal autoregressive integrated moving
   average). A classical time-series model. It forecasts each hour from
   the hour before and from the same hour a day earlier. It also uses the
   error of its own forecasts for those two hours as a component. The
@@ -196,15 +197,15 @@ to and where its band comes from.
   none are used here. It is fit on the most recent 90 days. Its band is
   a model-based prediction interval rather than an empirical one,
   assuming a normal (bell-curve) error around each forecast. The band is
-  symmetric on the log scale and widens with the hours ahead. -
-  `prophet` (Prophet). A trend-plus-cycles model released by Facebook
+  symmetric on the log scale and widens with the hours ahead.
+- `prophet` (Prophet). A trend-plus-cycles model released by Facebook
   (now Meta) in 2017. It fits a slowly changing trend plus repeating
   daily and weekly cycles, with no yearly one. It forecasts each hour
   from where the trend and the cycles put it, not from the latest hours.
   Its band is simulation-based. Prophet draws 300 possible futures from
   its fitted model. Each forecast hour's band is the spread of those
   draws at that hour, so the band rises and falls with the daily cycle.
-  - `gbm` (XGBoost). Gradient-boosted trees, meaning many small decision
+- `gbm` (XGBoost). Gradient-boosted trees, meaning many small decision
   trees added one after another, each correcting the errors of those
   before it. Its inputs are lagged values, the trailing averages, the
   hour of day and day of week, and the number of hours ahead, so no hour
@@ -212,18 +213,19 @@ to and where its band comes from.
   regression. Five separate models, one per quantile level, are each
   trained to minimize the pinball loss for their own level. Each
   quantile of the band is therefore predicted directly rather than built
-  from past errors. - `nhits` (N-HiTS). A neural network built for time
-  series. It is made of blocks that each read the past week at a
-  different level of detail, from slow swings to hour-to-hour changes.
-  Their outputs add up to the 24-hour forecast. N-HiTS was first
-  published in 2022 as a successor to N-BEATS (2019), which uses the
-  same stack of blocks without the different levels of detail. N-HiTS's
-  only input is the volatility series itself, with no clock input, and
-  it picks up the daily cycle from the series. Like XGBoost's, its band
-  comes from quantile regression, but one network produces all five
-  quantile levels at once. It is retrained from scratch each day for
-  three passes over the training window and kept small on purpose, so it
-  runs on a CPU inside the daily run.
+  from past errors.
+- `nhits` (N-HiTS). A neural network built for time series. It is made
+  of blocks that each read the past week at a different level of detail,
+  from slow swings to hour-to-hour changes. Their outputs add up to the
+  24-hour forecast. N-HiTS was first published in 2022 as a successor to
+  N-BEATS (2019), which uses the same stack of blocks without the
+  different levels of detail. N-HiTS's only input is the volatility
+  series itself, with no clock input, and it picks up the daily cycle
+  from the series. Like XGBoost's, its band comes from quantile
+  regression, but one network produces all five quantile levels at once.
+  It is retrained from scratch each day for three passes over the
+  training window and kept small on purpose, so it runs on a CPU inside
+  the daily run.
 
 Every model except SARIMAX trains on the past 365 days. Each model's
 settings were selected during initial creation and have not been
