@@ -112,10 +112,11 @@ def score_daily_forecast(evaluations, hourly):
                                      & realized_loud),
             "yesterday_calm_overlap": len({hour + one_day for hour in yesterday_claims["calm"]}
                                      & realized_calm),
-            # On a day when every hour sits at the probability floor the
-            # daily forecast prints "no meaningful chance" rather than a count,
-            # so the claim it made, and the one scored, is zero hours.
-            "expected_high_hours": (0.0 if forecast_claims["all_at_floor"]
+            # On a day when the expected count is not meaningfully above
+            # the probability floor the daily forecast prints "no
+            # meaningful chance" rather than a count, so the claim it
+            # made, and the one scored, is zero hours.
+            "expected_high_hours": (0.0 if forecast_claims["no_meaningful_high"]
                                else forecast_claims["expected_high_hours"]),
             "high_hours": realized_day_claims["high_hours"],
             "yesterday_high_hours": yesterday_claims["high_hours"],

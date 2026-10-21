@@ -86,3 +86,36 @@ def test_ordinal_suffixes_including_the_teens():
                 100: "100th", 101: "101st", 111: "111th"}
     for number, text in expected.items():
         assert ordinal(number) == text
+
+
+def _high_hours_claims(q95_by_hour, high_line=0.67):
+    """Claims from 24 hours whose bands all sit at 0.20 to 0.30 except for
+    the 95% quantile, set per hour, so only the top of each band decides
+    its chance of running above the high line."""
+    quantiles = np.tile([0.20, 0.25, 0.27, 0.30, 0.30], (24, 1)).astype(float)
+    quantiles[:, 4] = q95_by_hour
+    target_hours = pd.date_range("2026-01-02 11:00", periods=24, freq="h", tz="UTC")
+    comparison_context = {"daily_averages": np.linspace(0.1, 0.9, 100),
+                          "high_line": high_line, "previous_day_average": 0.3}
+    return daily_forecast_generator.claims(quantiles, target_hours, comparison_context)
+
+
+def test_high_hours_count_prints_only_when_it_clears_the_probability_floor():
+    floor = daily_forecast_generator.PROBABILITY_FLOOR
+    # every band below the line: the sum is the floor alone, 24 x 0.02
+    at_floor = _high_hours_claims(np.full(24, 0.30))
+    assert at_floor["expected_high_hours"] == pytest.approx(24 * floor)
+    assert at_floor["all_at_floor"] and at_floor["no_meaningful_high"]
+    # one band a hair over the line: a count that is still mostly floor
+    one_hour = np.full(24, 0.30)
+    one_hour[0] = 0.70
+    barely = _high_hours_claims(one_hour)
+    assert not barely["all_at_floor"]
+    assert barely["expected_high_hours"] - 24 * floor < 0.5
+    assert barely["no_meaningful_high"]
+    # six bands with real mass above the line: a count worth printing
+    six_hours = np.full(24, 0.30)
+    six_hours[:6] = 2.0
+    meaningful = _high_hours_claims(six_hours)
+    assert meaningful["expected_high_hours"] - 24 * floor >= 0.5
+    assert not meaningful["no_meaningful_high"]
