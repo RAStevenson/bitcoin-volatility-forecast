@@ -19,12 +19,24 @@ REGIMES = ["quiet", "normal", "elevated", "high"]
 N_NAMED_HOURS = 3  # the loudest and calmest hours the daily forecast names
 
 
+# Five quantiles cannot say "no chance", so a probability read off them
+# is clamped at this floor. Summed over 24 hours the floor alone is 0.48
+# expected high hours, which is why the forecast prints a count only when
+# the count exceeds that floor by MIN_HIGH_HOURS_ABOVE_FLOOR; below it,
+# the number would be mostly the clamp, not a forecast (reader panel,
+# 2026-10-21: on a quiet day "about 0.5 hours" was 0.46 of floor).
+PROBABILITY_FLOOR = 0.02
+MIN_HIGH_HOURS_ABOVE_FLOOR = 0.5
+
+
 def prob_above(vol_quantiles, threshold):
     """P(X > threshold) by linear interpolation on the five known CDF
-    points, clamped to [0.02, 0.98] beyond the tails. Works per hour on
-    marginal quantiles; no independence assumption is ever layered on."""
+    points, clamped to [PROBABILITY_FLOOR, 1 - PROBABILITY_FLOOR] beyond
+    the tails. Works per hour on marginal quantiles; no independence
+    assumption is ever layered on."""
     cumulative_probability = np.interp(threshold, vol_quantiles, QUANTILES,
-                                       left=0.02, right=0.98)
+                                       left=PROBABILITY_FLOOR,
+                                       right=1.0 - PROBABILITY_FLOOR)
     return float(1.0 - cumulative_probability)
 
 
@@ -131,6 +143,8 @@ def claims(annualized_quantiles, target_times, comparison_context):
     regime, percentile = regime_of(forecast_average, comparison_context["daily_averages"])
     high_probabilities = [prob_above(hour_quantiles, comparison_context["high_line"])
                           for hour_quantiles in annualized_quantiles]
+    expected_high_hours = float(np.sum(high_probabilities))
+    floor_total = PROBABILITY_FLOOR * len(high_probabilities)
     positions_by_median = np.argsort(median_path)
     target_hours = pd.DatetimeIndex(target_times)
     return {
@@ -140,13 +154,14 @@ def claims(annualized_quantiles, target_times, comparison_context):
         "regime": regime, "percentile": percentile,
         "trend": trend_of(forecast_average, comparison_context["previous_day_average"]),
         "high_probabilities": high_probabilities,
-        "expected_high_hours": float(np.sum(high_probabilities)),
+        "expected_high_hours": expected_high_hours,
         "likely_high": int(np.sum(np.array(high_probabilities) > 0.5)),
-        # prob_above clamps at 0.02 beyond the fitted quantiles, so when
-        # every hour sits at the clamp the sum is a floor (24 x 0.02), not
-        # a forecast, and printing it as one would dress a constant as
-        # information.
-        "all_at_floor": all(probability <= 0.02 + 1e-9
+        # The count is a forecast only in the part above the clamp floor;
+        # see PROBABILITY_FLOOR. all_at_floor is the limiting case, where
+        # every band sits below the line, and it only shapes the wording.
+        "no_meaningful_high": (expected_high_hours - floor_total
+                               < MIN_HIGH_HOURS_ABOVE_FLOOR),
+        "all_at_floor": all(probability <= PROBABILITY_FLOOR + 1e-9
                             for probability in high_probabilities),
         "loud": target_hours[positions_by_median[-N_NAMED_HOURS:]],
         "calm": target_hours[positions_by_median[:N_NAMED_HOURS]],
@@ -200,12 +215,13 @@ def build_daily_forecast(hourly, last_price=None):
     previous_day_average = comparison_context["previous_day_average"]
 
     high_hourly_move = high_threshold / ANNUALIZER
-    if forecast_claims["all_at_floor"]:
+    if forecast_claims["no_meaningful_high"]:
         high_line = (f"- No hour shows a meaningful chance of running "
                      f"high, above {high_threshold:.0%} annualized (an hourly "
                      f"move over {high_hourly_move:.2%}), higher than 90% of "
-                     f"individual hours in the past year; every forecast "
-                     f"band sits well below that line.")
+                     f"individual hours in the past year"
+                     + ("; every forecast band sits well below that line."
+                        if forecast_claims["all_at_floor"] else "."))
     else:
         high_line = (f"- The next 24 hours are expected to include about "
                      f"{forecast_claims['expected_high_hours']:.1f} hours running "
