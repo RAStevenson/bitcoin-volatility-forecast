@@ -5,8 +5,9 @@ on:
     - cron: "15 11 * * *"   # fallback: the origin is the 10:00 UTC hour,
                              # which closes at 11:00, and its first target
                              # hour ends at 12:00. The on-time start is a
-                             # dispatch from the author's machine at 11:15
-                             # (docs/daily_briefing_prompt.md); GitHub's
+                             # Task Scheduler dispatch from the author's
+                             # machine at 11:15 (setup in
+                             # docs/daily_briefing_prompt.md); GitHub's
                              # schedule is best-effort and fired 4h26m late
                              # on its first day, 2026-09-27
     - cron: "45 11 * * *"   # second fallback; does nothing once committed
