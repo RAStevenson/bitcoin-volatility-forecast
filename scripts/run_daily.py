@@ -109,7 +109,14 @@ def main():
                         help="commit the run's files locally and do not push")
     parser.add_argument("--no-commit", action="store_true",
                         help="write every file and commit nothing (implies --no-push)")
+    parser.add_argument("--refit-today", action="store_true",
+                        help="with --no-commit: also fit every model at today's origin "
+                             "even when its forecast is already logged, and print each "
+                             "model's fit time and how far the refit lands from the "
+                             "logged forecast; the log itself is not touched")
     args = parser.parse_args()
+    if args.refit_today and not args.no_commit:
+        parser.error("--refit-today needs --no-commit, so a check never commits")
 
     # Recorded in the day's commit message so the timing audit can say
     # what started a late run and when. GitHub sets GITHUB_EVENT_NAME to
@@ -139,6 +146,11 @@ def main():
     print("[daily] fitting every model and logging its 24-hour forecast", flush=True)
     n_rows_logged = daily_run.log_forecasts(features, origin)
     print(f"  forecast rows logged: {n_rows_logged} (origin {origin})")
+    if args.refit_today:
+        print("[daily] refitting every model at the origin to check it still fits",
+              flush=True)
+        refit = daily_run.refit_forecasts(features, origin)
+        print(refit.round({"fit_seconds": 1, "max_change": 4}).to_string())
 
     print("[daily] auditing the commit timing of earlier forecasts", flush=True)
     late_days = _audit()

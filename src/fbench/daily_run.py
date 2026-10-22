@@ -3,6 +3,8 @@ logs today's forecasts, scores the rows whose hours have passed, and
 builds results/LIVE.md, the published record of how each model is doing
 on hours none of them saw at fit time. Logged forecast rows are
 pre-outcome evidence, so nothing here ever rewrites one."""
+import time
+
 import numpy as np
 import pandas as pd
 from scipy import stats
@@ -75,26 +77,57 @@ def log_forecasts(features, origin):
     point at the latest commit."""
     existing = _load(FORECAST_LOG, LOG_COLUMNS)
     already_logged = set(existing.loc[existing["origin"] == origin, "model"])
-    target_times = pd.date_range(origin + pd.Timedelta(hours=1), periods=HORIZON,
-                                 freq="h", tz="UTC")
-    new_forecasts = []
-    for model_name, model_class in sorted(REGISTRY.items()):
-        if model_name in already_logged:
-            continue
-        training_rows = features.loc[
-            origin - pd.Timedelta(days=model_class.train_days):origin]
-        assert training_rows.index.max() <= origin
-        model = model_class()
-        model.fit(training_rows)
-        quantile_forecast = model.predict(target_times)
-        quantile_forecast = quantile_forecast.assign(origin=origin, model=model_name,
-                                                     horizon=range(1, HORIZON + 1))
-        new_forecasts.append(quantile_forecast.rename_axis("target_time").reset_index())
+    new_forecasts = [_forecast(model_name, model_class, features, origin)
+                     for model_name, model_class in sorted(REGISTRY.items())
+                     if model_name not in already_logged]
     if new_forecasts:
         RESULTS_DIR.mkdir(exist_ok=True)
         _append(FORECAST_LOG,
                 pd.concat(new_forecasts, ignore_index=True)[LOG_COLUMNS])
     return sum(len(forecast_rows) for forecast_rows in new_forecasts)
+
+
+def _forecast(model_name, model_class, features, origin):
+    """One model's 24-hour quantile forecast from origin, fit on the
+    model's training window of features ending at origin, as rows in the
+    forecast log's layout."""
+    target_times = pd.date_range(origin + pd.Timedelta(hours=1), periods=HORIZON,
+                                 freq="h", tz="UTC")
+    training_rows = features.loc[
+        origin - pd.Timedelta(days=model_class.train_days):origin]
+    assert training_rows.index.max() <= origin
+    model = model_class()
+    model.fit(training_rows)
+    quantile_forecast = model.predict(target_times)
+    quantile_forecast = quantile_forecast.assign(origin=origin, model=model_name,
+                                                 horizon=range(1, HORIZON + 1))
+    return quantile_forecast.rename_axis("target_time").reset_index()
+
+
+def refit_forecasts(features, origin):
+    """Fit every registered model at origin even when its forecast for
+    that origin is already logged, and compare each fit with the logged
+    rows, writing nothing to the log. Returns a frame indexed by model
+    with fit_seconds and max_change, the largest absolute difference on
+    the log scale between the refit and the logged forecast across its
+    five quantiles and 24 hours, NaN for a model with no logged rows. It
+    lets a run check that every model still fits after the day's
+    forecast has been committed."""
+    logged = _load(FORECAST_LOG, LOG_COLUMNS)
+    logged = logged[logged["origin"] == origin].set_index(["model", "horizon"])
+    rows = []
+    for model_name, model_class in sorted(REGISTRY.items()):
+        started = time.perf_counter()
+        refit = _forecast(model_name, model_class, features, origin)
+        fit_seconds = time.perf_counter() - started
+        max_change = float("nan")
+        if model_name in logged.index.get_level_values("model"):
+            logged_values = logged.loc[model_name].sort_index()[QCOLS].to_numpy()
+            refit_values = refit.set_index("horizon").sort_index()[QCOLS].to_numpy()
+            max_change = float(np.abs(refit_values - logged_values).max())
+        rows.append({"model": model_name, "fit_seconds": fit_seconds,
+                     "max_change": max_change})
+    return pd.DataFrame(rows).set_index("model")
 
 
 def _append(path, rows):
