@@ -35,6 +35,22 @@ def test_log_forecasts_is_idempotent_per_origin(logs_in_tmp):
     assert rows_second_run == 0
 
 
+def test_refit_fits_every_model_and_writes_nothing(logs_in_tmp):
+    hourly = _frame()
+    features = build_features(hourly)
+    origin = hourly.index[-30]
+    daily_run.log_forecasts(features, origin)
+    log_before = daily_run.FORECAST_LOG.read_bytes()
+    refit = daily_run.refit_forecasts(features, origin)
+    assert daily_run.FORECAST_LOG.read_bytes() == log_before
+    assert set(refit.index) == set(pd.read_csv(daily_run.FORECAST_LOG)["model"])
+    # the baselines are deterministic, so a refit on the same data is exact
+    assert (refit["max_change"] < 1e-9).all()
+    # an origin with nothing logged still refits, with no change to report
+    unlogged = daily_run.refit_forecasts(features, hourly.index[-60])
+    assert unlogged["max_change"].isna().all()
+
+
 def test_score_due_resolves_only_observed_hours(logs_in_tmp):
     hourly = _frame()
     features = build_features(hourly)
