@@ -1,10 +1,9 @@
 # bitcoin-volatility-forecast
 
-This repo publishes a daily forecast of how much the price of BTC-USD
-(Bitcoin priced in US dollars) will fluctuate over the next 24 hours,
-and holds the code that scores that forecast against reality. The size
-of that fluctuation is called the volatility. This volatility is useful
-in systematic trading, usually for position sizing.
+This repo publishes a daily forecast of how volatile BTC-USD (Bitcoin
+priced in US dollars) will likely be over the next 24 hours, and holds
+the code that scores that forecast against reality. This volatility is
+useful in systematic trading, usually for position sizing.
 
 Eight models make the forecast each day. The repo publishes the one
 from whichever model is scoring best so far, in plain language, in
