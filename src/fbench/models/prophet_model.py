@@ -15,8 +15,13 @@ SAMPLE_SEED = 7  # the same seed N-HiTS uses
 class ProphetModel(BaseForecastModel):
     """Prophet on log RV with daily+weekly Fourier seasonality. Quantiles
     from predictive_samples rather than the fixed-width interval API, so we
-    get all five quantiles from one fit."""
+    get all five quantiles from one fit. The two class attributes are
+    Prophet's flexibility settings: how freely the trend may change
+    slope, and how large the seasonal cycles may be. The tuning script
+    scores candidates by subclassing with other values."""
     name = "prophet"
+    changepoint_prior_scale = 0.01
+    seasonality_prior_scale = 10.0
 
     def fit(self, training_rows):
         """Fits Prophet on the non-missing log RV rows with daily and
@@ -30,6 +35,8 @@ class ProphetModel(BaseForecastModel):
         self.prophet_ = Prophet(daily_seasonality=True,  # pyright: ignore[reportArgumentType]
                                 weekly_seasonality=True,  # pyright: ignore[reportArgumentType]
                                 yearly_seasonality=False,  # pyright: ignore[reportArgumentType]
+                                changepoint_prior_scale=self.changepoint_prior_scale,
+                                seasonality_prior_scale=self.seasonality_prior_scale,
                                 uncertainty_samples=300)
         self.prophet_.fit(history)
 

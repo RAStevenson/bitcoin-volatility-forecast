@@ -14,6 +14,7 @@ from fbench.harness_config import (
     ORIGIN_HOUR_UTC,
     QCOLS,
     QUANTILES,
+    RELEASE_ORIGIN,
     RESULTS_DIR,
 )
 from fbench.models.base_forecast_model import REGISTRY
@@ -22,6 +23,9 @@ from fbench.quantile_scoring import add_skill, score
 FORECAST_LOG = RESULTS_DIR / "forecasts.csv"
 EVAL_LOG = RESULTS_DIR / "evaluation.csv"
 LOG_COLUMNS = ["origin", "target_time", "horizon", "model", *QCOLS]
+# The 25th to 75th percentile band of a bell curve spans this many
+# standard deviations; expected_vol reads a band's spread from it.
+IQR_TO_SIGMA = 1.349
 
 
 def _load(path, columns):
@@ -135,15 +139,32 @@ def score_due(hourly, now=None):
     return len(resolved)
 
 
+def expected_vol(log_quantiles):
+    """Each row's expected annualized volatility from its forecast
+    quantiles on the log scale, read from the q25, q50 and q75 columns of
+    a frame or mapping. exp(q50) is the middle of the hour's band, and
+    the average of a right-skewed quantity sits above its middle, so the
+    middle is raised by the band's spread: log RV is close to bell-shaped
+    around its median, and the mean of a quantity whose log is
+    bell-shaped with spread sigma is its median times exp(sigma^2 / 2).
+    sigma is read from the 25-75 band. A day figure that averaged 24
+    medians instead sat about 10% under the day's realized average on
+    the logs, with the hourly medians themselves centered."""
+    sigma = (np.asarray(log_quantiles["q75"], dtype=float)
+             - np.asarray(log_quantiles["q25"], dtype=float)) / IQR_TO_SIGMA
+    return np.exp(np.asarray(log_quantiles["q50"], dtype=float) + sigma ** 2 / 2)
+
+
 def day_level_scores(evaluations):
     """Per-model error of the day's average volatility, the level that
     could be one input to a position size, over fully resolved days: the mean absolute
-    log error of the median path's 24-hour average against the realized
-    24-hour average (day_error), and one minus that error over the
+    log error of the forecast's 24-hour average against the realized
+    24-hour average (day_error), each hour's forecast being its expected
+    volatility (expected_vol), and one minus that error over the
     persistence model's on the same days (day_skill), so a model is
     compared with the baseline only where both forecast the same days."""
-    scored = evaluations.dropna(subset=["y_true", "q50"]).copy()
-    scored["forecast_vol"] = np.exp(scored["q50"])
+    scored = evaluations.dropna(subset=["y_true", *QCOLS]).copy()
+    scored["forecast_vol"] = expected_vol(scored)
     scored["realized_vol"] = np.exp(scored["y_true"])
     daily = scored.groupby(["model", "origin"]).agg(
         n_hours=("target_time", "nunique"), forecast_vol=("forecast_vol", "mean"),
@@ -168,8 +189,9 @@ def matched_skill(evaluations, model, base_model_name="persistence",
     """Skill of model over base_model_name on the fully resolved days both
     forecast, with a 95% interval, for two scores: the hourly pinball loss
     pooled over those days, and the day-level error of the 24-hour average
-    (the day_error column). Each skill is the mean day-by-day improvement
-    over the base model divided by the base model's mean, and its interval
+    (the day_error column, from each hour's expected volatility). Each
+    skill is the mean day-by-day improvement over the base model divided
+    by the base model's mean, and its interval
     is the t-interval of that mean improvement over the same denominator,
     which treats each day as independent of the last. Returns None below
     min_days matched days or when the base model is absent."""
@@ -180,7 +202,7 @@ def matched_skill(evaluations, model, base_model_name="persistence",
                    (quantile - 1) * (log_realized_vol - scored[column].to_numpy()))
         for column, quantile in zip(QCOLS, QUANTILES, strict=True)) / len(QUANTILES)
     scored["pinball"] = pinball_loss
-    scored["forecast_vol"] = np.exp(scored["q50"])
+    scored["forecast_vol"] = expected_vol(scored)
     scored["realized_vol"] = np.exp(scored["y_true"])
     daily = scored.groupby(["model", "origin"]).agg(
         n_hours=("target_time", "nunique"), pinball=("pinball", "mean"),
@@ -238,6 +260,30 @@ def timing_lines(late):
     return [*lines, ""]
 
 
+def settings_lines(evaluations):
+    """LIVE.md's statement of which model settings the scored days ran
+    on. The record is one continuous table, and the settings changed at
+    RELEASE_ORIGIN, so the reader is told how many scored days came after
+    the change and which model leads on those days alone, by mean
+    pinball loss."""
+    release_origin = pd.Timestamp(RELEASE_ORIGIN, tz="UTC")
+    change_date = f"{release_origin:%Y-%m-%d}"
+    current = evaluations[evaluations["origin"] >= release_origin]
+    if evaluations["origin"].min() >= release_origin:
+        return [f"Every row above is from forecasts made on the model settings "
+                f"in force since {change_date}."]
+    if current.empty:
+        return [f"The model settings changed on {change_date}. No forecast day made "
+                "on the current settings has resolved yet, so every row above "
+                "is from the settings before the change."]
+    current_days = current["origin"].dt.date.nunique()
+    current_pinball = score(current).groupby("model")["pinball_mean"].mean()
+    return [f"The table above blends the record before and after the model "
+            f"settings changed on {change_date}. On the {current_days} forecast "
+            f"days scored since the change, {current_pinball.idxmin()} leads with "
+            f"a mean pinball loss of {current_pinball.min():.4f}."]
+
+
 def _fig_daily(evaluations, model):
     """Save results/figures/fig_live_daily.png, the day-by-day record of the
     leading model's forecast average against the realized average and
@@ -245,19 +291,22 @@ def _fig_daily(evaluations, model):
     path. One line per series on one axis, fully resolved days only."""
     import matplotlib
     matplotlib.use("Agg")
+    import matplotlib.dates
     import matplotlib.pyplot as plt
     import matplotlib.ticker
 
-    scored = evaluations.dropna(subset=["y_true", "q50"])
+    scored = evaluations.dropna(subset=["y_true", *QCOLS]).copy()
+    scored["forecast_vol"] = expected_vol(scored)
+    scored["realized_vol"] = np.exp(scored["y_true"])
 
     def _by_day(model_name):
         """One row per fully resolved day for model_name, carrying the
-        day's average median forecast and average realized volatility."""
+        day's average expected forecast and average realized volatility."""
         model_rows = scored[scored["model"] == model_name]
         daily = model_rows.groupby("origin").agg(
             n_hours=("target_time", "nunique"),
-            forecast_vol=("q50", lambda log_values: float(np.exp(log_values).mean())),
-            realized_vol=("y_true", lambda log_values: float(np.exp(log_values).mean())))
+            forecast_vol=("forecast_vol", "mean"),
+            realized_vol=("realized_vol", "mean"))
         return daily[daily["n_hours"] == HORIZON]
 
     daily = _by_day(model)
@@ -269,6 +318,12 @@ def _fig_daily(evaluations, model):
             ms=3, label=f"forecast ({model})")
     ax.plot(daily.index, persistence_forecast, color="#eb6834", lw=1.1, ls="--",
             marker="o", ms=2.5, label="persistence forecast")
+    release_origin = pd.Timestamp(RELEASE_ORIGIN, tz="UTC")
+    if daily.index.min() < release_origin <= daily.index.max():
+        release_x = matplotlib.dates.date2num(release_origin)
+        ax.axvline(release_x, color="#777777", lw=0.8, ls=":")
+        ax.annotate("settings changed", (release_x, 0), xytext=(3, 4),
+                    textcoords="offset points", fontsize=7, color="#555555")
     ax.set_ylabel("annualized volatility")
     ax.set_ylim(0, float(daily["realized_vol"].max()) * 1.3)
     ax.yaxis.set_major_formatter(matplotlib.ticker.PercentFormatter(1.0, decimals=0))
@@ -316,8 +371,12 @@ def write_live_report(late=None):
             "and 0.90. The day "
             "columns score the day's average volatility, which could be one "
             "input to a position size. day_error is the mean absolute log "
-            "error of the 24 hourly median forecasts' average against the "
-            "realized average, over fully resolved days, so lower is better. "
+            "error of the forecast's 24-hour average against the realized "
+            "average, over fully resolved days, so lower is better. Each "
+            "hour's forecast in that average is its expected volatility, "
+            "the middle of its band raised by the band's spread, because "
+            "the average of a lopsided quantity sits above its middle and "
+            "an average of 24 middles would run under the realized average. "
             "day_skill is one minus the ratio of that error to the "
             "persistence model's on the same days, so a positive value beats "
             "persistence and 1 would be a perfect forecast.", "",
@@ -327,6 +386,7 @@ def write_live_report(late=None):
                       "days. Models that joined the loop later are averaged "
                       "over fewer days, so the rows above are not "
                       "sample-matched.", ""]
+        lines += [*settings_lines(evaluations), ""]
         leader = summary["pinball_mean"].idxmin()
         matched = matched_skill(evaluations, leader) if leader != "persistence" else None
         if matched:

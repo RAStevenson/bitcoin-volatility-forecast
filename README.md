@@ -20,8 +20,8 @@ this series and which fail to beat the baseline.
 ## The result so far
 
 The daily record, [results/LIVE.md](results/LIVE.md), holds the running
-scores of every forecast made since 2026-08-03. On the 56 days that both
-N-HiTS and persistence forecast, as of 2026-10-02, N-HiTS's error on
+scores of every forecast made since 2026-08-03. On the 75 days that both
+N-HiTS and persistence forecast, as of 2026-10-21, N-HiTS's error on
 each day's average volatility was 39% below persistence's.
 
 ![day by day: forecast, realized, persistence](results/figures/fig_live_daily.png)
@@ -34,24 +34,28 @@ section. The forecast tracks the level of ordinary days and misses the
 spikes on the day they arrive.
 
 The daily record scores each day's average volatility, the mean of a
-model's 24 hourly median forecasts against the mean of the 24 hourly
-values that occurred. The median forecast is the middle of the band of
-values a model gives for each hour. The error is the log of realized
-over forecast value, sign ignored, so a forecast 20% off counts the same
-on a quiet day as on a spike day. A day is fully resolved once all 24 of
-its hours have been observed. Over the 56 fully resolved days as of
-2026-10-02, N-HiTS, the leading model, had an average error of 0.18 on
-that scale. Persistence's average error was 0.29 over its 59 days. Lower
-is better. Persistence has three more days because N-HiTS joined the
-daily run three days after the others. The 39% above is measured on the
-56 days that both models forecast, and its 95% interval runs from 18% to
-60%. That interval is the range the true lead could plausibly sit in
-given the day-to-day noise, computed as if each day were independent of
-the last. It stays above zero, indicating that on those days the lead
-over persistence is larger than day-to-day noise would explain. The
-error is the day_error column in LIVE.md's table, each model over its
-own days, and the matched comparison is the day_skill column, with the
-interval stated under the table.
+model's 24 hourly expected values against the mean of the 24 hourly
+values that occurred. A model's median forecast is the middle of the
+band of values it gives for each hour. Each hour's expected value is
+that median raised by an amount that grows with the band's width. The
+adjustment is there because hourly volatility is right-skewed, with a
+few very large hours and none below zero, and the average of a
+right-skewed quantity sits above its median. The error is the log of
+realized over forecast value, sign ignored, so a forecast 20% off counts
+the same on a quiet day as on a spike day. A day is fully resolved once
+all 24 of its hours have been observed. Over the 75 fully resolved days
+as of 2026-10-21, N-HiTS, the leading model, had an average error of
+0.16 on that scale. Persistence's average error was 0.26 over its 78
+days. Lower is better. Persistence has three more days because N-HiTS
+joined the daily run three days after the others. The 39% above is
+measured on the 75 days that both models forecast, and its 95% interval
+runs from 20% to 58%. That interval is the range the true lead could
+plausibly sit in given the day-to-day noise, computed as if each day
+were independent of the last. It stays above zero, indicating that on
+those days the lead over persistence is larger than day-to-day noise
+would explain. The error is the day_error column in LIVE.md's table,
+each model over its own days, and the matched comparison is the
+day_skill column, with the interval stated under the table.
 
 ## Getting the daily forecast
 
@@ -224,31 +228,97 @@ to and where its band comes from.
   series itself, with no clock input, and it picks up the daily cycle
   from the series. Like XGBoost's, its band comes from quantile
   regression, but one network produces all five quantile levels at once.
-  It is retrained from scratch each day for three passes over the
+  It is retrained from scratch each day for eight passes over the
   training window and kept small on purpose, so it runs on a CPU inside
   the daily run.
 
-Every model except SARIMAX trains on the past 365 days. Each model's
-settings were selected during initial creation and have not been
-changed since. No model has ever been tuned, and a tuning update is
-planned.
+Every model except SARIMAX trains on the past 365 days. The models
+ran on the settings selected during their initial creation until a
+release on 2026-10-22. That release changed three models' settings
+and fixed two defects. Every forecast from 2026-10-23 on is made
+under it. LIVE.md gives 2026-10-23 as the change date and counts
+the scored days since.
+
+The new settings were chosen by grid search, which scores every
+combination of a few values for each setting. A candidate's score
+was its mean pinball loss over 74 forecast origins at 10:00 UTC, one
+every fifth day from 2024-07-31 to 2025-07-31. Those origins all
+fall before the year the backtest scores, so the backtest is scored
+on days the tuning never saw. XGBoost, N-HiTS, and Prophet each had
+eight candidates, the old setting among them. XGBoost's trees are
+now six levels deep instead of four, which scored 4.4% below the old
+setting's loss on those origins. The candidate with the lowest loss
+also raised the learning rate, the size of the correction each new
+tree makes. Its loss was only about 0.1% lower, and its 90% band
+held the realized value 81% of the time against 84% for the adopted
+setting, so the release kept the old rate. N-HiTS now trains for
+eight passes over its window instead of three, which scored 1.3%
+below. Prophet's trend is now less free to change slope, which
+scored 0.8% below. These are differences on one set of 74 origins,
+with no interval computed.
+
+SARIMAX was tried in four other forms, including a longer window and
+a fixed daily cycle in place of its one-day lookback. Its existing
+form scored best, so it is unchanged. Persistence, HAR, and their
+seasonal versions were not tuned. They are kept fixed as benchmarks,
+since skill is measured against persistence and HAR is the published
+standard baseline. Every candidate's score is in results/tuning/.
+
+The first defect was that, until the release, the inputs of HAR,
+seasonal HAR, and XGBoost stopped one hour before the origin hour.
+Persistence forecasts from the origin hour itself, so it had an hour
+of newer data than they did. In the backtest run before the release
+all three lost to persistence one hour ahead. In the run after it,
+which also moved its origins to 10:00 UTC, none did. The second
+defect was in the daily record's score of each day's average. It
+averaged each model's 24 hourly medians rather than their expected
+values. For N-HiTS and XGBoost that average ran about 10% under the
+realized one, even though realized hours fell above and below the
+medians about equally often. The daily record now scores every day,
+before and after the release, from expected values. From the release
+on, FORECAST.md builds the day's average volatility from expected
+values too. REVIEW.md scores each day before the release against the
+medians that day's FORECAST.md printed.
 
 Which model is the leading model depends on the data. On other data,
 other models might dominate, which is why eight run side by side rather
 than one being chosen in advance.
 
-The record is the live test committed daily. The backtest is a one-time
-run over the 365 days of history before 2026-08-05, kept as the
-reference (pinned) rather than re-run. It used a forecast origin every
-second day, 183 origins in all. Its winner, N-HiTS, is the model the
-daily run falls back to while fewer than three days are scored. N-HiTS
-scored a mean pinball loss of 0.0959 on log volatility (lower is
-better), averaged over forecast horizons of 1 to 24 hours ahead,
-against 0.1180 for persistence on the same origins. The skill score
-averaged over the same horizons is 0.186 (higher is better), meaning
-its loss was 18.6% below persistence's on an average horizon. That
-backtest's results table, figures, and dataset summary are in
-[results/REPORT.md](results/REPORT.md) (generated, never hand-edited).
+The record is the live test committed daily. The backtest scores the
+365 days of history before 2026-08-05, with a forecast origin every
+second day, 183 origins in all. It has been run twice on those same
+days, once before the release and once after. The first run used the
+original settings with origins at midnight UTC, and its results are
+kept unchanged as the reference (pinned). Its winner, N-HiTS, is the
+model the daily run falls back to while fewer than three days are
+scored. N-HiTS scored a mean pinball loss of 0.0959 on log volatility
+(lower is better), averaged over forecast horizons of 1 to 24 hours
+ahead, against 0.1180 for persistence on the same origins. The skill
+score averaged over the same horizons is 0.186 (higher is better),
+meaning its loss was 18.6% below persistence's on an average horizon.
+That run's results table, figures, and dataset summary are in
+[results/REPORT_20260805.md][pinned-report] (generated, and unchanged
+since apart from its two figure paths).
+
+The second run, on 2026-10-22, used the release's settings and fixes,
+with origins at 10:00 UTC, the hour the daily run forecasts from.
+N-HiTS won again with a mean pinball loss of 0.0934, and XGBoost was
+close behind at 0.0939. Persistence is the same model in both runs,
+so its higher loss in the second, 0.1368 against 0.1180, comes from
+the origin hour alone. Over the backtest year the 10:00 UTC hour was
+the quietest of the day on average. Persistence forecasts that hour's
+level for all 24 hours ahead, including the hours after the US stock
+market opens, which were the most volatile. Skill is measured against
+persistence, so the second run's skill scores are higher partly for
+that reason. XGBoost's skill score in that run is 0.299 and N-HiTS's
+is 0.298, so XGBoost edges ahead on skill while N-HiTS leads on
+pinball loss. The two runs differ in both settings and origin hour,
+so their scores do not separate the effect of the release from the
+effect of the hour. The second run's results table, figures, and
+dataset summary are in [results/REPORT.md][report].
+
+[pinned-report]: results/REPORT_20260805.md
+[report]: results/REPORT.md
 
 ## Setup and run
 
@@ -299,6 +369,9 @@ The scripts, in the order a rebuild from scratch would run them:
 python scripts/run_backfill.py     # fetch 1-min candles (resumable)
 python scripts/run_crosscheck.py   # verify against Bitstamp
 python scripts/run_build_rv.py     # build the hourly realized-vol series
+python scripts/run_tune.py         # score candidate settings for the tuned
+                                   #   models on origins before the first
+                                   #   backtest's year; writes results/tuning/
 python scripts/run_vol_backtest.py # rolling-origin backtest; scores it,
                                    #   logs to MLflow, writes REPORT.md
 python scripts/run_vol_report.py   # re-score an existing backtest parquet
@@ -323,23 +396,30 @@ python scripts/run_verify_timing.py  # audit the forecast log's timing claim
 `run_vol_backtest.py` takes `--models` (default: every registered
 model), `--stride` (default 2, days between forecast origins), and
 `--test-days` (default 365) to run subsets quickly, and `--no-report` to
-stop after writing the backtest parquet. `run_vol_report.py` takes
-`--results` (default: the newest backtest parquet in results/backtest/).
-`run_daily.py` takes `--no-push` (commit the run's files locally and do
-not push) and `--no-commit` (write every file and commit nothing). Every
-volatility backtest run that writes its report is also logged to MLflow,
-a local run-tracking tool (sqlite backend). Run `mlflow ui
---backend-store-uri sqlite:///mlflow.db` to browse the runs.
+stop after writing the backtest parquet. `--origin-hour` (default 10,
+the daily run's origin hour) sets the UTC hour of every origin, and 0
+reproduces the first backtest's midnight origins. `--data-end` cuts the
+series at a given hour, so a later run can score the same days as an
+earlier one. `run_tune.py` takes `--models`, `--stride` (default 5), and
+`--origin-hour`, and writes one json per model. `run_vol_report.py`
+takes `--results` (default: the newest backtest parquet in
+results/backtest/). `run_daily.py` takes `--no-push` (commit the run's
+files locally and do not push) and `--no-commit` (write every file and
+commit nothing). Every volatility backtest run that writes its report is
+also logged to MLflow, a local run-tracking tool (sqlite backend). Run
+`mlflow ui --backend-store-uri sqlite:///mlflow.db` to browse the runs.
 
 On Windows, Prophet's pip wheel worked as-is here (cmdstanpy backend,
 no manual install). If a first fit fails with a cmdstan error, run
 `python -m cmdstanpy.install_cmdstan` once and retry.
 
 The results folder keeps at its top level the files a reader needs,
-with the rest in two subfolders:
+with the rest in three subfolders:
 
 - `REPORT.md`, `LIVE.md`, `REVIEW.md`, and `FORECAST.md` are the four
-  generated reports described above.
+  generated reports described above, and `REPORT_20260805.md` is the
+  first backtest's report, kept as written apart from its two figure
+  paths.
 - `forecasts.csv` and `evaluation.csv` are the forecast log and the log
   of every scored forecast, appended by each daily run. The forecast
   log stays at this path because the timing audit reads its git history
@@ -348,7 +428,9 @@ with the rest in two subfolders:
 - `backtest/` holds each backtest run's scored rows (parquet, not
   committed) with a json file of the same name recording the run's
   settings and the dataset it saw.
-- `figures/` holds the three figures the reports embed.
+- `figures/` holds the figures the reports embed.
+- `tuning/` holds the scored candidates of the 2026-10 grid search, one
+  json per model.
 
 ## How the daily run happens
 
@@ -413,17 +495,19 @@ python -m pytest tests -q
 ```
 
 The suite checks the realized-volatility formula on a hand-built hour,
-checks that features are strictly trailing (rewriting the future changes
-nothing in the past), checks the fit-and-predict contract every
-registered model implements, checks pinball loss against hand-computed
-values, and confirms that the backtest engine never hands a model data
-past its forecast origin.
+checks that the inputs HAR and XGBoost read include the origin hour and
+nothing after it (rewriting every later hour changes nothing they see),
+checks the fit-and-predict contract every registered model implements,
+checks pinball loss against hand-computed values, and confirms that the
+backtest engine never hands a model data past its forecast origin.
 
 ## Limitations
 
-- The daily record is 59 scored days as of 2026-10-02, and the LIVE.md
+- The daily record is 78 scored days as of 2026-10-21, and the LIVE.md
   results table is noisy but will likely become more stable as samples
-  grow.
+  grow. The models changed once, in the release that took effect with
+  the 2026-10-23 forecast, and from then the table mixes forecast days
+  made before and after it.
 
 - The timing evidence for the forecast log is the commit history. Since
   2026-09-27 the commits are made by GitHub's runner on GitHub's clock.
@@ -446,8 +530,4 @@ past its forecast origin.
   hour of every day. Nothing here shows the ranking holds on other
   markets, and a market with a daily close would need the volatility
   rule, the persistence baseline, and the 24-hour horizon rethought
-  around its session. The backtest and the daily record are also two
-  different experiments. The backtest's origins sit at midnight UTC,
-  while the daily run's origin is the 10:00 UTC hour, so the backtest
-  ranking has not been measured at the hour the daily run forecasts
-  from.
+  around its session.

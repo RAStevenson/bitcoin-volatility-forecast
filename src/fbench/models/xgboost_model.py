@@ -1,6 +1,8 @@
 """The gradient boosted tree model, XGBoost quantile regression over
 the engineered feature columns."""
 
+from typing import ClassVar
+
 import pandas as pd
 import xgboost as xgb
 
@@ -8,7 +10,9 @@ from fbench.feature_builder import FEATURE_COLS
 from fbench.harness_config import HORIZON, QUANTILES
 from fbench.models.base_forecast_model import BaseForecastModel, quantile_frame, register
 
-XGBOOST_PARAMS = {"n_estimators": 300, "max_depth": 4, "learning_rate": 0.05,
+# The settings every daily fit uses. The tuning script scores candidate
+# settings by subclassing Gbm with another params mapping.
+XGBOOST_PARAMS = {"n_estimators": 300, "max_depth": 6, "learning_rate": 0.05,
                   "subsample": 0.8, "colsample_bytree": 0.8, "random_state": 7}
 
 
@@ -16,8 +20,10 @@ XGBOOST_PARAMS = {"n_estimators": 300, "max_depth": 4, "learning_rate": 0.05,
 class Gbm(BaseForecastModel):
     """Horizon-as-feature direct strategy: training rows are (features at
     origin time t, horizon h) -> log_rv[t+h]. One model per quantile,
-    five total, rather than five per horizon."""
+    five total, rather than five per horizon. params holds the XGBoost
+    settings the five regressors are built with."""
     name = "gbm"
+    params: ClassVar[dict] = XGBOOST_PARAMS
 
     def fit(self, training_rows):
         """Stacks one training row per (origin row, horizon) pair, then
@@ -39,7 +45,7 @@ class Gbm(BaseForecastModel):
         self.models_ = {}
         for level in QUANTILES:
             model = xgb.XGBRegressor(objective="reg:quantileerror",
-                                     quantile_alpha=level, **XGBOOST_PARAMS)
+                                     quantile_alpha=level, **self.params)
             model.fit(X, y)
             self.models_[level] = model
         self.origin_features_ = features.iloc[[-1]]

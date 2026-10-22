@@ -21,15 +21,15 @@ BLOCKED_WARNINGS = (
     # writes no checkpoints (enable_checkpointing=False in fit).
     (r"Attribute '(loss|logging_metrics)' is an instance of `nn\.Module` "
      r"and is already saved during checkpointing", UserWarning),
-    # The network trains for a fixed three epochs on the whole training
-    # window with no validation set, so there is no validation loop to
-    # run.
+    # The network trains for a fixed number of epochs on the whole
+    # training window with no validation set, so there is no validation
+    # loop to run.
     (r"You defined a `validation_step` but have no `val_dataloader`",
      UserWarning),
     # The library attaches a scheduler that lowers the learning rate
     # when the validation loss stops improving. With no validation set
-    # it has nothing to read, so the rate stays at the 1e-3 set in fit
-    # for all three epochs, which is the training intended.
+    # it has nothing to read, so the rate stays at the class's
+    # learning_rate for every epoch, which is the training intended.
     (r"ReduceLROnPlateau conditioned on metric val_loss which is not "
      r"available", RuntimeWarning),
     # The data loaders run in the main process on purpose
@@ -58,20 +58,25 @@ class NHits(BaseForecastModel):
     pytorch-forecasting, trained per origin with the native quantile loss
     so all five quantiles come from one network. Deliberately small and
     CPU-friendly: the backtest question is whether deep learning earns
-    its complexity here, not how large a model can be built.
+    its complexity here, not how large a model can be built. The three
+    class attributes below are its settings; the tuning script scores
+    candidates by subclassing with other values.
 
     Chosen over the library's TFT because this repo's design fence
     excludes transformers.
     """
     name = "nhits"
     train_days = TRAIN_DAYS
+    hidden_size = 64
+    learning_rate = 1e-3
+    max_epochs = 8
 
     def fit(self, training_rows):
-        """Trains one small N-HiTS network for three CPU epochs on the
-        gap-interpolated log RV series, with a one-week encoder window
-        and a quantile loss covering all five levels at once. Seeds are
-        pinned at 7 and the trainer is deterministic, so a refit on the
-        same window reproduces."""
+        """Trains one small N-HiTS network for max_epochs CPU epochs on
+        the gap-interpolated log RV series, with a one-week encoder
+        window and a quantile loss covering all five levels at once.
+        Seeds are pinned at 7 and the trainer is deterministic, so a
+        refit on the same window reproduces."""
         # Imports live here so the classical field never pays the torch
         # import cost (and the repo runs without torch installed unless
         # this model is requested).
@@ -103,9 +108,10 @@ class NHits(BaseForecastModel):
             # on below.
             self.model_ = cast(NHiTS, NHiTS.from_dataset(
                 dataset, loss=QuantileLoss(quantiles=QUANTILES),
-                hidden_size=64, learning_rate=1e-3, log_interval=-1))
+                hidden_size=self.hidden_size, learning_rate=self.learning_rate,
+                log_interval=-1))
             trainer = pl.Trainer(
-                max_epochs=3, accelerator="cpu", logger=False,
+                max_epochs=self.max_epochs, accelerator="cpu", logger=False,
                 enable_progress_bar=False, enable_checkpointing=False,
                 enable_model_summary=False, deterministic=True)
             trainer.fit(self.model_,

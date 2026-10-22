@@ -1,0 +1,133 @@
+{
+ "model": "sarima",
+ "origin_hour_utc": 10,
+ "stride": 5,
+ "origins": 74,
+ "first_origin": "2024-07-31 10:00:00+00:00",
+ "last_origin": "2025-07-31 10:00:00+00:00",
+ "data_end": "2025-08-04 23:00:00+00:00",
+ "test_year_start": "2025-08-05",
+ "persistence": {
+  "pinball_mean": 0.1412113539933665,
+  "mae": 0.4560009776020735,
+  "cov50": 0.49605855855855857,
+  "cov90": 0.8997747747747749
+ },
+ "candidates": [
+  {
+   "label": "seasonal_arma_90d",
+   "settings": {
+    "order": [
+     1,
+     0,
+     1
+    ],
+    "seasonal_order": [
+     1,
+     0,
+     1,
+     24
+    ],
+    "fourier_harmonics": 0,
+    "train_days": 90
+   },
+   "pinball_mean": 0.10017182777009564,
+   "mae": 0.3153875199273182,
+   "cov50": 0.5613738738738738,
+   "cov90": 0.9262387387387387,
+   "seconds_per_origin": 7.680984198649074
+  },
+  {
+   "label": "seasonal_arma_365d",
+   "settings": {
+    "order": [
+     1,
+     0,
+     1
+    ],
+    "seasonal_order": [
+     1,
+     0,
+     1,
+     24
+    ],
+    "fourier_harmonics": 0,
+    "train_days": 365
+   },
+   "pinball_mean": 0.10093830979791794,
+   "mae": 0.3188030233144475,
+   "cov50": 0.5625,
+   "cov90": 0.9341216216216216,
+   "seconds_per_origin": 29.927169118919
+  },
+  {
+   "label": "seasonal_ar_only_90d",
+   "settings": {
+    "order": [
+     1,
+     0,
+     1
+    ],
+    "seasonal_order": [
+     1,
+     0,
+     0,
+     24
+    ],
+    "fourier_harmonics": 0,
+    "train_days": 90
+   },
+   "pinball_mean": 0.11419161322679301,
+   "mae": 0.36476177598702625,
+   "cov50": 0.509009009009009,
+   "cov90": 0.9048423423423424,
+   "seconds_per_origin": 2.641757850000333
+  },
+  {
+   "label": "fourier2_90d",
+   "settings": {
+    "order": [
+     1,
+     0,
+     1
+    ],
+    "seasonal_order": [
+     0,
+     0,
+     0,
+     0
+    ],
+    "fourier_harmonics": 2,
+    "train_days": 90
+   },
+   "pinball_mean": 0.10566943615343394,
+   "mae": 0.3341730433972577,
+   "cov50": 0.545045045045045,
+   "cov90": 0.9172297297297297,
+   "seconds_per_origin": 0.519802678378796
+  },
+  {
+   "label": "fourier2_365d",
+   "settings": {
+    "order": [
+     1,
+     0,
+     1
+    ],
+    "seasonal_order": [
+     0,
+     0,
+     0,
+     0
+    ],
+    "fourier_harmonics": 2,
+    "train_days": 365
+   },
+   "pinball_mean": 0.10544653595047056,
+   "mae": 0.33555424455617316,
+   "cov50": 0.553490990990991,
+   "cov90": 0.9324324324324325,
+   "seconds_per_origin": 1.8962040837835268
+  }
+ ]
+}
