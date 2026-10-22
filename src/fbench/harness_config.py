@@ -1,6 +1,7 @@
 """Settings for the whole harness, covering repo paths and data source
 ids, the quantile grid, the realized-volatility and backtest windows, and
-the live record's origin hour and minimum sample. A constant that
+the live record's origin hour and minimum sample, and the release origin
+that dates the current model settings. A constant that
 belongs to one module's job is defined in that module instead, such as
 FALLBACK_MODEL in daily_forecast_generator, LATE_COMMIT_REASONS in
 commit_timing, and ON_TARGET in review_generator."""
@@ -12,7 +13,8 @@ DATA_DIR = ROOT / "data"
 RESULTS_DIR = ROOT / "results"   # reports and the two live logs at the
                                  # top; backtest/ holds each backtest
                                  # run's rows and sidecar, figures/ the
-                                 # figures the reports embed. The logs
+                                 # figures the reports embed, tuning/
+                                 # the grid-search scores. The logs
                                  # stay at the top because the timing
                                  # audit reads forecasts.csv's history
                                  # by path.

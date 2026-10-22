@@ -1,5 +1,6 @@
-"""The HAR models, least squares on trailing daily, weekly and monthly
-means of log RV, in a plain form and a seasonal one."""
+"""The HAR models, least squares on the origin hour's log RV and the
+trailing daily, weekly and monthly means ending at it, in a plain form
+and a seasonal one."""
 
 from typing import ClassVar
 
@@ -55,8 +56,9 @@ class _HarCore(BaseForecastModel):
 
 @register
 class Har(_HarCore):
-    """The plain HAR model, regressing on the previous hour plus the
-    trailing day, week and month means with no seasonal terms."""
+    """The plain HAR model, regressing on the origin hour's own value
+    plus the trailing day, week and month means ending at it, with no
+    seasonal terms."""
     name = "har"
 
 

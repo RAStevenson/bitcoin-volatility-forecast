@@ -394,20 +394,23 @@ python scripts/run_verify_timing.py  # audit the forecast log's timing claim
 ```
 
 `run_vol_backtest.py` takes `--models` (default: every registered
-model), `--stride` (default 2, days between forecast origins), and
-`--test-days` (default 365) to run subsets quickly, and `--no-report` to
-stop after writing the backtest parquet. `--origin-hour` (default 10,
-the daily run's origin hour) sets the UTC hour of every origin, and 0
-reproduces the first backtest's midnight origins. `--data-end` cuts the
-series at a given hour, so a later run can score the same days as an
-earlier one. `run_tune.py` takes `--models`, `--stride` (default 5), and
-`--origin-hour`, and writes one json per model. `run_vol_report.py`
-takes `--results` (default: the newest backtest parquet in
-results/backtest/). `run_daily.py` takes `--no-push` (commit the run's
-files locally and do not push) and `--no-commit` (write every file and
-commit nothing). Every volatility backtest run that writes its report is
-also logged to MLflow, a local run-tracking tool (sqlite backend). Run
-`mlflow ui --backend-store-uri sqlite:///mlflow.db` to browse the runs.
+model), `--stride` (default 2, days between forecast origins),
+and `--test-days` (default 365) to run subsets quickly, and
+`--no-report` to stop after writing the backtest parquet.
+`--origin-hour` (default 10, the daily run's origin hour) sets
+the UTC hour of every origin, and 0 reproduces the first
+backtest's midnight origins. `--data-end` cuts the series at a
+given hour, so a later run can score the same days as an earlier
+one. `run_tune.py` takes `--models`, `--stride` (default 5),
+`--origin-hour`, and `--candidates` (score only the named
+candidates, for a trial run), and writes one json per model.
+`run_vol_report.py` takes `--results` (default: the newest
+backtest parquet in results/backtest/). `run_daily.py` takes
+`--no-push` (commit the run's files locally and do not push) and
+`--no-commit` (write every file and commit nothing). Every
+volatility backtest run that writes its report is also logged to
+MLflow, a local run-tracking tool (sqlite backend). Run `mlflow
+ui --backend-store-uri sqlite:///mlflow.db` to browse the runs.
 
 On Windows, Prophet's pip wheel worked as-is here (cmdstanpy backend,
 no manual install). If a first fit fails with a cmdstan error, run
