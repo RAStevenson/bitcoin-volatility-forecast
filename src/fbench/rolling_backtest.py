@@ -8,31 +8,39 @@ from fbench.harness_config import HORIZON
 from fbench.models.base_forecast_model import REGISTRY
 
 
-def make_origins(timestamps, test_days, stride_days):
-    """Forecast origins for the backtest, one every stride_days across
-    the test_days window that stops a day short of the last midnight in
-    timestamps, returned as UTC midnight timestamps. An origin is the latest
-    timestamp a model may see when it fits, so every hour it forecasts
-    falls strictly after it."""
-    last_midnight = timestamps[-1].floor("D")
-    first_origin = last_midnight - pd.Timedelta(days=test_days)
-    return pd.date_range(first_origin, last_midnight - pd.Timedelta(days=1),
-                         freq=f"{stride_days}D", tz="UTC")
+def make_origins(timestamps, test_days, stride_days, origin_hour_utc=0):
+    """Forecast origins for the backtest, one every stride_days across a
+    test_days window, each at origin_hour_utc on its day. An origin is
+    the latest timestamp a model may see when it fits, so every hour it
+    forecasts falls strictly after it. The last origin is the latest one
+    whose 24 target hours all sit inside timestamps, and the first is
+    test_days - 1 days before it, so a given test_days and stride give
+    the same count of origins at any hour."""
+    last_hour = timestamps[-1]
+    last_origin = (last_hour - pd.Timedelta(hours=HORIZON)).floor("D") + pd.Timedelta(
+        hours=origin_hour_utc)
+    if last_origin + pd.Timedelta(hours=HORIZON) > last_hour:
+        last_origin -= pd.Timedelta(days=1)
+    first_origin = last_origin - pd.Timedelta(days=test_days - 1)
+    return pd.date_range(first_origin, last_origin, freq=f"{stride_days}D", tz="UTC")
 
 
-def run_backtest(features, model_names, origins, horizon=HORIZON):
+def run_backtest(features, model_names, origins, horizon=HORIZON, registry=None):
     """Fit each named model at each origin and predict the next horizon
     hours, returning one long frame in which a row is a single (origin,
     model, target hour) carrying the five quantile columns, the horizon
     step from 1 to horizon, and y_true for that hour. The quantiles and
     y_true are in log realized-volatility space, and y_true is NaN for
-    any target hour features holds no outcome for."""
+    any target hour features holds no outcome for. Models are looked up
+    in registry, the package REGISTRY unless a caller such as the tuning
+    script passes its own mapping of names to model classes."""
+    registry = REGISTRY if registry is None else registry
     forecast_frames = []
     for origin in origins:
         future = pd.date_range(origin + pd.Timedelta(hours=1),
                                periods=horizon, freq="h", tz="UTC")
         for model_name in model_names:
-            model_class = REGISTRY[model_name]
+            model_class = registry[model_name]
             training_rows = features.loc[
                 origin - pd.Timedelta(days=model_class.train_days):origin]
             # The two guards below ARE the leakage policy. Never remove.

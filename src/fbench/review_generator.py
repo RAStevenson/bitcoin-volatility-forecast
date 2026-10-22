@@ -8,7 +8,7 @@ import math
 import numpy as np
 import pandas as pd
 
-from fbench.daily_forecast_generator import LOCAL_TZ, leading_model_asof, ordinal
+from fbench.daily_forecast_generator import LOCAL_TZ, day_path, leading_model_asof, ordinal
 from fbench.daily_forecast_scoring import record_lines, score_daily_forecast
 from fbench.daily_run import EVAL_LOG, _load
 from fbench.harness_config import QCOLS, RESULTS_DIR
@@ -54,7 +54,11 @@ def build_review(hourly=None):
     for column in [*QCOLS, "y_true"]:
         model_hours[column] = np.exp(model_hours[column])  # log RV -> annualized vol
 
-    forecast_average = float(model_hours["q50"].mean())
+    # The day's forecast average by the rule the forecast page used that
+    # day (day_path): expected volatility from the release, the median
+    # before it.
+    forecast_average = float(day_path(model_hours[QCOLS].to_numpy(),
+                                      model_hours["target_time"]).mean())
     realized_average = float(model_hours["y_true"].mean())
     ratio = realized_average / forecast_average
     outcome = ("on target" if ON_TARGET[0] <= ratio <= ON_TARGET[1]
@@ -75,7 +79,7 @@ def build_review(hourly=None):
         abs_log_error=(day_evaluations["y_true"] - day_evaluations["q50"]).abs(),
         inside_band=((day_evaluations["q05"] <= day_evaluations["y_true"])
                      & (day_evaluations["y_true"] <= day_evaluations["q95"])),
-        forecast_vol=np.exp(day_evaluations["q50"]),
+        forecast_vol=_day_forecast_vol(day_evaluations),
     ).groupby("model").agg(abs_log_error=("abs_log_error", "mean"),
                            cov90=("inside_band", "mean"),
                            forecast_vol=("forecast_vol", "mean"))
@@ -101,7 +105,7 @@ def build_review(hourly=None):
     lines = [
         f"# Yesterday in review - forecast issued {issue_date} (generated)",
         "",
-        f"**The forecast was {outcome}.** The {model} median averaged "
+        f"**The forecast was {outcome}.** The {model} forecast averaged "
         f"{forecast_average:.0%} annualized volatility over the 24 hours; realized "
         f"averaged {realized_average:.0%}, {ratio:.2f}x the forecast. The "
         f"forecast counts as on target when the realized volatility averages "
@@ -134,6 +138,18 @@ def build_review(hourly=None):
     if hourly is not None:
         lines += record_lines(score_daily_forecast(evaluations, hourly))
     return "\n".join(lines)
+
+
+def _day_forecast_vol(day_evaluations):
+    """Each row's forecast volatility for the day-average comparison, by
+    the rule in force at the row's origin (day_path), aligned to
+    day_evaluations' index."""
+    forecast_vol = pd.Series(index=day_evaluations.index, dtype=float)
+    for _, model_rows in day_evaluations.groupby("model", sort=False):
+        model_rows = model_rows.sort_values("target_time")
+        forecast_vol.loc[model_rows.index] = day_path(
+            np.exp(model_rows[QCOLS].to_numpy()), model_rows["target_time"])
+    return forecast_vol
 
 
 def _rank_phrase(from_worst, from_best, n_days):

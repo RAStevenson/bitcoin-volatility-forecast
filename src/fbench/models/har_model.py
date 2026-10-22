@@ -8,7 +8,7 @@ import numpy as np
 from fbench.harness_config import HORIZON, QUANTILES
 from fbench.models.base_forecast_model import BaseForecastModel, quantile_frame, register
 
-HAR_FEATURE_COLS = ["lag_1", "har_d", "har_w", "har_m"]
+HAR_FEATURE_COLS = ["lag_0", "har_d", "har_w", "har_m"]
 
 
 class _HarCore(BaseForecastModel):

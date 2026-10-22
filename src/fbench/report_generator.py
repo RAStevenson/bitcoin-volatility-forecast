@@ -47,14 +47,16 @@ def _fig_pinball(scores, fig_prefix):
 
 def write_report(scores, hourly, results_path, report_name="REPORT.md",
                  fig_prefix="fig", title="Backtest report",
-                 value_label="median annualized RV", dataset_stats=None):
+                 value_label="median annualized RV", dataset_stats=None,
+                 origin_hour_utc=0):
     """Write the backtest report into results/, its two figures into
     results/figures/, and
     return the report path, giving the reader a results table averaged over
     horizons 1 to 24, the horizon 1 and horizon 24 tables, and the caveats
     this run's numbers need. Without dataset_stats the Dataset section
     describes the hourly file as it stands now rather than the data the
-    backtest actually saw."""
+    backtest actually saw. origin_hour_utc is the clock hour every origin
+    sat at, which the horizon-curve caveat names."""
     # dataset_stats pins the Dataset section to the data the backtest
     # actually saw (recorded in the run's json sidecar at backtest time).
     # Without it the section describes whatever the hourly file holds at
@@ -110,19 +112,20 @@ def write_report(scores, hourly, results_path, report_name="REPORT.md",
         f"![pinball by horizon](figures/{fig_prefix}_pinball_by_horizon.png)",
         "",
     ]
-    # Origins are floored to 00:00 UTC by make_origins, so a given horizon
-    # always scores the same clock hour and the two figures above are confounded
-    # by construction. Computed at render time because the correlation is
-    # specific to this run's scores and data.
+    # Every origin sits at the same clock hour (make_origins), so a given
+    # horizon always scores the same clock hour and the two figures above
+    # are confounded by construction. Computed at render time because the
+    # correlation is specific to this run's scores and data.
     mean_pinball_by_horizon = scores.groupby("horizon")["pinball_mean"].mean()
     hourly_profile = hourly.groupby(hourly.index.hour)["rv"].median()
     hour_correlation = float(np.corrcoef(
         mean_pinball_by_horizon.to_numpy(),
         hourly_profile.reindex(
-            [horizon % 24 for horizon in mean_pinball_by_horizon.index]).to_numpy())[0, 1])
+            [(origin_hour_utc + horizon) % 24
+             for horizon in mean_pinball_by_horizon.index]).to_numpy())[0, 1])
     lines += [
-        f"Backtest origins all sit at 00:00 UTC, so a given horizon always "
-        f"lands on the same UTC clock hour, and the pinball-by-horizon "
+        f"Backtest origins all sit at {origin_hour_utc:02d}:00 UTC, so a given "
+        f"horizon always lands on the same UTC clock hour, and the pinball-by-horizon "
         f"curve inherits the hour-of-day profile above (correlation "
         f"{hour_correlation:.2f} between the two curves on this run). A bump at one "
         f"horizon is largely that clock hour showing through, not a "

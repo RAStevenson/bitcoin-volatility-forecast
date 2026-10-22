@@ -1,6 +1,6 @@
 # Yesterday in review - forecast issued 2026-10-21 (generated)
 
-**The forecast was on target.** The nhits median averaged 29% annualized volatility over the 24 hours; realized averaged 33%, 1.13x the forecast. The forecast counts as on target when the realized volatility averages within a factor of 1.5 of the forecast, above or below it.
+**The forecast was on target.** The nhits forecast averaged 29% annualized volatility over the 24 hours; realized averaged 33%, 1.13x the forecast. The forecast counts as on target when the realized volatility averages within a factor of 1.5 of the forecast, above or below it.
 
 - 24 of 24 hours landed inside the 90% band (0 above it, 0 below). A calibrated band holds about 22 of 24.
 - Across all models the day's mean absolute log error was 0.251, the 9th smallest of 79 scored days (median day 0.346).

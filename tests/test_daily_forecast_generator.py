@@ -79,6 +79,33 @@ def test_daily_forecast_written_with_regime_words(tmp_path, monkeypatch):
     assert "$50,000" in text_with_price
 
 
+def test_day_path_switches_rule_at_the_release_origin(monkeypatch):
+    monkeypatch.setattr(daily_forecast_generator, "RELEASE_ORIGIN", "2026-03-01 10:00")
+    sigma = daily_run.IQR_TO_SIGMA
+    log_quantiles = np.tile([-1.6, -1 - sigma / 2, -1.0, -1 + sigma / 2, -0.4], (24, 1))
+    annualized_quantiles = np.exp(log_quantiles)
+    before = pd.date_range("2026-02-28 11:00", periods=24, freq="h", tz="UTC")
+    after = pd.date_range("2026-03-01 11:00", periods=24, freq="h", tz="UTC")
+    # before the release the day figure is the median path
+    np.testing.assert_allclose(daily_forecast_generator.day_path(annualized_quantiles, before),
+                               np.exp(-1.0))
+    # from the release on it is the expected value, the median times exp(1/2) here
+    np.testing.assert_allclose(daily_forecast_generator.day_path(annualized_quantiles, after),
+                               np.exp(-0.5))
+    # the typical-hour move stays on the medians under either rule, while
+    # the day figure follows the rule in force
+    comparison_context = {"daily_averages": np.linspace(0.1, 0.9, 100),
+                          "high_line": 0.67, "previous_day_average": 0.3}
+    for target_times, expected_average in ((before, np.exp(-1.0)), (after, np.exp(-0.5))):
+        forecast_claims = daily_forecast_generator.claims(annualized_quantiles, target_times,
+                                                          comparison_context)
+        assert forecast_claims["forecast_average"] == pytest.approx(expected_average)
+        assert forecast_claims["hourly_move"] == pytest.approx(
+            np.exp(-1.0) / daily_forecast_generator.ANNUALIZER)
+    assert not daily_forecast_generator.uses_expected_value(before)
+    assert daily_forecast_generator.uses_expected_value(after)
+
+
 def test_ordinal_suffixes_including_the_teens():
     ordinal = daily_forecast_generator.ordinal
     expected = {1: "1st", 2: "2nd", 3: "3rd", 4: "4th", 11: "11th", 12: "12th",

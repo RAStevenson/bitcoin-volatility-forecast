@@ -70,21 +70,39 @@ def test_logs_are_appended_not_rewritten(logs_in_tmp):
     assert bytes_after_second.count(b"\n") > bytes_after_first.count(b"\n")
 
 
+def test_expected_vol_raises_the_median_by_the_band_spread():
+    # a band with no spread is its own middle
+    assert daily_run.expected_vol({"q25": [0.0], "q50": [0.0], "q75": [0.0]})[0] == 1.0
+    # a 25-75 band one sigma wide on the log scale raises the middle by exp(1/2)
+    sigma = daily_run.IQR_TO_SIGMA
+    raised = daily_run.expected_vol({"q25": [-sigma / 2], "q50": [0.0], "q75": [sigma / 2]})
+    assert raised[0] == pytest.approx(np.exp(0.5))
+    # the correction is the same whatever the median
+    shifted = daily_run.expected_vol({"q25": [1 - sigma / 2], "q50": [1.0],
+                                      "q75": [1 + sigma / 2]})
+    assert shifted[0] == pytest.approx(np.exp(1.5))
+
+
 def test_day_level_scores_reward_the_right_day_average():
+    """The day score averages each hour's expected volatility, so a model
+    whose medians sit exactly one band correction under the truth scores
+    a zero day error, and one 0.3 above that scores 0.3."""
     target_times = pd.date_range("2026-01-01 01:00", periods=48, freq="h", tz="UTC")
     origins = [target_times[0] - pd.Timedelta(hours=1),
                target_times[24] - pd.Timedelta(hours=1)]
+    correction = (1.0 / daily_run.IQR_TO_SIGMA) ** 2 / 2  # for a 25-75 band 1.0 wide
     rows = []
     for origin, day_targets in zip(origins, (target_times[:24], target_times[24:]),
                                    strict=True):
         truth = np.linspace(-1.2, -0.8, 24)
         for model, offset in (("exact", 0.0), ("persistence", 0.3)):
             for i, target_time in enumerate(day_targets):
+                median = truth[i] - correction + offset
                 rows.append({"origin": origin, "target_time": target_time,
                              "horizon": i + 1, "model": model,
-                             "q05": truth[i] - 1, "q25": truth[i] - .5,
-                             "q50": truth[i] + offset, "q75": truth[i] + .5,
-                             "q95": truth[i] + 1, "y_true": truth[i]})
+                             "q05": median - 1, "q25": median - .5,
+                             "q50": median, "q75": median + .5,
+                             "q95": median + 1, "y_true": truth[i]})
     scores = daily_run.day_level_scores(pd.DataFrame(rows))
     assert scores.loc["exact", "day_error"] == pytest.approx(0.0)
     assert scores.loc["persistence", "day_error"] == pytest.approx(0.3)
@@ -176,3 +194,27 @@ def test_live_report_written(logs_in_tmp):
     # the coverage columns are glossed
     assert "for well-sized bands they sit near 0.50 and 0.90" in text
     assert "day_error" in text and (logs_in_tmp / "figures" / "fig_live_daily.png").exists()
+    # the settings sentence: this synthetic record sits before the release origin
+    assert "model settings" in text
+
+
+def test_settings_lines_say_which_settings_the_days_ran_on(monkeypatch):
+    monkeypatch.setattr(daily_run, "RELEASE_ORIGIN", "2026-03-01 10:00")
+    rows = []
+    for day in range(6):
+        origin = pd.Timestamp("2026-02-26 10:00", tz="UTC") + pd.Timedelta(days=day)
+        for model, spread in (("good", 0.1), ("persistence", 0.4)):
+            for hour in range(24):
+                rows.append({"origin": origin,
+                             "target_time": origin + pd.Timedelta(hours=hour + 1),
+                             "horizon": hour + 1, "model": model,
+                             "q05": -1.6, "q25": -1.25, "q50": -1.0 + spread,
+                             "q75": -0.75, "q95": -0.4, "y_true": -1.0})
+    evaluations = pd.DataFrame(rows)
+    blended = " ".join(daily_run.settings_lines(evaluations))
+    assert "changed on 2026-03-01" in blended and "On the 3 forecast days" in blended
+    assert "good leads" in blended
+    before_only = evaluations[evaluations["origin"] < pd.Timestamp("2026-03-01", tz="UTC")]
+    assert "has resolved yet" in " ".join(daily_run.settings_lines(before_only))
+    after_only = evaluations[evaluations["origin"] >= pd.Timestamp("2026-03-01", tz="UTC")]
+    assert "in force since 2026-03-01" in " ".join(daily_run.settings_lines(after_only))

@@ -46,7 +46,9 @@ def main():
                      "dataset_nan_hours")
     dataset_stats = ({key: run_config[key] for key in snapshot_keys}
                      if all(key in run_config for key in snapshot_keys) else None)
+    origin_hours = sorted(set(pd.DatetimeIndex(results["origin"]).hour))
     report_path = write_report(scores, hourly, results_path,
+                               origin_hour_utc=origin_hours[0],
                                dataset_stats=dataset_stats)
     run_config.pop("models", None)  # param values must be scalars
     log_backtest(scores, results_path, run_config)

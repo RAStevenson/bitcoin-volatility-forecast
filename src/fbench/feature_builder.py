@@ -6,30 +6,33 @@ the pipeline supplies in UTC."""
 import numpy as np
 import pandas as pd
 
-FEATURE_COLS = ["lag_1", "lag_2", "lag_3", "lag_24", "lag_48", "lag_168",
+FEATURE_COLS = ["lag_0", "lag_1", "lag_2", "lag_24", "lag_48", "lag_168",
                 "har_d", "har_w", "har_m",
                 "hod_sin", "hod_cos", "dow_sin", "dow_cos"]
 
-# Trailing HAR-style means over the past day/week/month of hourly log RV.
-# Everything is shift(1) BEFORE rolling: features at time t use data
-# strictly before t. This is the leakage rule; tests pin it.
+# A row's predictors use data through the row's own hour and nothing
+# after it: lag_0 is the row's own log RV, lag_k the value k hours
+# earlier, and the HAR means are trailing windows that end at the row.
+# A model fits from rows at or before its origin and forecasts hours
+# strictly after it, so the origin hour is the newest closed hour it may
+# use and never one of its targets. This is the leakage rule; tests pin
+# it.
 
 
 def build_features(hourly):
     """Return a frame on the same index as hourly, carrying the target
-    column log_rv alongside every predictor named in FEATURE_COLS. Each
-    predictor is shifted before it is rolled, so a row uses only data
-    strictly before its own timestamp, and the leading rows stay NaN
-    until the windows fill."""
+    column log_rv alongside every predictor named in FEATURE_COLS. A
+    row's predictors end at the row's own hour, so a row uses no data
+    past its own timestamp, and the leading rows stay NaN until the
+    windows fill."""
     log_realized_vol = hourly["log_rv"]
     features = pd.DataFrame(index=hourly.index)
     features["log_rv"] = log_realized_vol
-    for lag in (1, 2, 3, 24, 48, 168):
+    for lag in (0, 1, 2, 24, 48, 168):
         features[f"lag_{lag}"] = log_realized_vol.shift(lag)
-    previous_hour = log_realized_vol.shift(1)
-    features["har_d"] = previous_hour.rolling(24, min_periods=18).mean()
-    features["har_w"] = previous_hour.rolling(168, min_periods=120).mean()
-    features["har_m"] = previous_hour.rolling(720, min_periods=500).mean()
+    features["har_d"] = log_realized_vol.rolling(24, min_periods=18).mean()
+    features["har_w"] = log_realized_vol.rolling(168, min_periods=120).mean()
+    features["har_m"] = log_realized_vol.rolling(720, min_periods=500).mean()
     timestamps = pd.DatetimeIndex(features.index)
     hour_of_day = timestamps.hour
     day_of_week = timestamps.dayofweek

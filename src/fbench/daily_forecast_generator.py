@@ -9,8 +9,8 @@ made rather than a paraphrase of them."""
 import numpy as np
 import pandas as pd
 
-from fbench.daily_run import EVAL_LOG, FORECAST_LOG, _load
-from fbench.harness_config import ANNUALIZER, QCOLS, QUANTILES, RESULTS_DIR
+from fbench.daily_run import EVAL_LOG, FORECAST_LOG, _load, expected_vol
+from fbench.harness_config import ANNUALIZER, QCOLS, QUANTILES, RELEASE_ORIGIN, RESULTS_DIR
 from fbench.quantile_scoring import score
 
 LOCAL_TZ = "America/Chicago"
@@ -126,6 +126,26 @@ def trend_of(day_average, previous_day_average):
             "falling" if ratio < 0.90 else "steady")
 
 
+def uses_expected_value(target_times):
+    """Whether a forecast over target_times falls under the expected-value
+    day figure, which applies from RELEASE_ORIGIN on (see day_path)."""
+    origin = pd.DatetimeIndex(target_times)[0] - pd.Timedelta(hours=1)
+    return bool(origin >= pd.Timestamp(RELEASE_ORIGIN, tz="UTC"))
+
+
+def day_path(annualized_quantiles, target_times):
+    """The 24 hourly values whose average is the forecast of the day's
+    average volatility. From RELEASE_ORIGIN on, each hour's expected
+    volatility (daily_run.expected_vol); before it, the hourly median,
+    which is what the forecast page printed on those days, so the review
+    replays each past day's claim as it was made rather than as the
+    current rule would make it."""
+    if uses_expected_value(target_times):
+        log_quantiles = dict(zip(QCOLS, np.log(annualized_quantiles).T, strict=True))
+        return expected_vol(log_quantiles)
+    return annualized_quantiles[:, 2]
+
+
 def claims(annualized_quantiles, target_times, comparison_context):
     """The numbers behind every claim the daily forecast makes, from the
     reported model's 24 rows of annualized quantiles (one row per target
@@ -134,7 +154,7 @@ def claims(annualized_quantiles, target_times, comparison_context):
     regime and trend words, the expected count of hours above the high
     line, and which target hours are named loudest and calmest."""
     median_path = annualized_quantiles[:, 2]
-    forecast_average = float(median_path.mean())
+    forecast_average = float(day_path(annualized_quantiles, target_times).mean())
     # Human translation: annualized vol / sqrt(hours per year) is the
     # typical single-hour move. The daily figure is the root of summed
     # hourly variances, a one-sigma close-to-close move rather than a
@@ -149,7 +169,10 @@ def claims(annualized_quantiles, target_times, comparison_context):
     target_hours = pd.DatetimeIndex(target_times)
     return {
         "forecast_average": forecast_average, "median_path": median_path,
-        "hourly_move": forecast_average / ANNUALIZER,
+        "expected_value_rule": uses_expected_value(target_times),
+        # The typical hour is the median hour, so this stays on the
+        # medians whichever rule the day figure uses.
+        "hourly_move": float(median_path.mean()) / ANNUALIZER,
         "day_move": float(np.sqrt(np.sum((median_path / ANNUALIZER) ** 2))),
         "regime": regime, "percentile": percentile,
         "trend": trend_of(forecast_average, comparison_context["previous_day_average"]),
@@ -260,6 +283,21 @@ def build_daily_forecast(hourly, last_price=None):
                      f"started, which is what one standard deviation "
                      f"means when the day's move is roughly bell-shaped. "
                      f"Bigger days happen regularly.")
+    # How the annualized day figure relates to the typical-hour move
+    # above. Under the expected-value rule the two come from different
+    # paths (see day_path), so the page says which is which.
+    if forecast_claims["expected_value_rule"]:
+        annualized_note = (
+            f"That figure averages each hour's expected volatility, which "
+            f"sits a little above the hour's median because the big hours "
+            f"pull an average up more than they move a median. The "
+            f"typical-hour move above is the average of the 24 hourly "
+            f"medians divided by {ANNUALIZER:.1f}, the square root of the "
+            f"hours in a year.")
+    else:
+        annualized_note = (f"The hourly figures above are that same number "
+                           f"divided by {ANNUALIZER:.1f}, the square root of the "
+                           f"hours in a year.")
     # One plain phrase per regime word, same percentile bins as regime_of.
     percentile_phrase = {"quiet": "below most days of the past year",
                          "normal": "in the middle of the past year's range",
@@ -276,9 +314,7 @@ def build_daily_forecast(hourly, last_price=None):
         f"{ordinal(round(forecast_claims['percentile']))} percentile of "
         f"the past year's rolling 24-hour averages) and works out to about "
         f"{forecast_average:.0%} in annualized units, the per-year convention "
-        f"volatility is quoted in. The hourly figures above are that same "
-        f"number divided by {ANNUALIZER:.1f}, the square root of the "
-        f"hours in a year.",
+        f"volatility is quoted in. " + annualized_note,
         "",
         f"- Hourly median forecast ranges {median_path.min():.0%} to "
         f"{median_path.max():.0%} annualized, which is a typical hourly "

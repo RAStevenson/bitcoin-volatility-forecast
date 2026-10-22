@@ -1,0 +1,1 @@
+{"stride": 2, "test_days": 365, "origin_hour_utc": 10, "horizon": 24, "models": ["gbm", "har", "har_seasonal", "nhits", "persistence", "prophet", "sarima", "seasonal_persistence"], "origins": 183, "dataset_hours": 26412, "dataset_span_start": "2023-08-01 00:00:00+00:00", "dataset_span_end": "2026-08-05 11:00:00+00:00", "dataset_nan_hours": 18}

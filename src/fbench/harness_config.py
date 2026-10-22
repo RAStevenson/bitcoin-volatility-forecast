@@ -44,3 +44,10 @@ ANNUALIZER = (365 * 24) ** 0.5 # hourly variance -> annualized vol units
 # Hourly rows within a day are strongly dependent, so the effective
 # sample is the day count, not the row count.
 MIN_MATCHED_DAYS = 10
+
+# The first forecast origin made on the current model settings, set in
+# the release that changed them. LIVE.md counts the days scored since it.
+# The forecast page and the review build their day figure from each
+# hour's expected volatility from this origin on and from the median
+# before it, so a past day is scored by the rule its own page printed.
+RELEASE_ORIGIN = "2026-10-23 10:00"   # UTC, the first forecast origin after the release landed

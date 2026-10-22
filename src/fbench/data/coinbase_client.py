@@ -45,8 +45,9 @@ def fetch_candles(product, start, end, granularity):
         time.sleep(0.15)  # stay far inside the public rate limit
     candles = pd.DataFrame(candle_rows, columns=["ts", "low", "high", "open", "close",
                                                  "volume"])
-    if candles.empty:
-        return candles
     candles["time"] = pd.to_datetime(candles["ts"], unit="s", utc=True)
+    # An empty result keeps the same columns as a full one, time included,
+    # so a caller that concatenates or reads "time" needs no special case.
     return (candles.drop(columns="ts").drop_duplicates("time")
-            .sort_values("time").reset_index(drop=True))
+            .sort_values("time").reset_index(drop=True)
+            [["time", "low", "high", "open", "close", "volume"]])
