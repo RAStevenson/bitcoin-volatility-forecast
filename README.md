@@ -389,26 +389,27 @@ with the rest in three subfolders:
 
 The run is a GitHub Actions workflow, [daily-run.yml][workflow]. A
 Windows Task Scheduler entry on the author's machine starts it at
-11:15 UTC each day by asking GitHub to run the workflow, and GitHub's
-own schedule at 11:15 and 11:45 UTC is the fallback. Whichever fires
-second does nothing, because the day's run has already committed. The
-workflow installs the Python packages, with the CPU-only build of
-PyTorch, and runs `scripts/run_daily.py`, which commits the result as
-`github-actions[bot]` and pushes, so the commit times in the forecast
-log are GitHub's, not the author's. The origin is the 10:00 UTC hour
-every day, whatever minute the run starts, so a run that starts late
-forecasts the window an on-time run would have, and its models see no
-data past that hour. Only the dollar figures in FORECAST.md use the
-price at the time of the run. The 10:00 UTC hour is 5:00 am CDT in
-Chicago, or 4:00 am CST once daylight saving ends. The forecast and
-its briefing therefore land before the US stock market opens at 8:30
-am Central, and the 24 hours it covers include that session. The
-origin hour closes at 11:00, and its first target hour ends at 12:00
-UTC, so a run that starts on time and takes its usual three and a half
-minutes commits with about forty minutes to spare. A run that commits
-after that is listed in [LIVE.md][live] by the audit, with what
-started it and when, read from its commit message. A run that fails
-leaves no commit that day, and the gap is visible in the history.
+11:15 UTC each day by asking GitHub to run the workflow, and
+GitHub's own schedule at 11:15 and 11:45 UTC is the fallback. Any
+start after the day's run has committed does nothing. The workflow
+installs the Python packages, with the CPU-only build of PyTorch,
+and runs `scripts/run_daily.py`, which commits the result as
+`github-actions[bot]` and pushes, so the commit times in the
+forecast log are GitHub's, not the author's. The origin is the
+10:00 UTC hour every day, whatever minute the run starts, so a run
+that starts late forecasts the window an on-time run would have,
+and its models see no data past that hour. Only the dollar figures
+in FORECAST.md use the price at the time of the run. The 10:00 UTC
+hour is 5:00 am CDT in Chicago, or 4:00 am CST once daylight
+saving ends. The forecast and its briefing therefore land before
+the US stock market opens at 8:30 am Central, and the 24 hours it
+covers include that session. The origin hour closes at 11:00, and
+its first target hour ends at 12:00 UTC, so a run that starts on
+time and takes its usual three and a half minutes commits with
+about forty minutes to spare. A run that commits after that is
+listed in [LIVE.md][live] by the audit, with what started it and
+when, read from its commit message. A run that fails leaves no
+commit that day, and the gap is visible in the history.
 
 [workflow]: .github/workflows/daily-run.yml
 
