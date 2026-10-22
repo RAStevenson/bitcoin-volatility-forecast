@@ -17,6 +17,10 @@ on:
         description: "run with --no-commit (nothing committed or pushed)"
         type: boolean
         default: true
+      refit_today:
+        description: "dry run only: drop today's logged forecasts from the runner's copy first, so every model refits"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -76,7 +80,17 @@ jobs:
         if: steps.today.outputs.done == 'false' || (github.event_name == 'workflow_dispatch' && inputs.dry_run)
         env:
           DRY: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+          REFIT: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && inputs.refit_today }}
         run: |
+          # A dry run after the day has committed would otherwise fit
+          # nothing, because the daily run skips any model already logged
+          # for the origin. Dropping today's rows here touches only the
+          # runner's copy, which a dry run never commits.
+          if [ "$REFIT" = "true" ]; then
+            grep -v "^$(date -u +%F) " results/forecasts.csv > forecasts_without_today.csv
+            echo "dropped $(( $(wc -l < results/forecasts.csv) - $(wc -l < forecasts_without_today.csv) )) of today's rows from the runner's copy"
+            mv forecasts_without_today.csv results/forecasts.csv
+          fi
           if [ "$DRY" = "true" ]; then
             python scripts/run_daily.py --no-commit
           else
