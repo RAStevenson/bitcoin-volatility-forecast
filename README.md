@@ -106,9 +106,9 @@ commit came late in the daily record. Those days stay in the scores,
 and the list records them.
 
 Each forecast is made from one point in time, its origin, using only
-data before it, and the origin steps forward for the next forecast. This
-is rolling-origin evaluation. Every score is therefore out of sample in
-time, the same position a live forecast is in.
+data up to and including it, and the origin steps forward for the next
+forecast. This is rolling-origin evaluation. Every score is therefore
+out of sample in time, the same position a live forecast is in.
 
 The band is scored two ways, pinball loss and calibration, because a
 model can be accurate with a band too narrow, or well-banded and
