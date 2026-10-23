@@ -1,107 +1,117 @@
 # bitcoin-volatility-forecast
 
 This repo publishes a daily forecast of how volatile BTC-USD (Bitcoin
-priced in US dollars) will likely be over the next 24 hours, and holds
-the code that scores that forecast against reality. This volatility is
-useful in systematic trading, usually for position sizing.
+priced in US dollars) will likely be over the next 24 hours, and scores
+that forecast against reality. This volatility is useful in systematic
+trading, usually for position sizing.
 
-Eight models make the forecast each day. The repo publishes the one
-from whichever model is scoring best so far, in plain language, in
-[results/FORECAST.md](results/FORECAST.md). That file gives the
-expected move in dollars and percent, where the day sits against the
-past year, and which hours are expected to fluctuate most. The
-simplest of the eight is persistence, the naive baseline whose forecast
-is that each of the next 24 hours will look like the last hour observed.
-The most complex is N-HiTS, a neural network built for time series.
-They run side by side so the record shows which model families suit
-this series and which fail to beat the baseline.
+Eight models make the forecast each day. The repo presents the
+forecast from whichever model is scoring best so far, in plain
+language, in [results/FORECAST.md](results/FORECAST.md), which
+can be read on GitHub without cloning the repo. "Getting the
+daily forecast" below explains how.
+
+The FORECAST.md file presents the expected move in dollars and percent,
+how the projected day sits in comparison to the past year, and which
+hours are expected to be the most and least volatile. The simplest of
+the eight is persistence, the naive baseline whose forecast is that each
+of the next 24 hours will look like the last hour observed. The most
+complex is N-HiTS, a neural network built for time series. They run side
+by side so the record shows which model families suit this series best
+and which fail to beat the baseline.
 
 ## The result so far
 
 The daily record, [results/LIVE.md](results/LIVE.md), holds the running
 scores of every forecast made since 2026-08-03. On the 75 days that both
-N-HiTS and persistence forecast, as of 2026-10-21, N-HiTS's error on
-each day's average volatility was 39% below persistence's.
+N-HiTS and persistence forecast, as of 2026-10-21, N-HiTS is the current
+leader with a mean error on daily average volatility of 0.1565, against
+0.2576 for persistence, about a 39% improvement.
 
 ![day by day: forecast, realized, persistence](results/figures/fig_live_daily.png)
 
-The figure is that record day by day for the leading model: its
-forecast of each day's average volatility, the average that occurred,
-and the persistence model's own forecast of the same average. Every
-daily run redraws it, so it extends past the dated numbers in this
-section. The forecast tracks the level of ordinary days and misses the
-spikes on the day they arrive.
+The figure above is the record day by day for the leading model. It
+includes its forecast of each day's average volatility, the average
+that occurred, and the persistence model's own forecast of the same
+average. Every daily run redraws it, so it extends past the dated
+numbers in this section.
 
-The daily record scores each day's average volatility, the mean of a
-model's 24 hourly expected values against the mean of the 24 hourly
-values that occurred. A model's median forecast is the middle of the
-band of values it gives for each hour. Each hour's expected value is
-that median raised by an amount that grows with the band's width. The
-adjustment is there because hourly volatility is right-skewed, with a
-few very large hours and none below zero, and the average of a
-right-skewed quantity sits above its median. The error is the log of
-realized over forecast value, sign ignored, so a forecast 20% off
-counts the same on a quiet day as on a spike day. A day is fully
-resolved once all 24 of its hours have been observed. Over the 75
-fully resolved days that both N-HiTS and persistence forecast, as of
-2026-10-21, N-HiTS, the leading model, had an average error of 0.16 on
-that scale, against 0.26 for persistence. Lower is better. The 39%
-above is that gap as a share of persistence's error, and its 95%
-interval runs from 20% to 58%. That interval is the range the true
-lead could plausibly sit in given the day-to-day noise, computed as if
-each day were independent of the last. It stays above zero, indicating
-that on those days the lead over persistence is larger than day-to-day
-noise would explain. The error is the day_error column in LIVE.md's
-table, and the matched comparison is the day_skill column, with the
-interval stated under the table.
+The daily record scores each day's average volatility, comparing a
+model's forecast of the 24-hour average with the average that occurred.
+The error is the log of realized over forecast value, sign ignored, so a
+forecast 20% off counts the same on a quiet day as on a spike day. A day
+is fully resolved once all 24 of its hours have been observed. The
+0.1565 for N-HiTS and the 0.2576 for persistence are that error averaged
+over the 75 fully resolved days both models forecast.
+
+The 95% interval on the 39% runs from 20% to 58%. That interval is the
+range the true lead could plausibly sit in given the day-to-day noise,
+computed as if each day were independent of the last. It stays above
+zero, indicating that on those 75 days the lead over persistence is
+larger than day-to-day noise would explain. In LIVE.md's table the 39%
+is N-HiTS's day_skill, with the interval stated under the table. The
+day_error column averages each model over its own days, and persistence
+has three more days there because N-HiTS joined the daily run three days
+after the others.
+
+A model's forecast for each hour is a band of values, and its median is
+the middle of that band. The forecast of the day's average is built from
+each hour's expected value, the average the model's band implies for
+that hour. The expected value is the median raised by an amount that
+grows with the band's width. Hourly volatility is right-skewed, with a
+few very large hours and none below zero. The average of a right-skewed
+quantity sits above its median, so an average of the 24 medians would
+run below the realized average.
 
 ## Getting the daily forecast
 
 The day's forecast can be read on GitHub with no clone of the repo and
 none of its Python packages. Each day's run rewrites three reports,
-usually by 11:20 UTC. [FORECAST.md][forecast] holds the day's
-forecast, [REVIEW.md][review] says how yesterday's forecast did, and
-[LIVE.md][live] is the daily record of every model's scores.
+usually by 11:20 UTC. [results/FORECAST.md][forecast] holds the day's
+forecast, [results/REVIEW.md][review] says how yesterday's forecast
+did, and [results/LIVE.md][live] is the daily record of every model's
+scores.
 
-An AI agent can also fetch the three reports and summarize them
-each day. The instructions it follows are the briefing prompt,
-[daily_briefing_prompt.md][prompt]. It can be scheduled after 12:00
-UTC in Claude Code or any other agent that can run shell commands.
-Each run writes a short briefing that leads with the forecast, or
-says the forecast has not landed yet on a day the daily run is
-late. Run this way, the prompt reads the three reports and runs
-nothing.
+A user can navigate to the GitHub page and read the forecast or an AI
+agent can be set up to fetch the three reports and summarize them
+each day. Instructions for setting up this routine can be found in
+the briefing prompt document [docs/daily_briefing_prompt.md][prompt].
+It contains setup instructions for both a read-only user which
+requires no installation or an owner for if a user chooses to clone
+the repo. For a read-only user the daily fetch can be scheduled after
+12:00 UTC in Claude Code, OpenAI Codex, or any other agent that can
+run shell commands. Each run writes a short briefing that leads with
+the forecast, or informs the user if the forecast has not landed yet.
+Run this way, the prompt fetches the three reports and runs nothing.
 
 ## What is forecast
 
-What the models forecast is realized volatility, the fluctuation actually
-measured from the price, one value per hour. It is measured from
-minute-to-minute price changes because an hourly figure needs data
-finer than the hour, and one-minute candles are what the exchange
-serves. The forecast is hourly because volatility follows a daily
-cycle. It runs 24 hours ahead so that one forecast covers a full day.
+What the models forecast is realized volatility, the fluctuation
+actually measured from the price, one value per hour. It is measured
+from minute-to-minute price changes because an hourly figure needs
+data finer than the hour to calculate. The forecast follows a daily
+cycle of hours and one forecast run covers a full 24-hour day.
 
-Every forecast is a quantile band rather than a single number. A point
-estimate is just a single number with no additional information, but
-quantiles are more valuable because they naturally represent model
-confidence. The width of the band is the model's own statement of
-uncertainty. It is wide when the forecast is unsure and narrow when its
-confidence is higher. The band is five values for each hour, the 5%,
-25%, 50%, 75%, and 95% quantiles, with the 50% quantile representing the
-median. Each quantile is named for the probability that the realized
-volatility does not exceed it. The realized volatility should therefore
-sit between the highest and lowest quantiles 90% of the time. The
-scoring counts how often the realized volatility lands within those
-bounds.
+Every forecast is a quantile band rather than a single number
+because quantiles naturally represent model confidence. The width
+of the band is the model's own statement of uncertainty. It is
+wide when the forecast is unsure and narrow when its confidence
+is higher. The band is five values for each hour, the 5%, 25%,
+50%, 75%, and 95% quantiles, with the 50% quantile representing
+the median. Each quantile is named for the probability that the
+realized volatility does not exceed it. The realized volatility
+should therefore sit between the highest and lowest quantiles 90%
+of the time. The scoring counts how often the realized volatility
+lands within those bounds.
 
 ## How it is scored
 
-Each day, a scheduled run commits every model's forecast to git before
-the first of its 24 target hours has ended, so the history proves each
-forecast was made before its outcome was known. Each daily run audits
-those commit times against the git history and lists the days whose
-commit came late in the daily record. Those days stay in the scores,
-and the list records them.
+Each day, a scheduled run commits every model's forecast to git
+before the first of its 24 target hours has ended, so the history
+proves each forecast was made before its outcome was known. Each
+daily run audits those commit times against the git history and
+lists in [TIMING.md][timing] the days whose commit came late. Those
+days stay in the scores, and the list records them.
 
 Each forecast is made from one point in time, its origin, using only
 data up to and including it, and the origin steps forward for the next
@@ -110,7 +120,7 @@ out of sample in time, the same position a live forecast is in.
 
 The band is scored two ways, pinball loss and calibration, because a
 model can be accurate with a band too narrow, or well-banded and
-inaccurate. Pinball loss scores accuracy. It measures each of the five
+inaccurate. Pinball loss scores accuracy by measuring each of the five
 quantiles by its distance from the realized value. It is lowest on
 average only when each quantile sits at its true value, so a model
 cannot improve it by hedging wide or narrow. Calibration scores whether
@@ -118,42 +128,31 @@ the bands are sized correctly. It counts how often the realized value
 landed inside the 90% band, the span between the 5% and 95% quantiles.
 LIVE.md reports that share as the `cov90` column.
 
-Two baselines sit in the results tables beside the other six models. One
-is persistence. The other is HAR (heterogeneous autoregressive), the
-published standard baseline for realized volatility; both are described
-under Models. The skill column measures every model against persistence.
-Skill is one minus the model's error over persistence's, so zero ties
-persistence, one would be a perfect forecast, and a negative value loses
-to the baseline. The table shows the current performance.
-
-## Why
-
-The forecast is the product, and the scoring is what makes it worth
-reading. Persistence is the bar. A forecast that cannot beat it out of
-sample tells you nothing you did not already know, so every forecast
-here is committed to the repo's history and scored against persistence
-every day.
+Two baselines sit in the results tables beside the other six models.
+One is persistence. The other is HAR (heterogeneous autoregressive),
+the published standard baseline for realized volatility. The skill
+column measures every model against persistence. Skill is one minus the
+model's error over persistence's, so zero ties persistence, one would
+be a perfect forecast, and a negative value loses to the baseline. The
+table shows the current performance.
 
 ## Data
 
-The data comes from the exchanges' public data feeds, which need no
-account or key. The primary source is Coinbase Exchange 1-minute candles
-(one open, high, low, and close per minute), three years of them for the
-backtest and one more day of them each morning. Bitstamp hourly closes
-cross-check them, so the data is not trusted on one venue's word. On
-2026-08-03 that check compared 26,363 hours and found a median
-divergence of 0.009%, recorded in results/crosscheck.txt. The hourly
-realized volatility built from those minute-to-minute price changes
-(1-minute log returns) is annualized, so its values sit on the per-year
-scale volatility is usually quoted in. A value of 0.60 means 60% a year,
-the fluctuation to expect over a year if every hour fluctuated like this
-one. An hour missing more than a quarter of its minutes is marked
-missing (NaN) rather than treated as quiet. The hourly series is
-committed, in data/hourly_rv.csv, and grows by 24 rows a day. Each daily
-run fetches only the minutes since the series' last hour, builds the new
-hours from them, and stores no minutes. The backfill script rebuilds the
-full minute history from Coinbase for the backtest, resuming from its
-last saved candle.
+The data comes from Coinbase Exchange's public data feed, which
+needs no account or key. The source is its 1-minute candles (one
+open, high, low, and close per minute). The backtest uses three
+years of candles, and the daily run one more day each morning. The
+hourly realized volatility built from those minute-to-minute price
+changes (1-minute log returns) is annualized, so its values sit on
+the per-year scale volatility is usually quoted in. A value of 0.60
+means 60% a year, the fluctuation to expect over a year if every
+hour fluctuated like this one. An hour missing more than a quarter
+of its minutes is marked missing (NaN) rather than treated as quiet.
+The hourly series is committed, in data/hourly_rv.csv, and grows by
+24 rows a day. Each daily run fetches only the minutes since the
+series' last hour, builds the new hours from them, and stores no
+minutes. The backfill script rebuilds the full minute history from
+Coinbase for the backtest, resuming from its last saved candle.
 
 ## Models
 
@@ -230,19 +229,6 @@ to and where its band comes from.
   training window and kept small on purpose, so it runs on a CPU inside
   the daily run.
 
-Every model except SARIMAX trains on the past 365 days. A release on
-2026-10-22 changed the settings of XGBoost, N-HiTS, and Prophet. They
-were chosen by grid search, which scores every combination of a few
-values for each setting, using only data from before the year the
-backtest below scores. The same release fixed two defects. The inputs
-of HAR, seasonal HAR, and XGBoost had stopped one hour before the
-origin hour. The daily record's score of each day's average had used
-each model's hourly medians rather than its expected values, which put
-the day forecasts of N-HiTS and XGBoost about 10% under the realized
-average. Every forecast from 2026-10-23 on is made under the release,
-and [docs/history.md][history] describes the search, the defects, and
-the backtest run before the release.
-
 Which model is the leading model depends on the data. On other data,
 other models might dominate, which is why eight run side by side rather
 than one being chosen in advance.
@@ -262,6 +248,20 @@ partly because of the origin hour. N-HiTS, the backtest's winner on
 pinball loss, is the model the daily run falls back to while fewer than
 three days are scored. The results table, figures, and dataset summary
 are in [results/REPORT.md][report] (generated, never hand-edited).
+
+Every model except SARIMAX trains on the past 365 days. A release
+on 2026-10-22 updated the hyper-parameter settings of XGBoost,
+N-HiTS, and Prophet. They were tuned and selected by grid search
+using only data from before the year the backtest above scores.
+The same release fixed two forecast altering defects. The inputs
+of HAR, seasonal HAR, and XGBoost had stopped one hour before the
+origin hour. The daily record's score of each day's average had
+used each model's hourly medians rather than its expected values,
+which put the day forecasts of N-HiTS and XGBoost about 10% under
+the realized average. Every forecast from 2026-10-23 is from these
+updated release. [docs/history.md][history] describes the tuning,
+the additional updates that were implemented alongside, and the
+more recent backtest run before the release.
 
 [report]: results/REPORT.md
 [history]: docs/history.md
@@ -309,11 +309,10 @@ In a terminal, run the following commands.
 The scripts, in the order a rebuild from scratch would run them:
 
 ```
-# The first three commands rebuild the data from scratch for the
+# The first two commands rebuild the data from scratch for the
 # backtest. The daily run does not need them; it starts from the
 # committed hourly series.
 python scripts/run_backfill.py     # fetch 1-min candles (resumable)
-python scripts/run_crosscheck.py   # verify against Bitstamp
 python scripts/run_build_rv.py     # build the hourly realized-vol series
 python scripts/run_tune.py         # score candidate settings for the tuned
                                    #   models on origins before the year the
@@ -328,11 +327,11 @@ python scripts/run_daily.py        # the daily run: score yesterday, log
                                    #   happened, and the plain-language
                                    #   forecast's own claims scored over
                                    #   every resolved day), LIVE.md (the
-                                   #   daily record, with the timing
-                                   #   audit's exceptions), and FORECAST.md
-                                   #   (the leading model's forecast in
-                                   #   plain language), commit and push
-                                   #   (--no-push, --no-commit)
+                                   #   daily record), TIMING.md (the
+                                   #   timing audit's exceptions), and
+                                   #   FORECAST.md (the leading model's
+                                   #   forecast in plain language), commit
+                                   #   and push (--no-push, --no-commit)
 python scripts/run_verify_timing.py  # audit the forecast log's timing claim
                                      #   against git history, listing each
                                      #   late day with its reason; exits 1
@@ -365,18 +364,17 @@ On Windows, Prophet's pip wheel worked as-is here (cmdstanpy backend,
 no manual install). If a first fit fails with a cmdstan error, run
 `python -m cmdstanpy.install_cmdstan` once and retry.
 
-The results folder keeps at its top level the files a reader needs,
-with the rest in three subfolders:
+The results folder keeps at its top level the files a read-only user
+needs, with the rest in three subfolders:
 
-- `REPORT.md`, `LIVE.md`, `REVIEW.md`, and `FORECAST.md` are the four
-  generated reports described above, and `REPORT_20260805.md` is the
-  report of the backtest run before the 2026-10-22 release, described
-  in [docs/history.md][history].
+- `REPORT.md`, `LIVE.md`, `REVIEW.md`, `FORECAST.md`, and `TIMING.md`
+  are the five generated reports described above. `REPORT_20260805.md`
+  is the report of the backtest run before the 2026-10-22 release,
+  described in [docs/history.md][history].
 - `forecasts.csv` and `evaluation.csv` are the forecast log and the log
   of every scored forecast, appended by each daily run. The forecast
   log stays at this path because the timing audit reads its git history
   by path.
-- `crosscheck.txt` is the output of the Bitstamp cross-check.
 - `backtest/` holds each backtest run's scored rows (parquet, not
   committed) with a json file of the same name recording the run's
   settings and the dataset it saw.
@@ -406,7 +404,7 @@ covers include that session. The origin hour closes at 11:00, and
 its first target hour ends at 12:00 UTC, so a run that starts on
 time and takes its usual three and a half minutes commits with
 about forty minutes to spare. A run that commits after that is
-listed in [LIVE.md][live] by the audit, with what started it and
+listed in [TIMING.md][timing] by the audit, with what started it and
 when, read from its commit message. A run that fails leaves no
 commit that day, and the gap is visible in the history.
 
@@ -430,6 +428,7 @@ Task Scheduler entry.
 [forecast]: results/FORECAST.md
 [review]: results/REVIEW.md
 [live]: results/LIVE.md
+[timing]: results/TIMING.md
 [prompt]: docs/daily_briefing_prompt.md
 
 To run the loop yourself on a clone, fork the repo and enable the
@@ -463,7 +462,7 @@ backtest engine never hands a model data past its forecast origin.
   2026-09-27 the commits are made by GitHub's runner on GitHub's clock.
   Before that they were made by the author's machine, and the audit
   reads commit times only, so those days depend on that machine's clock.
-  The audit in LIVE.md lists every exception.
+  TIMING.md lists every day the audit found committed late.
 
 - The 95% interval on N-HiTS's lead over persistence, near the top of
   this README, treats each scored day as independent of the last. If
