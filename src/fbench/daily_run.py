@@ -264,19 +264,41 @@ def matched_skill(evaluations, model, base_model_name="persistence",
     return skill_by_score
 
 
-def timing_lines(late):
-    """LIVE.md's statement about when its rows were committed. late
-    is the list from commit_timing.late_groups, empty when the audit found
-    nothing, or None when no audit ran, in which case the claim is left to
-    scripts/run_verify_timing.py rather than asserted."""
+TIMING_CLAIM = ("Every forecast-log row from an earlier run was committed to git before its "
+                "target hour completed")
+
+
+def timing_summary(late):
+    """LIVE.md's one sentence about when its rows were committed: the
+    claim and how many days are exceptions to it, with the list itself
+    left to TIMING.md so LIVE.md does not grow with the record.
+    late is as in timing_lines."""
     if late is None:
         return ["The commit history is the timestamp evidence for every row "
-                "here, and scripts/run_verify_timing.py audits it.", ""]
+                "of results/forecasts.csv, and scripts/run_verify_timing.py "
+                "audits it.", ""]
+    if not late:
+        return [f"{TIMING_CLAIM}, with no exceptions so far "
+                "([TIMING.md](TIMING.md) has the audit).", ""]
+    days = "one day" if len(late) == 1 else f"{len(late)} days"
+    return [f"{TIMING_CLAIM}, except on the {days} listed in "
+            "[TIMING.md](TIMING.md).", ""]
+
+
+def timing_lines(late):
+    """TIMING.md's statement about when the forecast log's rows were
+    committed, with one line per late day giving its delay and reason.
+    late is the list from commit_timing.late_groups, empty when the audit
+    found nothing, or None when no audit ran, in which case the claim is
+    left to scripts/run_verify_timing.py rather than asserted."""
+    if late is None:
+        return ["The commit history is the timestamp evidence for every row "
+                "of results/forecasts.csv, and scripts/run_verify_timing.py "
+                "audits it.", ""]
     audit = ("Each run audits every earlier commit of the forecast log, so "
              "a day's rows are checked on the run after the one that "
              "committed them. The commit history is the timestamp evidence.")
-    claim = ("Every row from an earlier run was committed to git before its "
-             "target hour completed")
+    claim = TIMING_CLAIM
     if not late:
         return [f"{claim}, with no exceptions so far. {audit}", ""]
     lines = [f"{claim}, except on the days listed below. {audit}", ""]
@@ -371,13 +393,23 @@ def _fig_daily(evaluations, model):
     return path
 
 
+def write_timing_report(late=None):
+    """Write results/TIMING.md, the timing audit's full result, and return
+    its path. late is the timing audit's result, passed by the daily run;
+    see timing_lines."""
+    lines = ["# Commit timing (generated)", "", *timing_lines(late)]
+    path = RESULTS_DIR / "TIMING.md"
+    path.write_text("\n".join(lines))
+    return path
+
+
 def write_live_report(late=None):
     """Write results/LIVE.md from the forecast and evaluation logs and
     return its path. The reader gets each model's mean scores against its
     own count of scored days, how many logged rows are still waiting on an
     outcome, and the leader's matched-day skill with its interval. late
-    is the timing audit's result, passed by the daily run; see
-    timing_lines."""
+    is the timing audit's result, passed by the daily run, which LIVE.md
+    reduces to a count; see timing_summary."""
     evaluations = _load(EVAL_LOG, [*LOG_COLUMNS, "y_true"])
     forecasts = _load(FORECAST_LOG, LOG_COLUMNS)
     lines = ["# Daily record (generated)", ""]
@@ -397,7 +429,7 @@ def write_live_report(late=None):
             f"Pending (logged, outcome not yet observed): "
             f"{max(0, len(forecasts) - len(evaluations))}.",
             "",
-            *timing_lines(late),
+            *timing_summary(late),
             summary.round(4).sort_values("pinball_mean").to_markdown(), "",
             "The hourly columns score each of the 24 target hours. cov50 "
             "and cov90 are the shares of hours that landed inside a model's "

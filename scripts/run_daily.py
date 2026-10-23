@@ -35,7 +35,7 @@ from fbench.review_generator import write_review
 TRACKED_PATHS = ("data/hourly_rv.csv",
                  "results/forecasts.csv", "results/evaluation.csv",
                  "results/LIVE.md", "results/FORECAST.md",
-                 "results/REVIEW.md",
+                 "results/REVIEW.md", "results/TIMING.md",
                  "results/figures/fig_live_daily.png")
 
 
@@ -44,8 +44,8 @@ def _audit():
     returns the late forecast days. If the audit fails it prints the
     full error and returns None, and the run carries on: the day's
     forecast matters more than the audit, which the next run repeats,
-    and LIVE.md then points to scripts/run_verify_timing.py instead of
-    stating a result."""
+    and LIVE.md and TIMING.md then point to scripts/run_verify_timing.py
+    instead of stating a result."""
     try:
         return late_groups(first_commits(ROOT))
     except Exception as error:
@@ -55,7 +55,7 @@ def _audit():
         if isinstance(error, subprocess.CalledProcessError) and error.stderr:
             print(error.stderr.strip(), file=sys.stderr)
         print("[daily] The timing audit failed (full error above). The run "
-              "continues, and LIVE.md will point to "
+              "continues, and LIVE.md and TIMING.md will point to "
               "scripts/run_verify_timing.py instead of stating the audit's "
               "result.", file=sys.stderr, flush=True)
         return None
@@ -155,8 +155,9 @@ def main():
     print("[daily] auditing the commit timing of earlier forecasts", flush=True)
     late_days = _audit()
     print(f"  late forecast days: {'not audited' if late_days is None else len(late_days)}")
-    print("[daily] writing LIVE.md", flush=True)
+    print("[daily] writing LIVE.md and TIMING.md", flush=True)
     daily_run.write_live_report(late=late_days)
+    daily_run.write_timing_report(late=late_days)
     print("[daily] writing FORECAST.md", flush=True)
     write_daily_forecast(hourly, last_price=last_close)
     print("[daily] writing REVIEW.md", flush=True)

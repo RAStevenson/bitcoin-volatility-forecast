@@ -52,7 +52,7 @@ session's reply. The app schedules in local time, so the task moves an
 hour against UTC at each daylight-saving change. The author's task runs
 at 6:30 in the morning in Chicago, which is 11:30 UTC in summer and
 12:30 UTC in winter. In winter a local re-run therefore commits after
-12:00 UTC, and the next run lists that day as late in `results/LIVE.md`.
+12:00 UTC, and the next run lists that day as late in `results/TIMING.md`.
 
 Any other agent that can run shell commands and read files works the
 same way on its own scheduler, with the text below the line as its
@@ -120,7 +120,7 @@ and act on the newest run listed for today:
 ```
 
 The script commits and pushes for itself. If it commits after 12:00
-UTC, the next run's audit lists the day in results/LIVE.md with what
+UTC, the next run's audit lists the day in results/TIMING.md with what
 started it and when; do not try to hide or repair that. If the local
 run fails too, report in one line the stage it stopped at (the last
 line starting with [daily] before the error) and the error's final

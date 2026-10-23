@@ -3,8 +3,9 @@ claim that every forecast row was committed before its first target hour
 ended: for every (origin, model) forecast group in results/forecasts.csv,
 the commit that first added it, and which groups were first committed
 after their first target hour completed. The daily run does this before
-writing LIVE.md so that file states its exceptions instead of a blanket
-claim, and scripts/run_verify_timing.py runs it as a standalone check."""
+writing TIMING.md, so that file lists its exceptions instead of making a
+blanket claim, and LIVE.md states how many there are;
+scripts/run_verify_timing.py runs it as a standalone check."""
 import re
 import subprocess
 
@@ -14,7 +15,7 @@ FORECAST_LOG = "results/forecasts.csv"
 COMMIT_MARK = "@@commit "
 
 # Why a forecast day was committed late, keyed by its origin date, one
-# full sentence for LIVE.md to print after the delay. A late day with no
+# full sentence for TIMING.md to print after the delay. A late day with no
 # entry here gets run_note's sentence on what started its run and when;
 # one with neither an entry nor a trigger in its commit subject is listed
 # with no reason, never a guessed one.
@@ -98,7 +99,7 @@ def run_note(subject):
     read from the trigger and start time the daily run writes into its
     commit subject since 2026-09-28, or None for a subject without them.
     A late day with no entry in LATE_COMMIT_REASONS gets this sentence,
-    so a delayed trigger explains itself in LIVE.md."""
+    so a delayed trigger explains itself in TIMING.md."""
     match = re.search(r"trigger (\S+), started (\d\d:\d\d) UTC", subject or "")
     if not match:
         return None
@@ -108,7 +109,7 @@ def run_note(subject):
 
 
 def late_reason(late_day):
-    """The sentence LIVE.md prints for why a late day was late: its entry
+    """The sentence TIMING.md prints for why a late day was late: its entry
     in LATE_COMMIT_REASONS if it has one, else run_note's sentence on what
     started the run and when, else None. A late day with a reason is
     accounted for in the published record; one without is the case

@@ -2,11 +2,11 @@
 was committed before its first target hour ended, by walking the commit
 history of results/forecasts.csv and checking every (origin, model)
 group. It reads git history only, prints a line per forecast day with its
-margin and, for a late day, the reason LIVE.md gives for it. It exits
+margin and, for a late day, the reason TIMING.md gives for it. It exits
 non-zero only if a late day has no reason, meaning neither an entry in
 LATE_COMMIT_REASONS nor a trigger and start time in its commit subject,
 so a CI job fails on a late commit nothing accounts for rather than on
-every day already listed in LIVE.md."""
+every day already listed in TIMING.md."""
 import sys
 from pathlib import Path
 
