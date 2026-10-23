@@ -85,6 +85,22 @@ def tuning_origins(features, stride_days, origin_hour_utc):
     return make_origins(features.index, span_days, stride_days, origin_hour_utc)
 
 
+def tuning_data(hourly):
+    """The hours the tuning may see, every hour before TEST_YEAR_START,
+    so nothing from the year the backtest scores reaches a candidate's
+    fit or its score."""
+    return hourly[hourly.index < pd.Timestamp(TEST_YEAR_START, tz="UTC")]
+
+
+def check_before_test_year(origins):
+    """Raise ValueError unless every origin's 24 target hours end before
+    TEST_YEAR_START."""
+    test_year_start = pd.Timestamp(TEST_YEAR_START, tz="UTC")
+    if origins[-1] + pd.Timedelta(hours=24) >= test_year_start:
+        raise ValueError(f"the last tuning origin {origins[-1]} has target hours "
+                         f"in the test year, which starts {test_year_start}")
+
+
 def summarize(forecasts):
     """The horizon-averaged scorecard of one candidate's forecasts, as a
     plain dict of floats."""
@@ -114,12 +130,10 @@ def main():
                              "for a trial run; default every candidate")
     args = parser.parse_args()
 
-    hourly = load_hourly()
-    test_year_start = pd.Timestamp(TEST_YEAR_START, tz="UTC")
-    tuning_hours = hourly[hourly.index < test_year_start]
+    tuning_hours = tuning_data(load_hourly())
     features = build_features(tuning_hours)
     origins = tuning_origins(features, args.stride, args.origin_hour)
-    assert origins[-1] + pd.Timedelta(hours=24) < test_year_start
+    check_before_test_year(origins)
     print(f"tuning origins: {len(origins)} from {origins[0]} to {origins[-1]}, "
           f"data to {tuning_hours.index[-1]}", flush=True)
 

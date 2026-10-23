@@ -21,6 +21,7 @@ from fbench.harness_config import (
 )
 from fbench.models.base_forecast_model import REGISTRY
 from fbench.quantile_scoring import add_skill, score
+from fbench.rolling_backtest import check_no_future
 
 FORECAST_LOG = RESULTS_DIR / "forecasts.csv"
 EVAL_LOG = RESULTS_DIR / "evaluation.csv"
@@ -95,7 +96,7 @@ def _forecast(model_name, model_class, features, origin):
                                  freq="h", tz="UTC")
     training_rows = features.loc[
         origin - pd.Timedelta(days=model_class.train_days):origin]
-    assert training_rows.index.max() <= origin
+    check_no_future(training_rows, target_times, origin)
     model = model_class()
     model.fit(training_rows)
     quantile_forecast = model.predict(target_times)
