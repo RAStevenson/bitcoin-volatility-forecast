@@ -1,10 +1,5 @@
 # Project history
 
-The [README](../README.md) describes the project as it runs now, and
-this file uses its terms without defining them again. It covers why the
-author's machine starts the daily run, what the release of 2026-10-22
-changed, and the backtest runs before and after that release.
-
 ## Why the author's machine starts the daily run
 
 The author's machine starts the run, with GitHub's own schedule as the

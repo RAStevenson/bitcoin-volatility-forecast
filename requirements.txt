@@ -19,7 +19,7 @@ torch==2.13.0
 #   pip install torch --index-url https://download.pytorch.org/whl/cpu
 xgboost==3.2.0
 # Development tools: the test runner, the linter, and the type checker
-# with the pandas stubs it needs. Pinned so the checks on a read-only user's
+# with the pandas stubs it needs. Pinned so the checks on a reader's
 # machine and on the CI runner match the ones here.
 pandas-stubs==3.0.5.260730
 pytest==9.1.1

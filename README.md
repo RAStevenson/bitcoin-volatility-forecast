@@ -76,8 +76,8 @@ A user can navigate to the GitHub page and read the forecast or an AI
 agent can be set up to fetch the three reports and summarize them
 each day. Instructions for setting up this routine can be found in
 the briefing prompt document [docs/daily_briefing_prompt.md][prompt].
-It contains setup instructions for both a read-only user which
-requires no installation or an owner for if a user chooses to clone
+It contains setup instructions for both a read-only user, which
+requires no installation, or an owner-user if a user chooses to clone
 the repo. For a read-only user the daily fetch can be scheduled after
 12:00 UTC in Claude Code, OpenAI Codex, or any other agent that can
 run shell commands. Each run writes a short briefing that leads with
@@ -253,15 +253,15 @@ Every model except SARIMAX trains on the past 365 days. A release
 on 2026-10-22 updated the hyper-parameter settings of XGBoost,
 N-HiTS, and Prophet. They were tuned and selected by grid search
 using only data from before the year the backtest above scores.
-The same release fixed two forecast altering defects. The inputs
+The same release fixed two forecast-altering defects. The inputs
 of HAR, seasonal HAR, and XGBoost had stopped one hour before the
 origin hour. The daily record's score of each day's average had
 used each model's hourly medians rather than its expected values,
 which put the day forecasts of N-HiTS and XGBoost about 10% under
-the realized average. Every forecast from 2026-10-23 is from these
-updated release. [docs/history.md][history] describes the tuning,
-the additional updates that were implemented alongside, and the
-more recent backtest run before the release.
+the realized average. Every forecast from 2026-10-23 on comes from
+the updated release. [docs/history.md][history] describes the
+tuning, the additional updates that were implemented alongside,
+and the most recent backtest run.
 
 [report]: results/REPORT.md
 [history]: docs/history.md
