@@ -7,8 +7,12 @@ from typing import cast
 import numpy as np
 import pandas as pd
 
-from fbench.harness_config import HORIZON, QUANTILES, TRAIN_DAYS
-from fbench.models.base_forecast_model import BaseForecastModel, quantile_frame, register
+from bitcoin_volatility_forecast.forecast_settings import HORIZON, QUANTILES, TRAIN_DAYS
+from bitcoin_volatility_forecast.models.base_forecast_model import (
+    BaseForecastModel,
+    quantile_frame,
+    register,
+)
 
 ENCODER_HOURS = 168  # one week of context per forecast
 

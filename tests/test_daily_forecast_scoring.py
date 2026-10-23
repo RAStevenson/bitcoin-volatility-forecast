@@ -1,10 +1,15 @@
 import numpy as np
 import pandas as pd
 
-import fbench.models.persistence_model  # noqa: F401  (registers baselines)
-from fbench import daily_forecast_generator, daily_forecast_scoring, daily_run, review_generator
-from fbench.feature_builder import build_features
-from fbench.harness_config import HORIZON
+import bitcoin_volatility_forecast.models.persistence_model  # noqa: F401  (registers baselines)
+from bitcoin_volatility_forecast import (
+    daily_forecast_generator,
+    daily_forecast_scoring,
+    daily_run,
+    review_generator,
+)
+from bitcoin_volatility_forecast.feature_builder import build_features
+from bitcoin_volatility_forecast.forecast_settings import HORIZON
 
 
 def _hourly(n_hours=24 * 400, seed=5, with_close=True):

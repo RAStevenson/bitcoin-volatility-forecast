@@ -7,9 +7,9 @@ scripts/run_build_rv.py."""
 
 import pandas as pd
 
-from fbench.data import coinbase_client
-from fbench.harness_config import HOURLY_PATH, MINUTE_SECONDS, PRODUCT
-from fbench.realized_volatility import hourly_realized_vol
+from bitcoin_volatility_forecast.data import coinbase_client
+from bitcoin_volatility_forecast.forecast_settings import HOURLY_PATH, MINUTE_SECONDS, PRODUCT
+from bitcoin_volatility_forecast.realized_volatility import hourly_realized_vol
 
 COLUMNS = ["rv", "n_minutes", "log_rv", "close"]
 

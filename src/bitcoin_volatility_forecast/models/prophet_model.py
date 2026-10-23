@@ -5,8 +5,12 @@ import numpy as np
 import pandas as pd
 from prophet import Prophet
 
-from fbench.harness_config import QUANTILES
-from fbench.models.base_forecast_model import BaseForecastModel, quantile_frame, register
+from bitcoin_volatility_forecast.forecast_settings import QUANTILES
+from bitcoin_volatility_forecast.models.base_forecast_model import (
+    BaseForecastModel,
+    quantile_frame,
+    register,
+)
 
 SAMPLE_SEED = 7  # the same seed N-HiTS uses
 

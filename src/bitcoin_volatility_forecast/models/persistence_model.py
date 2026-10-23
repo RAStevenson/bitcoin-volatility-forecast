@@ -3,8 +3,12 @@ observed value and same hour one day earlier."""
 
 import numpy as np
 
-from fbench.harness_config import HORIZON, QUANTILES
-from fbench.models.base_forecast_model import BaseForecastModel, quantile_frame, register
+from bitcoin_volatility_forecast.forecast_settings import HORIZON, QUANTILES
+from bitcoin_volatility_forecast.models.base_forecast_model import (
+    BaseForecastModel,
+    quantile_frame,
+    register,
+)
 
 
 @register

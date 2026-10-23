@@ -3,7 +3,7 @@ check that audits it."""
 
 import pandas as pd
 
-from fbench.harness_config import DATA_DIR, PRODUCT
+from bitcoin_volatility_forecast.forecast_settings import DATA_DIR, PRODUCT
 
 
 def minute_path():

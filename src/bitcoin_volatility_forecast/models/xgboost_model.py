@@ -6,9 +6,13 @@ from typing import ClassVar
 import pandas as pd
 import xgboost as xgb
 
-from fbench.feature_builder import FEATURE_COLS
-from fbench.harness_config import HORIZON, QUANTILES
-from fbench.models.base_forecast_model import BaseForecastModel, quantile_frame, register
+from bitcoin_volatility_forecast.feature_builder import FEATURE_COLS
+from bitcoin_volatility_forecast.forecast_settings import HORIZON, QUANTILES
+from bitcoin_volatility_forecast.models.base_forecast_model import (
+    BaseForecastModel,
+    quantile_frame,
+    register,
+)
 
 # The settings every daily fit uses. The tuning script scores candidate
 # settings by subclassing Gbm with another params mapping.

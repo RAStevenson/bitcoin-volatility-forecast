@@ -1,6 +1,6 @@
 import pandas as pd
 
-from fbench.data import candle_backfill, coinbase_client, minute_store
+from bitcoin_volatility_forecast.data import candle_backfill, coinbase_client, minute_store
 
 CANDLE_COLUMNS = ["time", "low", "high", "open", "close", "volume"]
 

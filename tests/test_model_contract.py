@@ -4,16 +4,16 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import fbench.models.har_model
-import fbench.models.nhits_model
-import fbench.models.persistence_model
-import fbench.models.prophet_model
-import fbench.models.sarima_model
-import fbench.models.xgboost_model  # noqa: F401  (registers)
-from fbench.feature_builder import build_features
-from fbench.harness_config import HORIZON, QCOLS
-from fbench.models.base_forecast_model import REGISTRY
-from fbench.models.nhits_model import _block_listed_warnings
+import bitcoin_volatility_forecast.models.har_model
+import bitcoin_volatility_forecast.models.nhits_model
+import bitcoin_volatility_forecast.models.persistence_model
+import bitcoin_volatility_forecast.models.prophet_model
+import bitcoin_volatility_forecast.models.sarima_model
+import bitcoin_volatility_forecast.models.xgboost_model  # noqa: F401  (registers)
+from bitcoin_volatility_forecast.feature_builder import build_features
+from bitcoin_volatility_forecast.forecast_settings import HORIZON, QCOLS
+from bitcoin_volatility_forecast.models.base_forecast_model import REGISTRY
+from bitcoin_volatility_forecast.models.nhits_model import _block_listed_warnings
 
 
 def test_nhits_blocks_only_its_listed_warnings():

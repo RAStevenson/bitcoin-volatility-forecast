@@ -1,4 +1,4 @@
-"""Settings for the whole harness, covering repo paths and data source
+"""Settings for the whole package, covering repo paths and data source
 ids, the quantile grid, the realized-volatility and backtest windows, and
 the live record's origin hour and minimum sample, and the release origin
 that dates the current model settings. A constant that

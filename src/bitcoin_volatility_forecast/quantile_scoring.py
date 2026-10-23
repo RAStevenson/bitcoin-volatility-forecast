@@ -6,7 +6,7 @@ realized volatility, the space the models forecast in."""
 import numpy as np
 import pandas as pd
 
-from fbench.harness_config import QCOLS, QUANTILES
+from bitcoin_volatility_forecast.forecast_settings import QCOLS, QUANTILES
 
 
 def pinball(outcomes, quantile_forecast, quantile_level):

@@ -18,19 +18,20 @@ import pandas as pd
 import requests
 
 # Import all model modules so the registry is complete for the daily fits.
-import fbench.models.har_model
-import fbench.models.nhits_model  # joined 2026-08-06 after leading the backtest
-import fbench.models.persistence_model
-import fbench.models.prophet_model
-import fbench.models.sarima_model
-import fbench.models.xgboost_model  # noqa: F401
-from fbench import daily_run
-from fbench.commit_timing import first_commits, late_groups
-from fbench.daily_forecast_generator import write_daily_forecast
-from fbench.data.hourly_series import update_hourly
-from fbench.feature_builder import build_features
-from fbench.harness_config import ROOT
-from fbench.review_generator import write_review
+# N-HiTS joined the daily run 2026-08-06, after leading the backtest.
+import bitcoin_volatility_forecast.models.har_model
+import bitcoin_volatility_forecast.models.nhits_model
+import bitcoin_volatility_forecast.models.persistence_model
+import bitcoin_volatility_forecast.models.prophet_model
+import bitcoin_volatility_forecast.models.sarima_model
+import bitcoin_volatility_forecast.models.xgboost_model  # noqa: F401
+from bitcoin_volatility_forecast import daily_run
+from bitcoin_volatility_forecast.commit_timing import first_commits, late_groups
+from bitcoin_volatility_forecast.daily_forecast_generator import write_daily_forecast
+from bitcoin_volatility_forecast.data.hourly_series import update_hourly
+from bitcoin_volatility_forecast.feature_builder import build_features
+from bitcoin_volatility_forecast.forecast_settings import ROOT
+from bitcoin_volatility_forecast.review_generator import write_review
 
 TRACKED_PATHS = ("data/hourly_rv.csv",
                  "results/forecasts.csv", "results/evaluation.csv",

@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
 
-from fbench.harness_config import ANNUALIZER
-from fbench.realized_volatility import hourly_realized_vol
+from bitcoin_volatility_forecast.forecast_settings import ANNUALIZER
+from bitcoin_volatility_forecast.realized_volatility import hourly_realized_vol
 
 
 def _minutes(n_minutes, start="2026-01-01", minute_return=0.001):

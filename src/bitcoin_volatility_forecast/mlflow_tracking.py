@@ -3,7 +3,7 @@ a local sqlite tracking store at the repo root."""
 
 import mlflow
 
-from fbench.harness_config import ROOT
+from bitcoin_volatility_forecast.forecast_settings import ROOT
 
 
 def log_backtest(scores, results_path, run_config):

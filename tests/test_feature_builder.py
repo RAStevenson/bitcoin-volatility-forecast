@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from fbench.feature_builder import FEATURE_COLS, build_features
+from bitcoin_volatility_forecast.feature_builder import FEATURE_COLS, build_features
 
 
 def _hourly(n_hours=2000, seed=0):

@@ -17,26 +17,26 @@ import pandas as pd
 # Import every model module so the registry is complete; importing a
 # module is what registers its model class. A failed import stops the
 # backtest rather than leaving a model silently out of it.
-import fbench.models.har_model
-import fbench.models.nhits_model
-import fbench.models.persistence_model
-import fbench.models.prophet_model
-import fbench.models.sarima_model
-import fbench.models.xgboost_model  # noqa: F401
-from fbench.data.hourly_series import load_hourly
-from fbench.feature_builder import build_features
-from fbench.harness_config import (
+import bitcoin_volatility_forecast.models.har_model
+import bitcoin_volatility_forecast.models.nhits_model
+import bitcoin_volatility_forecast.models.persistence_model
+import bitcoin_volatility_forecast.models.prophet_model
+import bitcoin_volatility_forecast.models.sarima_model
+import bitcoin_volatility_forecast.models.xgboost_model  # noqa: F401
+from bitcoin_volatility_forecast.data.hourly_series import load_hourly
+from bitcoin_volatility_forecast.feature_builder import build_features
+from bitcoin_volatility_forecast.forecast_settings import (
     HORIZON,
     ORIGIN_HOUR_UTC,
     ORIGIN_STRIDE_DAYS,
     RESULTS_DIR,
     TEST_DAYS,
 )
-from fbench.mlflow_tracking import log_backtest
-from fbench.models.base_forecast_model import REGISTRY
-from fbench.quantile_scoring import add_skill, score
-from fbench.report_generator import write_report
-from fbench.rolling_backtest import make_origins, run_backtest
+from bitcoin_volatility_forecast.mlflow_tracking import log_backtest
+from bitcoin_volatility_forecast.models.base_forecast_model import REGISTRY
+from bitcoin_volatility_forecast.quantile_scoring import add_skill, score
+from bitcoin_volatility_forecast.report_generator import write_report
+from bitcoin_volatility_forecast.rolling_backtest import make_origins, run_backtest
 
 
 def main():

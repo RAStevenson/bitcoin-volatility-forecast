@@ -17,22 +17,22 @@ import time
 
 import pandas as pd
 
-import fbench.models.persistence_model  # noqa: F401  (the reference row)
-from fbench.data.hourly_series import load_hourly
-from fbench.feature_builder import build_features
-from fbench.harness_config import (
+import bitcoin_volatility_forecast.models.persistence_model  # noqa: F401  (the reference row)
+from bitcoin_volatility_forecast.data.hourly_series import load_hourly
+from bitcoin_volatility_forecast.feature_builder import build_features
+from bitcoin_volatility_forecast.forecast_settings import (
     HISTORY_START,
     ORIGIN_HOUR_UTC,
     RESULTS_DIR,
     SARIMA_TRAIN_DAYS,
     TRAIN_DAYS,
 )
-from fbench.models.nhits_model import NHits
-from fbench.models.prophet_model import ProphetModel
-from fbench.models.sarima_model import Sarima
-from fbench.models.xgboost_model import XGBOOST_PARAMS, Gbm
-from fbench.quantile_scoring import score
-from fbench.rolling_backtest import make_origins, run_backtest
+from bitcoin_volatility_forecast.models.nhits_model import NHits
+from bitcoin_volatility_forecast.models.prophet_model import ProphetModel
+from bitcoin_volatility_forecast.models.sarima_model import Sarima
+from bitcoin_volatility_forecast.models.xgboost_model import XGBOOST_PARAMS, Gbm
+from bitcoin_volatility_forecast.quantile_scoring import score
+from bitcoin_volatility_forecast.rolling_backtest import make_origins, run_backtest
 
 # The first origin day of the pinned backtest's test year
 # (results/backtest/backtest_20260805.json: 365 days to 2026-08-05).

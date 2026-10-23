@@ -5,18 +5,18 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import fbench.models.nhits_model
-import fbench.models.prophet_model
-import fbench.models.sarima_model
-import fbench.models.xgboost_model  # noqa: F401  (registers every model)
-from fbench import daily_run
-from fbench.daily_forecast_generator import leading_model_asof
-from fbench.feature_builder import build_features
-from fbench.harness_config import HISTORY_START, QCOLS, TRAIN_DAYS
-from fbench.models.base_forecast_model import REGISTRY
-from fbench.models.har_model import Har
-from fbench.models.persistence_model import Persistence
-from fbench.rolling_backtest import check_no_future, make_origins, run_backtest
+import bitcoin_volatility_forecast.models.nhits_model
+import bitcoin_volatility_forecast.models.prophet_model
+import bitcoin_volatility_forecast.models.sarima_model
+import bitcoin_volatility_forecast.models.xgboost_model  # noqa: F401  (registers every model)
+from bitcoin_volatility_forecast import daily_run
+from bitcoin_volatility_forecast.daily_forecast_generator import leading_model_asof
+from bitcoin_volatility_forecast.feature_builder import build_features
+from bitcoin_volatility_forecast.forecast_settings import HISTORY_START, QCOLS, TRAIN_DAYS
+from bitcoin_volatility_forecast.models.base_forecast_model import REGISTRY
+from bitcoin_volatility_forecast.models.har_model import Har
+from bitcoin_volatility_forecast.models.persistence_model import Persistence
+from bitcoin_volatility_forecast.rolling_backtest import check_no_future, make_origins, run_backtest
 
 
 def _features(seed=0, n_days=200):
