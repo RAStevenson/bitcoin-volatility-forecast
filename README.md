@@ -44,21 +44,21 @@ is fully resolved once all 24 of its hours have been observed. The
 0.1565 for N-HiTS and the 0.2576 for persistence are that error averaged
 over the 75 fully resolved days both models forecast.
 
+The forecast of the 24-hour average in that comparison is built from
+each hour's expected value. A model's forecast for each hour is a band
+of values, and its median is the middle of that band. The expected value
+is the average the band implies, which is the median raised by an amount
+that grows with the band's width. Hourly volatility is right-skewed,
+with a few very large hours and none below zero. The average of a
+right-skewed quantity sits above its median, so an average of the 24
+medians would run below the realized average.
+
 The 95% interval on the 39% runs from 20% to 58%. That interval is the
 range the true lead could plausibly sit in given the day-to-day noise,
 computed as if each day were independent of the last. It stays above
 zero, indicating that on those 75 days the lead over persistence is
 larger than day-to-day noise would explain. In LIVE.md's table the 39%
 is N-HiTS's day_skill, with the interval stated under the table.
-
-A model's forecast for each hour is a band of values, and its median is
-the middle of that band. The forecast of the day's average is built from
-each hour's expected value, the average the model's band implies for
-that hour. The expected value is the median raised by an amount that
-grows with the band's width. Hourly volatility is right-skewed, with a
-few very large hours and none below zero. The average of a right-skewed
-quantity sits above its median, so an average of the 24 medians would
-run below the realized average.
 
 ## Getting the daily forecast
 
@@ -246,18 +246,19 @@ pinball loss, is the model the daily run falls back to while fewer than
 three days are scored. The results table, figures, and dataset summary
 are in [results/REPORT.md][report] (generated, never hand-edited).
 
-Every model except SARIMAX trains on the past 365 days. A release
-on 2026-10-22 updated the hyper-parameter settings of XGBoost,
-N-HiTS, and Prophet. They were tuned and selected by grid search
-using only data from before the year the backtest above scores.
-The same release fixed two forecast-altering defects. The inputs
-of HAR, seasonal HAR, and XGBoost had stopped one hour before the
-origin hour. The daily record's score of each day's average had
-used each model's hourly medians rather than its expected values,
-which put the day forecasts of N-HiTS and XGBoost about 10% under
-the realized average. Every forecast from 2026-10-23 on comes from
-the updated release. [docs/history.md][history] describes the
-tuning, the additional updates that were implemented alongside,
+Every model except SARIMAX trains on the past 365 days. A release on
+2026-10-22 updated the hyper-parameter settings of XGBoost, N-HiTS,
+and Prophet. They were tuned and selected by grid search using only
+data from before the year the backtest above scores. The same release
+fixed two forecast-altering defects. The inputs of HAR, seasonal HAR,
+and XGBoost had stopped one hour before the origin hour. The daily
+record's score of each day's average had used each model's hourly
+medians rather than its expected values, which put the day forecasts
+of N-HiTS and XGBoost about 10% under the realized average. Every day
+already in the record is now scored with expected values, including
+the 75 days in the result above. Every forecast from 2026-10-23 on
+comes from the updated release. [docs/history.md][history] describes
+the tuning, the additional updates that were implemented alongside,
 and the most recent backtest run.
 
 [report]: results/REPORT.md
@@ -450,11 +451,12 @@ backtest engine never hands a model data past its forecast origin.
 
 ## Limitations
 
-- The daily record is 78 scored days as of 2026-10-21, and the LIVE.md
-  results table is noisy but will likely become more stable as samples
-  grow. The models changed once, in the release that took effect with
-  the 2026-10-23 forecast, and from then the table mixes forecast days
-  made before and after it.
+- The daily record is 78 scored days as of 2026-10-21. N-HiTS joined
+  the daily run three days after the others, so it has 75 of them.
+  The LIVE.md results table is noisy but will likely become more
+  stable as samples grow. The models changed once, in the release
+  that took effect with the 2026-10-23 forecast, and from then the
+  table mixes forecast days made before and after it.
 
 - The timing evidence for the forecast log is the commit history. Since
   2026-09-27 the commits are made by GitHub's runner on GitHub's clock.
