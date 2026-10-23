@@ -294,8 +294,8 @@ def build_daily_forecast(hourly, last_price=None):
     # paths (see day_path), so the page says which is which.
     if forecast_claims["expected_value_rule"]:
         annualized_note = (
-            f"That figure averages each hour's expected volatility, which "
-            f"sits a little above the hour's median because the big hours "
+            f"Each hour's figure in that average is its expected volatility, "
+            f"which sits a little above the hour's median because the big hours "
             f"pull an average up more than they move a median. The "
             f"typical-hour move above is the average of the 24 hourly "
             f"medians divided by {ANNUALIZER:.1f}, the square root of the "
@@ -318,9 +318,10 @@ def build_daily_forecast(hourly, last_price=None):
         "",
         f"That forecast sits {percentile_phrase} (the "
         f"{ordinal(round(forecast_claims['percentile']))} percentile of "
-        f"the past year's rolling 24-hour averages) and works out to about "
-        f"{forecast_average:.0%} in annualized units, the per-year convention "
-        f"volatility is quoted in. " + annualized_note,
+        f"the past year's rolling 24-hour averages). Averaged over its 24 "
+        f"hourly volatilities, it works out to about {forecast_average:.0%} in "
+        f"annualized units, the per-year convention volatility is quoted in. "
+        + annualized_note,
         "",
         f"- Hourly median forecast ranges {median_path.min():.0%} to "
         f"{median_path.max():.0%} annualized, which is a typical hourly "
