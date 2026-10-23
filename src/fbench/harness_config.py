@@ -21,7 +21,6 @@ RESULTS_DIR = ROOT / "results"   # reports and the two live logs at the
 HOURLY_PATH = DATA_DIR / "hourly_rv.csv"   # the committed hourly series
 
 PRODUCT = "BTC-USD"            # Coinbase product id
-BITSTAMP_PAIR = "btcusd"
 HISTORY_START = "2023-08-01"   # ~3 years of 1-min candles at build time
 MINUTE_SECONDS = 60
 
