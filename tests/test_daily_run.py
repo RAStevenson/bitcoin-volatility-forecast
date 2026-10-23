@@ -162,7 +162,7 @@ def test_matched_skill_brackets_its_point_and_beats_persistence():
 def test_timing_lines_state_exceptions_and_never_assume_an_audit():
     assert not any("Every row" in line for line in daily_run.timing_lines(None))
     clean_text = " ".join(daily_run.timing_lines([]))
-    assert "Every row from an earlier run was committed" in clean_text
+    assert "Every forecast-log row from an earlier run was committed" in clean_text
     assert "no exceptions so far" in clean_text and "listed below" not in clean_text
     late = [{"origin": pd.Timestamp("2026-09-03 10:00", tz="UTC"), "models": 8,
              "committed": pd.Timestamp("2026-09-04 05:15", tz="UTC"),
@@ -181,6 +181,22 @@ def test_timing_lines_state_exceptions_and_never_assume_an_audit():
     assert "started by a dispatch from the author's machine at 12:30 UTC" in text
     unknown = [dict(later[0], subject="Daily run 2026-09-28: 192 rows")]
     assert "No reason is recorded" in " ".join(daily_run.timing_lines(unknown))
+
+
+def test_live_md_states_only_the_count_and_timing_md_the_list(logs_in_tmp):
+    late = [{"origin": pd.Timestamp("2026-09-03 10:00", tz="UTC"), "models": 8,
+             "committed": pd.Timestamp("2026-09-04 05:15", tz="UTC"),
+             "minutes_late": 1035.0, "sha": "c9feb5305"}]
+    summary = " ".join(daily_run.timing_summary(late))
+    assert "except on the one day listed in [TIMING.md](TIMING.md)" in summary
+    assert "2026-09-03" not in summary
+    two_days = " ".join(daily_run.timing_summary(late * 2))
+    assert "except on the 2 days listed" in two_days
+    assert "no exceptions so far" in " ".join(daily_run.timing_summary([]))
+    assert "TIMING.md" not in " ".join(daily_run.timing_summary(None))
+    text = daily_run.write_timing_report(late).read_text()
+    assert text.startswith("# Commit timing (generated)")
+    assert "The 2026-09-03 forecast" in text and "17 hours" in text
 
 
 def test_fixed_origin_is_the_same_clock_hour_whenever_the_run_starts():
