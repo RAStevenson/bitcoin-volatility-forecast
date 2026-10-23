@@ -8,6 +8,20 @@ from fbench.harness_config import HORIZON
 from fbench.models.base_forecast_model import REGISTRY
 
 
+def check_no_future(training_rows, target_times, origin):
+    """Raise ValueError if any training row falls after origin or any
+    target hour falls at or before it. This is the leakage policy that
+    the backtest and the daily run both enforce before every fit. It
+    raises rather than asserts, so it holds even when Python runs with
+    assertions switched off."""
+    if training_rows.index.max() > origin:
+        raise ValueError(f"training data runs to {training_rows.index.max()}, "
+                         f"past the origin {origin}")
+    if pd.DatetimeIndex(target_times).min() <= origin:
+        raise ValueError(f"a target hour, {pd.DatetimeIndex(target_times).min()}, "
+                         f"is not after the origin {origin}")
+
+
 def make_origins(timestamps, test_days, stride_days, origin_hour_utc=0):
     """Forecast origins for the backtest, one every stride_days across a
     test_days window, each at origin_hour_utc on its day. An origin is
@@ -43,9 +57,8 @@ def run_backtest(features, model_names, origins, horizon=HORIZON, registry=None)
             model_class = registry[model_name]
             training_rows = features.loc[
                 origin - pd.Timedelta(days=model_class.train_days):origin]
-            # The two guards below ARE the leakage policy. Never remove.
-            assert training_rows.index.max() <= origin
-            assert future.min() > origin
+            # The leakage policy. Never remove.
+            check_no_future(training_rows, future, origin)
             model = model_class()
             model.fit(training_rows)
             quantile_forecast = model.predict(future)
