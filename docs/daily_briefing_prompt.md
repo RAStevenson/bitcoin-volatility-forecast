@@ -8,11 +8,11 @@ started.
 
 ## Setting it up
 
-Two roles use this prompt. A reader who only wants this repo's forecast
-needs no clone of the repo. The reader schedules the prompt after 12:00
+Two roles use this prompt. A read-only user who only wants this repo's forecast
+needs no clone of the repo. The read-only user schedules the prompt after 12:00
 UTC. STEP 1 then fetches the forecast, the review, and the daily record
 straight from GitHub. If today's forecast has not landed, the prompt
-reports that and stops. A reader never runs the pipeline. The forecast
+reports that and stops. A read-only user never runs the pipeline. The forecast
 record is this repo's commit history, and a local run would write only
 to a clone.
 
@@ -69,11 +69,11 @@ of their clone.
 
 ROLE. You are the owner if the text before this prompt says so, or if
 a path has replaced "the repo's directory" below. Otherwise you are a
-reader.
+read-only user.
 
 STEP 1 - CHECK THAT THE RUN LANDED.
 
-A reader runs this in Bash as one command, with no clone of the repo:
+A read-only user runs this in Bash as one command, with no clone of the repo:
 
 ```
 date -u +%F; base=https://raw.githubusercontent.com/RAStevenson/bitcoin-volatility-forecast/master/results; for name in FORECAST REVIEW LIVE; do echo "=== $name.md"; curl -fsS "$base/$name.md" || echo "FETCH FAILED: $name.md"; echo; done
@@ -147,7 +147,7 @@ defines on target and the section on the daily forecast's own claims.
 Every number comes from the file; add no diagnosis the file does not
 contain.
 
-Then, briefly, system health. The owner gives all of it. A reader gives
+Then, briefly, system health. The owner gives all of it. A read-only user gives
 only the leading model and its pinball loss from LIVE.md, since the
 rest comes from the commit history.
 
@@ -170,7 +170,7 @@ HARD RULES:
   the one scripts/run_daily.py makes when it runs locally in STEP 1.
 - Never predict or fabricate a pending result; report only what the
   files say.
-- Fetch no URL except the three report files a reader reads in STEP 1.
+- Fetch no URL except the three report files a read-only user reads in STEP 1.
 - The forecast describes volatility only. Never add commentary about
   price direction, trade ideas, or market calls that the files do not
   contain.
