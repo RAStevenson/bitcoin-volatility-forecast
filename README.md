@@ -26,7 +26,10 @@ The daily record, [results/LIVE.md](results/LIVE.md), holds the running
 scores of every forecast made since 2026-08-03. On the 75 days that both
 N-HiTS and persistence forecast, as of 2026-10-21, N-HiTS is the current
 leader with a mean error on daily average volatility of 0.1565, against
-0.2576 for persistence, about a 39% improvement.
+0.2576 for persistence, about a 39% improvement. On the same days HAR
+(heterogeneous autoregressive), the published standard baseline in
+volatility forecasting, had a mean error of 0.2369. N-HiTS's error is
+about 34% below HAR's.
 
 ![day by day: forecast, realized, persistence](results/figures/fig_live_daily.png)
 
@@ -125,13 +128,12 @@ the bands are sized correctly. It counts how often the realized value
 landed inside the 90% band, the span between the 5% and 95% quantiles.
 LIVE.md reports that share as the `cov90` column.
 
-Two baselines sit in the results tables beside the other six models.
-One is persistence. The other is HAR (heterogeneous autoregressive),
-the published standard baseline for realized volatility. The skill
-column measures every model against persistence. Skill is one minus the
-model's error over persistence's, so zero ties persistence, one would
-be a perfect forecast, and a negative value loses to the baseline. The
-table shows the current performance.
+Two baselines sit in the results tables beside the other six models. One
+is persistence. The other is HAR, the published standard baseline for
+realized volatility. The skill column measures every model against
+persistence. Skill is one minus the model's error over persistence's, so
+zero ties persistence, one would be a perfect forecast, and a negative
+value loses to the baseline. The table shows the current performance.
 
 ## Data
 
@@ -452,11 +454,13 @@ backtest engine never hands a model data past its forecast origin.
 ## Limitations
 
 - The daily record is 78 scored days as of 2026-10-21. N-HiTS joined
-  the daily run three days after the others, so it has 75 of them.
-  The LIVE.md results table is noisy but will likely become more
-  stable as samples grow. The models changed once, in the release
-  that took effect with the 2026-10-23 forecast, and from then the
-  table mixes forecast days made before and after it.
+  the daily run three days after the others, so it has 75 of them. The
+  LIVE.md results table is noisy but will likely become more stable as
+  samples grow. The models changed once, in the release that took
+  effect with the 2026-10-23 forecast, and from then the table mixes
+  forecast days made before and after it. The forecast origin was
+  fixed at the 10:00 UTC hour on 2026-09-27. Five forecast days on or
+  before that date were made from other hours of the day.
 
 - The timing evidence for the forecast log is the commit history. Since
   2026-09-27 the commits are made by GitHub's runner on GitHub's clock.
