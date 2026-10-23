@@ -9,9 +9,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import argparse
 
-from fbench.data import minute_store
-from fbench.data.candle_backfill import backfill
-from fbench.harness_config import MINUTE_SECONDS
+from bitcoin_volatility_forecast.data import minute_store
+from bitcoin_volatility_forecast.data.candle_backfill import backfill
+from bitcoin_volatility_forecast.forecast_settings import MINUTE_SECONDS
 
 
 def main():

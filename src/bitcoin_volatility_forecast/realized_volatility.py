@@ -9,7 +9,7 @@ uses to measure the day's price move."""
 import numpy as np
 import pandas as pd
 
-from fbench.harness_config import ANNUALIZER, MIN_MINUTES_PER_HOUR
+from bitcoin_volatility_forecast.forecast_settings import ANNUALIZER, MIN_MINUTES_PER_HOUR
 
 
 def hourly_realized_vol(minute_close):

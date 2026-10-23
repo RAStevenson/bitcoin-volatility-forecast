@@ -4,8 +4,8 @@ the realized outcomes."""
 
 import pandas as pd
 
-from fbench.harness_config import HORIZON
-from fbench.models.base_forecast_model import REGISTRY
+from bitcoin_volatility_forecast.forecast_settings import HORIZON
+from bitcoin_volatility_forecast.models.base_forecast_model import REGISTRY
 
 
 def check_no_future(training_rows, target_times, origin):

@@ -8,7 +8,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-from fbench.harness_config import RESULTS_DIR
+from bitcoin_volatility_forecast.forecast_settings import RESULTS_DIR
 
 
 def _fig_hourly_profile(hourly, fig_prefix, value_label):

@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 import pandas as pd
 
-from fbench.harness_config import QCOLS, TRAIN_DAYS
+from bitcoin_volatility_forecast.forecast_settings import QCOLS, TRAIN_DAYS
 
 REGISTRY = {}
 

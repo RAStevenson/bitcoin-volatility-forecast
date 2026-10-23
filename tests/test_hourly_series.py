@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
 
-from fbench.data import hourly_series
-from fbench.realized_volatility import hourly_realized_vol
+from bitcoin_volatility_forecast.data import hourly_series
+from bitcoin_volatility_forecast.realized_volatility import hourly_realized_vol
 
 
 def _minutes(start, n_minutes, log_return=0.001):

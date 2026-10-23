@@ -13,7 +13,7 @@ binds on the sentences as much as on the hourly bands."""
 import numpy as np
 import pandas as pd
 
-from fbench.daily_forecast_generator import (
+from bitcoin_volatility_forecast.daily_forecast_generator import (
     N_NAMED_HOURS,
     REGIMES,
     claims,
@@ -22,7 +22,7 @@ from fbench.daily_forecast_generator import (
     leading_model_asof,
     realized_claims,
 )
-from fbench.harness_config import ANNUALIZER, HORIZON, QCOLS
+from bitcoin_volatility_forecast.forecast_settings import ANNUALIZER, HORIZON, QCOLS
 
 # Naming three of 24 hours at random would overlap the true three by
 # 3 x 3 / 24 hours on average; the record is read against that.

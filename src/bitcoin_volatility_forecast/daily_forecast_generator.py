@@ -9,9 +9,15 @@ made rather than a paraphrase of them."""
 import numpy as np
 import pandas as pd
 
-from fbench.daily_run import EVAL_LOG, FORECAST_LOG, _load, expected_vol
-from fbench.harness_config import ANNUALIZER, QCOLS, QUANTILES, RELEASE_ORIGIN, RESULTS_DIR
-from fbench.quantile_scoring import score
+from bitcoin_volatility_forecast.daily_run import EVAL_LOG, FORECAST_LOG, _load, expected_vol
+from bitcoin_volatility_forecast.forecast_settings import (
+    ANNUALIZER,
+    QCOLS,
+    QUANTILES,
+    RELEASE_ORIGIN,
+    RESULTS_DIR,
+)
+from bitcoin_volatility_forecast.quantile_scoring import score
 
 LOCAL_TZ = "America/Chicago"
 FALLBACK_MODEL = "nhits"  # winner of the pinned backtest, used until live scores exist

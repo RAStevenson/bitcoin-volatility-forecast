@@ -9,8 +9,12 @@ import pandas as pd
 from scipy.stats import norm
 from statsmodels.tsa.statespace.sarimax import SARIMAX, SARIMAXResults
 
-from fbench.harness_config import QUANTILES, SARIMA_TRAIN_DAYS
-from fbench.models.base_forecast_model import BaseForecastModel, quantile_frame, register
+from bitcoin_volatility_forecast.forecast_settings import QUANTILES, SARIMA_TRAIN_DAYS
+from bitcoin_volatility_forecast.models.base_forecast_model import (
+    BaseForecastModel,
+    quantile_frame,
+    register,
+)
 
 
 def daily_cycle_terms(timestamps, harmonics):

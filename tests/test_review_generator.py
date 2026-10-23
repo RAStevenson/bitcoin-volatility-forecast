@@ -1,9 +1,9 @@
 import numpy as np
 import pandas as pd
 
-import fbench.models.persistence_model  # noqa: F401  (registers baselines)
-from fbench import daily_run, review_generator
-from fbench.feature_builder import build_features
+import bitcoin_volatility_forecast.models.persistence_model  # noqa: F401  (registers baselines)
+from bitcoin_volatility_forecast import daily_run, review_generator
+from bitcoin_volatility_forecast.feature_builder import build_features
 
 
 def _resolved_logs(tmp_path, monkeypatch, realized_multiplier=1.0):

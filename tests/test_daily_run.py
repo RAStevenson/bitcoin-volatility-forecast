@@ -2,9 +2,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import fbench.models.persistence_model  # noqa: F401  (registers baselines only)
-from fbench import daily_run
-from fbench.feature_builder import build_features
+import bitcoin_volatility_forecast.models.persistence_model  # noqa: F401  (registers baselines only)
+from bitcoin_volatility_forecast import daily_run
+from bitcoin_volatility_forecast.feature_builder import build_features
 
 
 @pytest.fixture

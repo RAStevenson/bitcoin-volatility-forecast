@@ -3,8 +3,8 @@ the last bar already saved."""
 
 import pandas as pd
 
-from fbench.data import coinbase_client, minute_store
-from fbench.harness_config import HISTORY_START, MINUTE_SECONDS, PRODUCT
+from bitcoin_volatility_forecast.data import coinbase_client, minute_store
+from bitcoin_volatility_forecast.forecast_settings import HISTORY_START, MINUTE_SECONDS, PRODUCT
 
 # Fetch and persist in monthly chunks so an interrupted run loses at most
 # one chunk; the watermark then resumes from what was saved.

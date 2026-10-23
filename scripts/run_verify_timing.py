@@ -16,8 +16,8 @@ import argparse
 
 import pandas as pd
 
-from fbench.commit_timing import first_commits, late_groups, late_reason
-from fbench.harness_config import ROOT
+from bitcoin_volatility_forecast.commit_timing import first_commits, late_groups, late_reason
+from bitcoin_volatility_forecast.forecast_settings import ROOT
 
 
 def main():

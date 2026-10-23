@@ -4,9 +4,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import fbench.models.persistence_model  # noqa: F401  (registers baselines)
-from fbench import daily_forecast_generator, daily_run
-from fbench.feature_builder import build_features
+import bitcoin_volatility_forecast.models.persistence_model  # noqa: F401  (registers baselines)
+from bitcoin_volatility_forecast import daily_forecast_generator, daily_run
+from bitcoin_volatility_forecast.feature_builder import build_features
 
 
 def test_prob_above_interpolates_and_clamps():

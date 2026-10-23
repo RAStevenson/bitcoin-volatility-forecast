@@ -9,8 +9,8 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-from fbench.commit_timing import late_reason
-from fbench.harness_config import (
+from bitcoin_volatility_forecast.commit_timing import late_reason
+from bitcoin_volatility_forecast.forecast_settings import (
     HORIZON,
     MIN_MATCHED_DAYS,
     ORIGIN_HOUR_UTC,
@@ -19,9 +19,9 @@ from fbench.harness_config import (
     RELEASE_ORIGIN,
     RESULTS_DIR,
 )
-from fbench.models.base_forecast_model import REGISTRY
-from fbench.quantile_scoring import add_skill, score
-from fbench.rolling_backtest import check_no_future
+from bitcoin_volatility_forecast.models.base_forecast_model import REGISTRY
+from bitcoin_volatility_forecast.quantile_scoring import add_skill, score
+from bitcoin_volatility_forecast.rolling_backtest import check_no_future
 
 FORECAST_LOG = RESULTS_DIR / "forecasts.csv"
 EVAL_LOG = RESULTS_DIR / "evaluation.csv"

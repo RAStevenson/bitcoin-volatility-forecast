@@ -1,6 +1,6 @@
 import pandas as pd
 
-from fbench import commit_timing
+from bitcoin_volatility_forecast import commit_timing
 
 HEADER = "+origin,target_time,horizon,model,q05,q25,q50,q75,q95"
 

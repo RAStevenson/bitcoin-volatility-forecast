@@ -12,9 +12,9 @@ import argparse
 
 import pandas as pd
 
-from fbench.data import minute_store
-from fbench.data.hourly_series import complete_hours, save_hourly
-from fbench.realized_volatility import hourly_realized_vol
+from bitcoin_volatility_forecast.data import minute_store
+from bitcoin_volatility_forecast.data.hourly_series import complete_hours, save_hourly
+from bitcoin_volatility_forecast.realized_volatility import hourly_realized_vol
 
 
 def main():

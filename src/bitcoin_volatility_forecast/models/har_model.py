@@ -6,8 +6,12 @@ from typing import ClassVar
 
 import numpy as np
 
-from fbench.harness_config import HORIZON, QUANTILES
-from fbench.models.base_forecast_model import BaseForecastModel, quantile_frame, register
+from bitcoin_volatility_forecast.forecast_settings import HORIZON, QUANTILES
+from bitcoin_volatility_forecast.models.base_forecast_model import (
+    BaseForecastModel,
+    quantile_frame,
+    register,
+)
 
 HAR_FEATURE_COLS = ["lag_0", "har_d", "har_w", "har_m"]
 

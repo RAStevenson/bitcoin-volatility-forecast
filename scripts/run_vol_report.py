@@ -13,11 +13,11 @@ import json
 
 import pandas as pd
 
-from fbench.data.hourly_series import load_hourly
-from fbench.harness_config import RESULTS_DIR
-from fbench.mlflow_tracking import log_backtest
-from fbench.quantile_scoring import add_skill, score
-from fbench.report_generator import write_report
+from bitcoin_volatility_forecast.data.hourly_series import load_hourly
+from bitcoin_volatility_forecast.forecast_settings import RESULTS_DIR
+from bitcoin_volatility_forecast.mlflow_tracking import log_backtest
+from bitcoin_volatility_forecast.quantile_scoring import add_skill, score
+from bitcoin_volatility_forecast.report_generator import write_report
 
 
 def main():
