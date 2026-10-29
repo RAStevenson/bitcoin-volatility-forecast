@@ -369,9 +369,9 @@ The results folder keeps at its top level the files a read-only user
 needs, with the rest in three subfolders:
 
 - `REPORT.md`, `LIVE.md`, `REVIEW.md`, `FORECAST.md`, and `TIMING.md`
-  are the five generated reports described above. `REPORT_20260805.md`
-  is the report of the backtest run before the 2026-10-22 release,
-  described in [docs/history.md][history].
+  are the four generated reports and the timing log described above.
+  `REPORT_20260805.md` is the report of the backtest run before the
+  2026-10-22 release, described in [docs/history.md][history].
 - `forecasts.csv` and `evaluation.csv` are the forecast log and the log
   of every scored forecast, appended by each daily run. The forecast
   log stays at this path because the timing audit reads its git history
