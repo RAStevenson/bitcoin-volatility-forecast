@@ -1,9 +1,11 @@
 """Run the daily loop end to end, extending the committed hourly
 realized volatility series with the minutes since its last hour,
-resolving the forecasts whose target hour has closed, logging a fresh 24-hour forecast for every
-registered model, auditing the commit timing of earlier forecasts,
-regenerating the three reports (the review with the daily forecast's claims
-scored), and committing and pushing the result."""
+resolving the forecasts whose target hour has closed, logging a fresh
+24-hour forecast for every registered model, auditing the commit timing
+of earlier forecasts and listing the late days in the TIMING.md log,
+regenerating the three reports (LIVE.md, FORECAST.md, and REVIEW.md,
+which scores the daily forecast's claims), and committing and pushing
+the result."""
 import sys
 from pathlib import Path
 

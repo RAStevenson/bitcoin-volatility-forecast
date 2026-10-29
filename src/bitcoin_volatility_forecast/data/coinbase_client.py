@@ -1,5 +1,5 @@
-"""Coinbase Exchange public candle client, the primary price source behind
-the minute store and the BTC-USD hourly series."""
+"""Coinbase Exchange public candle client, the price source behind the
+minute store and the BTC-USD hourly series."""
 
 import time
 
