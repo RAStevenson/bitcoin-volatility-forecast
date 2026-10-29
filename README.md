@@ -445,10 +445,10 @@ python -m pytest tests -q
 ```
 
 The suite checks the realized-volatility formula on a hand-built hour,
-checks that the inputs HAR and XGBoost read include the origin hour and
-nothing after it (rewriting every later hour changes nothing they see),
-checks the fit-and-predict contract every registered model implements,
-checks pinball loss against hand-computed values, and confirms that the
+checks that every model reads the origin hour and nothing after it
+(rewriting every later hour changes nothing it sees), checks the
+fit-and-predict contract every registered model implements, checks
+pinball loss against hand-computed values, and confirms that the
 backtest engine never hands a model data past its forecast origin.
 
 ## Limitations

@@ -1,8 +1,9 @@
 """The daily run over results/forecasts.csv and results/evaluation.csv:
 logs today's forecasts, scores the rows whose hours have passed, and
 builds results/LIVE.md, the published record of how each model is doing
-on hours none of them saw at fit time. Logged forecast rows are
-pre-outcome evidence, so nothing here ever rewrites one."""
+on hours none of them saw at fit time. It also writes results/TIMING.md,
+the log of days whose forecasts were committed late. Logged forecast
+rows are pre-outcome evidence, so nothing here ever rewrites one."""
 import time
 
 import numpy as np

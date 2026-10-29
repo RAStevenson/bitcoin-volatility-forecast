@@ -134,9 +134,10 @@ the commit message, after "trigger".
 STEP 2 - BRIEF, in this order. Plain prose, no emoji, ASCII only.
 
 Lead with the forecast: relay results/FORECAST.md essentially
-verbatim. Its first line (for example "quiet and falling"), the
-expected level and where it sits against the past year, the expected
-high-volatility hours, and the loudest and calmest local hours.
+verbatim. Its opening bold sentence (for example "quiet and
+falling"), the expected level and where it sits against the past
+year, the expected high-volatility hours, and the loudest and calmest
+local hours.
 
 Then yesterday in review, briefly, from results/REVIEW.md: the result
 (on target, too low, too high) with the forecast average, the realized
