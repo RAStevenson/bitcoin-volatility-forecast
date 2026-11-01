@@ -306,7 +306,9 @@ In a terminal, run the following commands.
    is already CPU-only. The pinned versions in `requirements.txt` are
    the ones the daily run installs.
 
-The scripts, in the order a rebuild from scratch would run them:
+The scripts, in the order a rebuild from scratch would run them, with
+every argument listed under [Script arguments](#script-arguments) at
+the end:
 
 ```
 # The first two commands rebuild the data from scratch for the
@@ -338,28 +340,9 @@ python scripts/run_verify_timing.py  # audit the forecast log's timing claim
                                      #   if a late day has no reason
 ```
 
-`run_vol_backtest.py` takes `--models` (default: every registered
-model), `--stride` (default 2, days between forecast origins),
-and `--test-days` (default 365) to run subsets quickly, and
-`--no-report` to stop after writing the backtest parquet.
-`--origin-hour` (default 10, the daily run's origin hour) sets
-the UTC hour of every origin. `--data-end` cuts the series at a
-given hour, so a later run can score the same days as an earlier
-one. `run_tune.py` takes `--models`, `--stride` (default 5),
-`--origin-hour`, and `--candidates` (score only the named
-candidates, for a trial run), and writes one json per model.
-`run_vol_report.py` takes `--results` (default: the newest
-backtest parquet in results/backtest/). `run_daily.py` takes
-`--no-push` (commit the run's files locally and do not push),
-`--no-commit` (write every file and commit nothing), and
-`--refit-today`, which needs `--no-commit` and checks that every
-model still fits after the day's forecast is logged. It fits
-every model again at today's origin and leaves the log unchanged.
-It prints each model's fit time and the largest difference, on
-the log scale, between the refit and the logged forecast. Every
-volatility backtest run that writes its report is also logged to
-MLflow, a local run-tracking tool (sqlite backend). Run `mlflow
-ui --backend-store-uri sqlite:///mlflow.db` to browse the runs.
+Every volatility backtest run that writes its report is also logged to
+MLflow, a local run-tracking tool (sqlite backend). Run `mlflow ui
+--backend-store-uri sqlite:///mlflow.db` to browse the runs.
 
 On Windows, Prophet's pip wheel worked as-is here (cmdstanpy backend,
 no manual install). If a first fit fails with a cmdstan error, run
@@ -484,3 +467,63 @@ backtest engine never hands a model data past its forecast origin.
   markets, and a market with a daily close would need the volatility
   rule, the persistence baseline, and the 24-hour horizon rethought
   around its session.
+
+## Script arguments
+
+This lists every argument of every user-facing script, mirroring
+`--help`. `run_backfill.py`, `run_build_rv.py`, and
+`run_verify_timing.py` take no arguments.
+
+### `run_tune.py`
+
+Optional:
+
+- `--models` names the models to tune, comma-separated, from gbm, nhits,
+  prophet, and sarima (default: all four).
+- `--stride` sets the days between forecast origins (default 5, so the
+  origins cycle through every day of the week).
+- `--origin-hour` sets the UTC hour of every origin (default 10, the
+  daily run's origin hour).
+- `--candidates` scores only the named candidates, comma-separated, for
+  a trial run (default: every candidate). Each candidate's name is its
+  label in the json files under results/tuning/.
+
+### `run_vol_backtest.py`
+
+Optional:
+
+- `--models` names the models to run, comma-separated (default: every
+  registered model). A subset runs quickly with fewer models, a larger
+  stride, or fewer test days.
+- `--stride` sets the days between forecast origins (default 2).
+- `--test-days` sets the length of the test window in days (default
+  365).
+- `--origin-hour` sets the UTC hour of every origin (default 10, the
+  daily run's origin hour). Passing 0 reproduces the midnight origins of
+  the 2026-08-05 backtest.
+- `--data-end` cuts the series at a given hour, so a later run can score
+  the same days as an earlier one (default: the last hour in the hourly
+  file). The hour is a UTC timestamp, and the test window counts back
+  from it. The 2026-08-05 backtest was cut at 2026-08-05 11:00.
+- `--no-report` stops after writing the backtest parquet, skipping the
+  scoring, REPORT.md, and the MLflow log. Off by default.
+
+### `run_vol_report.py`
+
+Optional:
+
+- `--results` names the backtest parquet to re-score (default: the
+  newest in results/backtest/).
+
+### `run_daily.py`
+
+Optional:
+
+- `--no-push` commits the run's files locally and does not push.
+- `--no-commit` writes every file and commits nothing. It implies
+  `--no-push`.
+- `--refit-today` needs `--no-commit` and checks that every model still
+  fits after the day's forecast is logged. It fits every model again at
+  today's origin and leaves the log unchanged. It prints each model's fit
+  time and the largest difference, on the log scale, between the refit
+  and the logged forecast.
