@@ -84,7 +84,7 @@ run shell commands. Each run writes a short briefing that leads with
 the forecast, or informs the user if the forecast has not landed yet.
 Run this way, the prompt fetches the three reports and runs nothing.
 
-## What is forecast
+## What it forecasts
 
 What the models forecast is realized volatility, the fluctuation
 actually measured from the price, one value per hour. It is measured
