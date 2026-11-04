@@ -41,8 +41,8 @@ TRACKED_PATHS = ("data/hourly_rv.csv",
                  "results/LIVE.md", "results/FORECAST.md",
                  "results/REVIEW.md", "results/TIMING.md",
                  "results/figures/fig_live_daily.png")
-PUSH_ATTEMPTS = 3
-PUSH_RETRY_WAIT = 30
+PUSH_ATTEMPTS = 11
+PUSH_RETRY_WAIT = 120
 
 
 def _audit():
@@ -93,10 +93,15 @@ def _commit_push(commit_message, no_commit, no_push):
     remotes = subprocess.run(["git", "remote"], cwd=ROOT,
                              capture_output=True, text=True).stdout.split()
     if "origin" in remotes and not no_push:
-        # GitHub sometimes answers a push with a transient server error
-        # (an Internal Server Error lost the 2026-11-04 run), so the push
-        # is tried PUSH_ATTEMPTS times, PUSH_RETRY_WAIT seconds apart,
-        # before the run gives up.
+        # GitHub sometimes answers a push with a server error during an
+        # outage (an Internal Server Error lost the 2026-11-04 run, inside
+        # a two-hour Git Operations incident whose errors came and went),
+        # so the push is tried PUSH_ATTEMPTS times, PUSH_RETRY_WAIT
+        # seconds apart, before the run gives up. That is up to 20
+        # minutes of retrying: an on-time run reaches its push about
+        # 11:17 UTC, so the last attempt still lands before the first
+        # target hour closes at 12:00, and GitHub's own scheduled
+        # fallback fires hours late, too late to keep the day on time.
         for attempt in range(1, PUSH_ATTEMPTS + 1):
             try:
                 subprocess.run(["git", "push", "origin", "HEAD"], cwd=ROOT,
