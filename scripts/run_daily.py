@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 import argparse
 import os
 import subprocess
+import time
 import traceback
 
 import pandas as pd
@@ -40,6 +41,8 @@ TRACKED_PATHS = ("data/hourly_rv.csv",
                  "results/LIVE.md", "results/FORECAST.md",
                  "results/REVIEW.md", "results/TIMING.md",
                  "results/figures/fig_live_daily.png")
+PUSH_ATTEMPTS = 3
+PUSH_RETRY_WAIT = 30
 
 
 def _audit():
@@ -68,8 +71,9 @@ def _commit_push(commit_message, no_commit, no_push):
     """Commits the extended hourly series, the logs, the reports and
     the live figure with commit_message, pushing when an origin remote
     is configured and no_push is false; with no_commit it returns before
-    staging anything. A failed push stops the run with a message saying
-    the commit was made but GitHub does not have it. Committing happens
+    staging anything. A failed push is retried, and if every attempt
+    fails the run stops with a message saying the commit was made but
+    GitHub does not have it. Committing happens
     before the logged target hours close, which is what makes the
     forecast log pre-outcome evidence. A second run on the same day
     would normally stage newly resolved rows and a refreshed forecast
@@ -89,14 +93,26 @@ def _commit_push(commit_message, no_commit, no_push):
     remotes = subprocess.run(["git", "remote"], cwd=ROOT,
                              capture_output=True, text=True).stdout.split()
     if "origin" in remotes and not no_push:
-        try:
-            subprocess.run(["git", "push", "origin", "HEAD"], cwd=ROOT,
-                           check=True)
-        except subprocess.CalledProcessError:
-            traceback.print_exc()
-            sys.exit("[daily] The day's commit was made but the push failed "
-                     "(git's message is above), so GitHub does not have "
-                     "today's forecast.")
+        # GitHub sometimes answers a push with a transient server error
+        # (an Internal Server Error lost the 2026-11-04 run), so the push
+        # is tried PUSH_ATTEMPTS times, PUSH_RETRY_WAIT seconds apart,
+        # before the run gives up.
+        for attempt in range(1, PUSH_ATTEMPTS + 1):
+            try:
+                subprocess.run(["git", "push", "origin", "HEAD"], cwd=ROOT,
+                               check=True)
+                break
+            except subprocess.CalledProcessError:
+                if attempt < PUSH_ATTEMPTS:
+                    print(f"  push attempt {attempt} of {PUSH_ATTEMPTS} "
+                          f"failed; retrying in {PUSH_RETRY_WAIT} s",
+                          flush=True)
+                    time.sleep(PUSH_RETRY_WAIT)
+                    continue
+                traceback.print_exc()
+                sys.exit("[daily] The day's commit was made but the push "
+                         f"failed {PUSH_ATTEMPTS} times (git's message is "
+                         "above), so GitHub does not have today's forecast.")
         print("  committed and pushed")
     elif no_push:
         print("  committed; push skipped (--no-push)")

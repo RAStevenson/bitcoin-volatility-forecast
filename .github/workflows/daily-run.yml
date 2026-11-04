@@ -36,7 +36,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0        # the timing audit reads the full history
       # actions/checkout pins the tree to the commit the run was created
@@ -60,7 +60,7 @@ jobs:
           fi
       # A real run, scheduled or dispatched, skips once the day has
       # committed; only a dry run goes ahead regardless.
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         if: steps.today.outputs.done == 'false' || (github.event_name == 'workflow_dispatch' && inputs.dry_run)
         with:
           python-version: "3.11"
