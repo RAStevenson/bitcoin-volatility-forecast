@@ -28,7 +28,7 @@ target-version = "py311"
 src = ["src", "tests"]
 
 [tool.ruff.lint]
-# The rule set the repo is checked against, the same one as Robert's
+# The rule set the repo is checked against, the same one as the author's
 # other Python repos, stated so a newer ruff on a CI runner applies the
 # same rules as the one on the development machine.
 select = ["E", "F", "I", "UP", "B", "SIM", "C4", "RUF"]

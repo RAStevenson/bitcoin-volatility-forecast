@@ -29,7 +29,7 @@ N_NAMED_HOURS = 3  # the loudest and calmest hours the daily forecast names
 # is clamped at this floor. Summed over 24 hours the floor alone is 0.48
 # expected high hours, which is why the forecast prints a count only when
 # the count exceeds that floor by MIN_HIGH_HOURS_ABOVE_FLOOR; below it,
-# the number would be mostly the clamp, not a forecast (reader panel,
+# the number would be mostly the clamp, not a forecast (measured
 # 2026-10-21: on a quiet day "about 0.5 hours" was 0.46 of floor).
 PROBABILITY_FLOOR = 0.02
 MIN_HIGH_HOURS_ABOVE_FLOOR = 0.5
