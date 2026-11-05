@@ -5,20 +5,15 @@ priced in US dollars) will likely be over the next 24 hours, and scores
 that forecast against reality. This volatility is useful in systematic
 trading, usually for position sizing.
 
-Eight models make the forecast each day. The repo presents the
-forecast from whichever model is scoring best so far, in plain
-language, in [results/FORECAST.md](results/FORECAST.md), which
-can be read on GitHub without cloning the repo. "Getting the
-daily forecast" below explains how.
-
-The FORECAST.md file presents the expected move in dollars and percent,
-how the projected day sits in comparison to the past year, and which
-hours are expected to be the most and least volatile. The simplest of
-the eight is persistence, the naive baseline whose forecast is that each
-of the next 24 hours will look like the last hour observed. The most
-complex is N-HiTS, a neural network built for time series. They run side
-by side so the record shows which model families suit this series best
-and which fail to beat the baseline.
+Eight models make the forecast each day. The simplest is persistence,
+the naive baseline that assumes each coming hour will look like the last
+one observed. The most complex is N-HiTS, a neural network built for
+time series. They run side by side so the record shows which ones beat
+the baseline. Each forecast is committed to git before its outcome is
+known, so the commit history records when it was made. The few days
+committed late are listed in [TIMING.md][timing]. The forecast from
+whichever model is scoring best so far is in [FORECAST.md][forecast],
+readable on GitHub without cloning the repo.
 
 ## The result so far
 
