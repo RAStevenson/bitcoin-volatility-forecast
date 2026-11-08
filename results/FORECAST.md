@@ -1,12 +1,12 @@
-# Volatility forecast - 2026-11-07 (generated)
+# Volatility forecast - 2026-11-08 (generated)
 
-**The next 24 hours look quiet and falling.** A typical hour is expected to move about $118 (0.16%) up or down. Combining the 24 hourly forecasts gives a one-standard-deviation move of about $581 (0.8%) for the whole day, using the last traded price of $75,873. On about two days in three the price ends within that distance of where it started, which is what one standard deviation means when the day's move is roughly bell-shaped. Bigger days happen regularly.
+**The next 24 hours look quiet and rising.** A typical hour is expected to move about $185 (0.24%) up or down. Combining the 24 hourly forecasts gives a one-standard-deviation move of about $926 (1.2%) for the whole day, using the last traded price of $75,850. On about two days in three the price ends within that distance of where it started, which is what one standard deviation means when the day's move is roughly bell-shaped. Bigger days happen regularly.
 
-That forecast sits below most days of the past year (the 5th percentile of the past year's rolling 24-hour averages). Averaged over its 24 hourly volatilities, it works out to about 16% in annualized units, the per-year convention volatility is quoted in. Each hour's figure in that average is its expected volatility, which sits a little above the hour's median because the big hours pull an average up more than they move a median. The typical-hour move above is the average of the 24 hourly medians divided by 93.6, the square root of the hours in a year.
+That forecast sits below most days of the past year (the 19th percentile of the past year's rolling 24-hour averages). Averaged over its 24 hourly volatilities, it works out to about 25% in annualized units, the per-year convention volatility is quoted in. Each hour's figure in that average is its expected volatility, which sits a little above the hour's median because the big hours pull an average up more than they move a median. The typical-hour move above is the average of the 24 hourly medians divided by 93.6, the square root of the hours in a year.
 
-- Hourly median forecast ranges 13% to 18% annualized, which is a typical hourly move of 0.14% to 0.19%.
+- Hourly median forecast ranges 13% to 32% annualized, which is a typical hourly move of 0.14% to 0.34%.
 - No hour shows a meaningful chance of running high, above 66% annualized (an hourly move over 0.71%), higher than 90% of individual hours in the past year; every forecast band sits well below that line.
-- The loudest hours are expected around 07:00, 08:00, 09:00 local (America/Chicago); the calmest around 01:00, 14:00, 15:00.
-- Yesterday's realized average was 30%, above the 29% quiet line, so yesterday was not a quiet day.
+- The loudest hours are expected around 18:00, 19:00, 20:00 local (America/Chicago); the calmest around 05:00, 06:00, 07:00.
+- Yesterday's realized average was 12%, below the 29% quiet line, so yesterday was a quiet day by that line.
 
 This forecast was produced by nhits, the model currently leading the daily record. It is a volatility forecast only and says nothing about price direction.
